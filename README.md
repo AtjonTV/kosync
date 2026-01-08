@@ -22,8 +22,11 @@ KOsync stores all data, both configuration and user data, in a single JSON file.
 File structure:
 ```json
 {
-  "listen_address": "<listen_address>",
-  "disable_registration": false,
+  "config": {
+    "listen_address": "<listen_address>",
+    "disable_registration": false,
+    "enable_debug_log": false
+  },
   "users": {
     "<username>": {
       "username": "<username>",
@@ -46,6 +49,7 @@ Each string in `<>` is dynamic.
 
 * `listen_address`: Configures the IP and Port the server listens on. Format `ip_address:port`, defaults to `:8080`.
 * `disable_registration`: Rejects registration requests when enabled, defaults to `false`.
+* `enable_debug_log`: Enables verbose logging for debugging
 
 The server will create all other configuration data.
 
