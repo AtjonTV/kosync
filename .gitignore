@@ -7,3 +7,6 @@ main
 
 # Database file (contains user data)
 database.json
+
+# Local docker files
+.docker

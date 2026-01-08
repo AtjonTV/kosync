@@ -1,6 +1,6 @@
 # KOsync
 
-KOsync is a progress sync server for KOReader.
+KOsync is a progress sync server for KOReader written in less than 400 lines of Go.
 
 ## Goals
 
