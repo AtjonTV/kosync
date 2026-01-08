@@ -1,0 +1,9 @@
+# Go build artifacts
+main
+
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# Database file (contains user data)
+database.json
