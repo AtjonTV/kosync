@@ -196,14 +196,6 @@ func (app *Kosync) DebugPrint(s string) {
 	}
 }
 
-type ProgressRequest struct {
-	Document   string  `json:"document"`
-	Progress   string  `json:"progress"`
-	Percentage float32 `json:"percentage"`
-	Device     string  `json:"device"`
-	DeviceId   string  `json:"device_id"`
-}
-
 type ProgressResponse struct {
 	Document   string  `json:"document"`
 	Progress   string  `json:"progress"`
@@ -211,11 +203,6 @@ type ProgressResponse struct {
 	Device     string  `json:"device"`
 	DeviceId   string  `json:"device_id"`
 	Timestamp  int64   `json:"timestamp"`
-}
-
-type RegisterRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
 }
 
 func (app *Kosync) HandleUsersCreate(w http.ResponseWriter, r *http.Request) {
@@ -228,7 +215,10 @@ func (app *Kosync) HandleUsersCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Parse payload
-	var data RegisterRequest
+	var data struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
 	err := json.NewDecoder(r.Body).Decode(&data)
 	if err != nil {
 		app.DebugPrint(fmt.Sprintf("Error reading request body: %v", err))
@@ -273,7 +263,13 @@ func (app *Kosync) HandleSyncsProgress(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Parse payload
-	var data ProgressRequest
+	var data struct {
+		Document   string  `json:"document"`
+		Progress   string  `json:"progress"`
+		Percentage float32 `json:"percentage"`
+		Device     string  `json:"device"`
+		DeviceId   string  `json:"device_id"`
+	}
 	err := json.NewDecoder(r.Body).Decode(&data)
 	if err != nil {
 		app.DebugPrint(fmt.Sprintf("[user: %s]: Error reading request body: %v", user.Username, err))
