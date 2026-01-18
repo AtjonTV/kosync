@@ -61,6 +61,6 @@ func Run() {
 	kosync.RegisterApiProgress()
 
 	// Start server
-	log.Printf("Starting KOsync server on '%s'", db.Config.ListenAddress)
+	log.Printf("[KOsync] Starting KOsync server on '%s'", db.Config.ListenAddress)
 	log.Fatal(http.ListenAndServe(db.Config.ListenAddress, nil))
 }
