@@ -59,19 +59,34 @@ type HistoryData struct {
 
 func (app *Kosync) MigrateSchema() error {
 	app.DebugPrint("[DB] Checking for Database schema migrations.")
+	latestVer := 1
 
-	nextVer := 1
-	if app.Db.Schema < nextVer {
-		app.DebugPrint(fmt.Sprintf("[DB] Migrating Schema from %d to %d", app.Db.Schema, nextVer))
-		for id, user := range app.Db.Users {
-			app.Db.Users[id] = UserData{
-				Username:  user.Username,
-				Password:  user.Password,
-				Documents: user.Documents,
-				History:   make(map[string]HistoryData),
+	migrations := map[int]interface{}{
+		1: func() {
+			for id, user := range app.Db.Users {
+				app.Db.Users[id] = UserData{
+					Username:  user.Username,
+					Password:  user.Password,
+					Documents: user.Documents,
+					History:   make(map[string]HistoryData),
+				}
 			}
+		},
+	}
+
+	if app.Db.Schema < latestVer {
+		app.DebugPrint("[DB] Migrations are available, performing backup.")
+	} else {
+		app.DebugPrint("[DB] No Migrations to do.")
+		return nil
+	}
+
+	for ver, migrate := range migrations {
+		if app.Db.Schema < ver {
+			app.DebugPrint(fmt.Sprintf("[DB] Migrating Schema from %d to %d", app.Db.Schema, ver))
+			migrate.(func())()
+			app.Db.Schema = ver
 		}
-		app.Db.Schema = nextVer
 	}
 
 	return nil
