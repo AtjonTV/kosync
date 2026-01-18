@@ -7,7 +7,8 @@ KOsync is a progress sync server for KOReader written in Go.
 The [official KOReader progress sync server](https://github.com/koreader/koreader-sync-server) is written in Lua using OpenResty.  
 For deployment it needs Nginx with OpenResty as well as Redis as database.
 
-KOsync wants to be simpler by not having any dependencies besides the OS itself.
+KOsync wants to be simpler by not having any dependencies besides the OS itself.  
+(If you need TLS, a reverse proxy is also required, I recommend [Caddy](https://caddyserver.com))
 
 In addition to requiring Nginx, OpenResty and Redis, the official server is not very maintained.  
 The last feature adding commits was around 2016.
@@ -27,15 +28,16 @@ You may choose KOsync over [KORSS](https://github.com/koreader/koreader-sync-ser
 Additional differences, that should be known:
 
 - KOsync is licensed under the EUPL-1.2 (or later) compared to KORSS, which is AGPL-3.0 or later
-- Simple deployment via Docker, but required a Reverse Proxy for TLS
+- Simple deployment via Docker
+- Requires a Reverse Proxy for TLS
 
 ### Simplicity
 
 **Simple Code**  
-KOsync is written in Go and only depends on the standard library.
+KOsync is written in Go and uses the standard library as much as possible.
 
-Compilation only requires the Go Toolchain and this command `go build -tags netgo main.go`.  
-The command compiles the main.go file to a single static binary.
+Compilation only requires the Go Toolchain with this command `go build -tags netgo main.go`.  
+The command compiles the main.go file to a single static executable.
 
 Alternatively, a Docker image can be build with `docker buildx build -f Dockerfile -t docker.obth.eu/atjontv/kosync:custom .`.  
 Every tagged version also has a pre-build image at `docker.obth.eu/atjontv/kosync:latest` (you can replace `latest` with the version too).
