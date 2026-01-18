@@ -104,7 +104,7 @@ func (app *Kosync) BackupDatabase() error {
 		return err
 	}
 
-	jsonBinary, err := json.Marshal(app.Db)
+	binaryData, err := json.Marshal(app.Db)
 	if err != nil {
 		return err
 	}
@@ -120,10 +120,10 @@ func (app *Kosync) BackupDatabase() error {
 			"Created-At": now.Format(time.RFC3339),
 			"Schema":     fmt.Sprintf("%d", app.Db.Schema),
 		},
-		Bytes: jsonBinary,
+		Bytes: binaryData,
 	}
 
-	backupFileName := fmt.Sprintf("%s_%s%s.bak",
+	backupFileName := fmt.Sprintf("%s_%s-%s.bak",
 		strings.Replace(app.DatabaseFile, ".json", "", 1),
 		now.Format(time.DateOnly),
 		now.Format(time.TimeOnly),
