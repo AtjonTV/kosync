@@ -72,7 +72,8 @@ File Example:
     "listen_address": ":8080",
     "disable_registration": false,
     "enable_debug_log": false,
-    "store_history": false
+    "store_history": false,
+    "backup_encoding_type": "msgpack"
   },
   "users": {
     "<username>": {
@@ -117,6 +118,7 @@ File Example:
 * `disable_registration`: Rejects registration requests when enabled, defaults to `false`.
 * `enable_debug_log`: Enables verbose logging for debugging
 * `store_history`: Enables storing historic records for each file
+* `backup_encoding_type`: Specifies the content-type used for the PEM backup file, defaults to `msgpack` (available are `json` and `msgpack`)
 
 **Users**
 * `<username>`: The name provided during register in KOReader and used for login
@@ -149,7 +151,7 @@ I have chosen to use PEM for three reasons:
 - Alternative encodings (like [msgpack](https://msgpack.io))
 
 Backup files can be restored by adding the `--restore <path/to/database.bak>` command line option.  
-The server will try restore the database and then start on success.
+The server will try to restore the database and then start on success.
 
 ## License
 
