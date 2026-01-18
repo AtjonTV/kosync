@@ -1,7 +1,7 @@
 //
 // File:        main.go
 // Project:     https://git.obth.eu/atjontv/kosync
-// License:     EUPL-1.2 or later
+// License:     Copyright 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
 // Description: KOsync is a simple KOReader progress sync server,
 //				contained in a single Go file, it compiles to a single static binary.
 // Build:       go build -tags netgo main.go && strip main
@@ -291,6 +291,10 @@ func (app *Kosync) HandleSyncsProgressGetDocument(w http.ResponseWriter, r *http
 }
 
 func main() {
+	log.Println("[KOsync] KOsync Server v2026.02.0 by Thomas Obernosterer (https://obth.eu)")
+	log.Println("[KOsync] Copyright 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later.")
+	log.Println("[KOsync] Obtain the Source Code at https://git.obth.eu/atjontv/kosync")
+	log.Println("[KOsync] ")
 	dbFileName := "database.json"
 	var db Database
 
