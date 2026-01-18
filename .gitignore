@@ -8,5 +8,8 @@ main
 # Database file (contains user data)
 database.json
 
+# Database backups
+*.bak
+
 # Local docker files
 .docker
