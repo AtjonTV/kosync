@@ -1,0 +1,13 @@
+services:
+  kosync:
+    #build:
+    #  dockerfile: Dockerfile
+    #  context: .
+    image: docker.obth.eu/atjontv/kosync:latest
+    pull_policy: daily # If this fails for your compose version, replace with 'always'
+    container_name: kosync
+    restart: unless-stopped
+    volumes:
+      - ./data:/data
+    #ports:
+    #  - "8080:8080"

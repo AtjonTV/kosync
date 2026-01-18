@@ -34,10 +34,6 @@ COPY --from=builder /out/main /app/main
 # The application listens on 8080 by default
 EXPOSE 8080
 
-# database.json is expected in the same directory as the binary (/app).
-# Mount it at runtime if you want to persist or provide an existing DB:
-#   docker run --rm -p 8080:8080 \
-#     -v $(pwd)/database.json:/app/database.json \
-#     ghcr.io/your-org/kosync:latest
+VOLUME /data
 
 ENTRYPOINT ["/app/main"]
