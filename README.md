@@ -1,30 +1,68 @@
 # KOsync
 
-KOsync is a progress sync server for KOReader written in less than 400 lines of Go.
+KOsync is a progress sync server for KOReader written in Go.
 
-## Goals
+## Why?
 
-The official KOReader sync server needs Nginx, OpenResty, Lua and Redis to run.  
-Getting rid of external dependencies is a major goal.
+The [official KOReader progress sync server](https://github.com/koreader/koreader-sync-server) is written in Lua using OpenResty.  
+For deployment it needs Nginx with OpenResty as well as Redis as database.
 
-Another goal is simplicity, make it as simple as possible.  
-Both with code simplicity as well as deployment simplicity.
+KOsync wants to be simpler by not having any dependencies besides the OS itself.
+
+In addition to requiring Nginx, OpenResty and Redis, the official server is not very maintained.  
+The last feature adding commits was around 2016.
+
+While KOsync does not yet have additional features compared to the official server,  
+there are plans to add some. A web interface for viewing and managing would be nice, right?
+
+## KOsync vs [KOReader Sync Server](https://github.com/koreader/koreader-sync-server)
+
+You may choose KOsync over [KORSS](https://github.com/koreader/koreader-sync-server) due to the following differences:
+
+- Currently maintained
+- Open-minded to implement new features, be it a Web Interface or something else
+- Written in Go and deploys as a single executable
+- Single JSON file as database plus configuration instead of Redis
+
+Additional differences, that should be known:
+
+- KOsync is licensed under the EUPL-1.2 (or later) compared to KORSS, which is AGPL-3.0 or later
+- Simple deployment via Docker, but required a Reverse Proxy for TLS
 
 ### Simplicity
 
+**Simple Code**  
 KOsync is written in Go and only depends on the standard library.
 
 Compilation only requires the Go Toolchain and this command `go build -tags netgo main.go`.  
 The command compiles the main.go file to a single static binary.
 
+Alternatively, a Docker image can be build with `docker buildx build -f Dockerfile -t docker.obth.eu/atjontv/kosync:custom .`.  
+Every tagged version also has a pre-build image at `docker.obth.eu/atjontv/kosync:latest` (you can replace `latest` with the version too).
+
+**Simple Datastore**  
 KOsync stores all data, both configuration and user data, in a single JSON file.
 
-The Users are created after `/users/create` is called via the Registration feature in the client.  
-The Documents are created after the client pushes the progress of a document.
+The Schema of the file is shown and explained in the next section.
+
+Users can, after entering the custom URL, use the KOReader registration to signup.  
+After that, they push and pull progress states.
+
+Documents are uploaded by KOReader during progress push.  
+The push must be triggered by hand or configured to be done automatically when switching pages.  
+Consult the KOReader documentation for the configuration options.
 
 ### Database File
 
-Example:
+The database file consists of three sections:
+- schema
+- config
+- users
+
+While schema and users is "managed" by the server depending on what is happening,  
+the config is where you can configure how KOsync works.
+
+File Example:
 ```json
 {
   "schema": 1,
