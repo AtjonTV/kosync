@@ -134,6 +134,31 @@ File Example:
 * `<filehash>`: Same as `Documents.<filehash>`
 * `document_history`: Array of `Documents[]` objects sorted from oldest to newest
 
+### Backup Files
+
+When a newer version of KOsync is started which changes the database.json schema,  
+the server automatically creates a backup file `.bak`.
+
+These backup files are a bit special, instead of just copying the database file,  
+they are PEM encoded files.
+
+I have chosen to use PEM for two reasons:
+
+- fun. Just though it would be funny.
+- Metadata, PEM has the feature of "Headers"
+
+Another potential reason is binary encodings.
+
+I have tested using [msgpack](https://msgpack.io) as input and saw a good 20% size reduction  
+between a JSON and msgpack encoded PEM file.
+
+The only reason it does not use msgpack already is: I do not want to add external dependencies yet.
+
+Anyway.
+
+Backup files can not yet be restored automatically.  
+But because they are just base64 encoded, any base64 decoder will give you the original database.json.
+
 ## License
 
 KOsync is licensed under the [European Union Public License v1.2 or later](/LICENSE.txt)
