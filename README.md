@@ -156,8 +156,8 @@ The only reason it does not use msgpack already is: I do not want to add externa
 
 Anyway.
 
-Backup files can not yet be restored automatically.  
-But because they are just base64 encoded, any base64 decoder will give you the original database.json.
+Backup files can be restored by adding the `--restore <path/to/database.bak>` command line option.  
+The server will try restore the database and then start on success.
 
 ## License
 

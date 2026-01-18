@@ -7,6 +7,7 @@
 package kosync
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -31,6 +32,16 @@ func Run() {
 	log.Println("[KOsync] Copyright 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later.")
 	log.Println("[KOsync] Obtain the Source Code at https://git.obth.eu/atjontv/kosync")
 	log.Println("[KOsync] ")
+
+	var restoreFile string
+	flag.StringVar(&restoreFile, "restore", "", "Specify a .bak file to restore")
+	flag.Parse()
+
+	if len(restoreFile) > 0 {
+		if err := RestoreDatabase(restoreFile); err != nil {
+			panic(err)
+		}
+	}
 
 	// Try to find the database or create a new one
 	foundDbFile, db, err := LoadOrInitDatabase()

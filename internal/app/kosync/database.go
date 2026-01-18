@@ -12,36 +12,45 @@ import (
 	"os"
 )
 
-func LoadOrInitDatabase() (string, Database, error) {
+func FindDatabaseFile() (string, error) {
 	searchPaths := []string{
 		"/data/database.json",
 		"database.json",
 	}
 
-	var db Database
 	foundDbFile := searchPaths[0] // Default to /data
 
-	// Handle reading database
-	createEmptyDatabase := true
 	for _, path := range searchPaths {
 		stat, _ := os.Stat(path)
 		if stat != nil && stat.Size() > 0 {
-			data, err := os.ReadFile(path)
-			if err != nil {
-				return "", Database{}, err
-			}
-
-			if len(data) > 1 {
-				err = json.Unmarshal(data, &db)
-				if err != nil {
-					return "", Database{}, err
-				}
-
-				foundDbFile = path
-				createEmptyDatabase = false
-				break
-			}
+			return path, nil
 		}
+	}
+	return foundDbFile, nil
+}
+
+func LoadOrInitDatabase() (string, Database, error) {
+	var db Database
+
+	foundDbFile, err := FindDatabaseFile()
+	if err != nil {
+		return "", Database{}, err
+	}
+
+	// Handle reading database
+	createEmptyDatabase := true
+	data, err := os.ReadFile(foundDbFile)
+	if err != nil {
+		return "", Database{}, err
+	}
+
+	if len(data) > 1 {
+		err = json.Unmarshal(data, &db)
+		if err != nil {
+			return "", Database{}, err
+		}
+
+		createEmptyDatabase = false
 	}
 
 	// Fallback to empty

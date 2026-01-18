@@ -11,9 +11,15 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io/fs"
+	"log"
 	"os"
 	"strings"
+	"sync"
 	"time"
+)
+
+const (
+	BackupFileType = "KOSYNC BACKUP"
 )
 
 func (app *Kosync) BackupDatabase() error {
@@ -21,17 +27,17 @@ func (app *Kosync) BackupDatabase() error {
 		return err
 	}
 
+	app.DbMutex.Lock()
+	defer app.DbMutex.Unlock()
+
 	binaryData, err := json.Marshal(app.Db)
 	if err != nil {
 		return err
 	}
 
-	app.DbMutex.Lock()
-	defer app.DbMutex.Unlock()
-
 	now := time.Now()
 	block := pem.Block{
-		Type: "KOSYNC BACKUP",
+		Type: BackupFileType,
 		Headers: map[string]string{
 			"App":          "https://git.obth.eu/atjontv/kosync",
 			"Content-Type": "application/json",
@@ -62,5 +68,60 @@ func (app *Kosync) BackupDatabase() error {
 		return err
 	}
 	app.DebugPrint(fmt.Sprintf("[Backup]: Created backup file '%s'", backupFileName))
+	return nil
+}
+
+func RestoreDatabase(backupFile string) error {
+	log.Println(fmt.Sprintf("[Restore]: Trying to restore database from file '%s'", backupFile))
+
+	dbFile, err := FindDatabaseFile()
+	if err != nil {
+		return err
+	}
+
+	backupData, err := os.ReadFile(backupFile)
+	if err != nil {
+		return err
+	}
+
+	pemData, _ := pem.Decode(backupData)
+
+	if pemData.Type != BackupFileType {
+		return fmt.Errorf("the backup file does not contain a KOsync backup. It contains: '%s'", pemData.Type)
+	}
+
+	contentType, found := pemData.Headers["Content-Type"]
+	if !found {
+		return fmt.Errorf("the backup file does not specify a content type and cant be decoded")
+	}
+
+	_, found = pemData.Headers["Schema"]
+	if !found {
+		return fmt.Errorf("the backup file does not specify a schema version and cant be restored")
+	}
+
+	var db Database
+	if contentType == "application/json" {
+		if err := json.Unmarshal(pemData.Bytes, &db); err != nil {
+			return err
+		}
+	}
+
+	if db.Schema > SchemaVersion {
+		return fmt.Errorf("can not restore a backup from a newer version. The backup has schema version %d while the server has %d", db.Schema, SchemaVersion)
+	}
+
+	log.Println("[Restore]: Restoring the database file")
+	tmpKosync := Kosync{
+		DatabaseFile: dbFile,
+		Db:           db,
+		DbMutex:      sync.Mutex{},
+	}
+
+	if err := tmpKosync.PersistDatabase(); err != nil {
+		return err
+	}
+
+	log.Println("[Restore]: Restore complete.")
 	return nil
 }

@@ -8,10 +8,13 @@ package kosync
 
 import "fmt"
 
+const (
+	SchemaVersion = 1
+)
+
 func (app *Kosync) MigrateSchema() error {
 	app.DebugPrint("[DB] Checking for Database schema migrations.")
 
-	latestVer := 1
 	migrations := map[int]interface{}{
 		1: func() {
 			for id, user := range app.Db.Users {
@@ -25,7 +28,7 @@ func (app *Kosync) MigrateSchema() error {
 		},
 	}
 
-	if app.Db.Schema < latestVer {
+	if app.Db.Schema < SchemaVersion {
 		app.DebugPrint("[DB] Migrations are available, performing backup.")
 		err := app.BackupDatabase()
 		if err != nil {
