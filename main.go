@@ -361,28 +361,36 @@ func main() {
 	log.Println("[KOsync] Copyright 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later.")
 	log.Println("[KOsync] Obtain the Source Code at https://git.obth.eu/atjontv/kosync")
 	log.Println("[KOsync] ")
-	dbFileName := "database.json"
+
+	searchPaths := []string{
+		"/data/database.json",
+		"database.json",
+	}
+
 	var db Database
+	foundDbFile := searchPaths[0] // Default to /data
 
 	// Handle reading database
-	createEmptyDatabase := false
-	stat, _ := os.Stat(dbFileName)
-	if stat != nil && stat.Size() > 0 {
-		data, err := os.ReadFile(dbFileName)
-		if err != nil {
-			panic(err)
-		}
-
-		if len(data) > 1 {
-			err = json.Unmarshal(data, &db)
+	createEmptyDatabase := true
+	for _, path := range searchPaths {
+		stat, _ := os.Stat(path)
+		if stat != nil && stat.Size() > 0 {
+			data, err := os.ReadFile(path)
 			if err != nil {
 				panic(err)
 			}
-		} else {
-			createEmptyDatabase = true
+
+			if len(data) > 1 {
+				err = json.Unmarshal(data, &db)
+				if err != nil {
+					panic(err)
+				}
+
+				foundDbFile = path
+				createEmptyDatabase = false
+				break
+			}
 		}
-	} else {
-		createEmptyDatabase = true
 	}
 
 	// Fallback to empty
@@ -403,10 +411,12 @@ func main() {
 
 	// New app instance
 	kosync := Kosync{
-		DatabaseFile: dbFileName,
+		DatabaseFile: foundDbFile,
 		Db:           db,
 		DbMutex:      sync.Mutex{},
 	}
+
+	kosync.DebugPrint(fmt.Sprintf("[KOsync]: Database file '%s'", kosync.DatabaseFile))
 
 	// Perform schema migrations
 	if err := kosync.MigrateSchema(); err != nil {
