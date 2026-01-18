@@ -9,15 +9,15 @@ WORKDIR /src
 RUN apk add --no-cache ca-certificates git build-base
 
 # Cache go modules first
-COPY go.mod ./
+COPY ../../go.mod ./
 RUN go mod download
 
 # Copy the rest of the source
-COPY . .
+COPY ../.. .
 
-# Build a static binary named 'main'
+# Build a static binary named 'kosync'
 ENV CGO_ENABLED=0
-RUN go build -tags netgo -ldflags='-s -w -extldflags "-static"' -o /out/main ./main.go && strip /out/main
+RUN go build -tags netgo -ldflags='-s -w -extldflags "-static"' -o /out/kosync cmd/kosync/kosync.go && strip /out/kosync
 
 
 # 2) Runtime stage
@@ -29,11 +29,11 @@ WORKDIR /app
 RUN apk add --no-cache ca-certificates && update-ca-certificates
 
 # Copy the binary
-COPY --from=builder /out/main /app/main
+COPY --from=builder /out/kosync /app/kosync
 
 # The application listens on 8080 by default
 EXPOSE 8080
 
 VOLUME /data
 
-ENTRYPOINT ["/app/main"]
+ENTRYPOINT ["/app/kosync"]

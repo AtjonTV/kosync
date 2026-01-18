@@ -1,5 +1,5 @@
 # Go build artifacts
-main
+kosync.exe
 
 # IntelliJ IDEA
 .idea/

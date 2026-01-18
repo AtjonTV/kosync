@@ -36,10 +36,10 @@ Additional differences, that should be known:
 **Simple Code**  
 KOsync is written in Go and uses the standard library as much as possible.
 
-Compilation only requires the Go Toolchain with this command `go build -tags netgo main.go`.  
-The command compiles the main.go file to a single static executable.
+Compilation only requires the Go Toolchain with this command `go build -tags netgo -o kosync.exe cmd/kosync/kosync.go`.  
+The command compiles KOsync to a single static executable named `kosync.exe`.
 
-Alternatively, a Docker image can be build with `docker buildx build -f Dockerfile -t docker.obth.eu/atjontv/kosync:custom .`.  
+Alternatively, a Docker image can be build with `docker buildx build -f build/package/Dockerfile -t docker.obth.eu/atjontv/kosync:custom .`.  
 Every tagged version also has a pre-build image at `docker.obth.eu/atjontv/kosync:latest` (you can replace `latest` with the version too).
 
 **Simple Datastore**  
