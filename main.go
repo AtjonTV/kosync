@@ -26,6 +26,7 @@ type Kosync struct {
 }
 
 type Database struct {
+	Schema int                 `json:"schema"`
 	Config ConfigData          `json:"config"`
 	Users  map[string]UserData `json:"users"`
 }
@@ -34,12 +35,14 @@ type ConfigData struct {
 	ListenAddress       string `json:"listen_address"`
 	DisableRegistration bool   `json:"disable_registration"`
 	DebugLog            bool   `json:"enable_debug_log"`
+	StoreHistory        bool   `json:"store_history"`
 }
 
 type UserData struct {
-	Username  string              `json:"username"`
-	Password  string              `json:"password"`
-	Documents map[string]FileData `json:"documents"`
+	Username  string                 `json:"username"`
+	Password  string                 `json:"password"`
+	Documents map[string]FileData    `json:"documents"`
+	History   map[string]HistoryData `json:"history"`
 }
 
 type FileData struct {
@@ -48,6 +51,30 @@ type FileData struct {
 	Device     string  `json:"device"`
 	DeviceId   string  `json:"device_id"`
 	Timestamp  int64   `json:"timestamp"`
+}
+
+type HistoryData struct {
+	DocumentHistory []FileData `json:"document_history"`
+}
+
+func (app *Kosync) MigrateSchema() error {
+	app.DebugPrint("[DB] Checking for Database schema migrations.")
+
+	nextVer := 1
+	if app.Db.Schema < nextVer {
+		app.DebugPrint(fmt.Sprintf("[DB] Migrating Schema from %d to %d", app.Db.Schema, nextVer))
+		for id, user := range app.Db.Users {
+			app.Db.Users[id] = UserData{
+				Username:  user.Username,
+				Password:  user.Password,
+				Documents: user.Documents,
+				History:   make(map[string]HistoryData),
+			}
+		}
+		app.Db.Schema = nextVer
+	}
+
+	return nil
 }
 
 func (app *Kosync) PersistDatabase() error {
@@ -183,9 +210,17 @@ func (app *Kosync) HandleSyncsProgress(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	app.DebugPrint(fmt.Sprintf("[user: %s]: Received progress update for document '%s'", user.Username, data.Document))
+
+	if app.Db.Config.StoreHistory {
+		var currentVersion = app.Db.Users[user.Username].Documents[data.Document]
+		var previousData = app.Db.Users[user.Username].History[data.Document].DocumentHistory
+		app.Db.Users[user.Username].History[data.Document] = HistoryData{
+			DocumentHistory: append(previousData, currentVersion),
+		}
+	}
 
 	// Create document state
-	app.DebugPrint(fmt.Sprintf("[user: %s]: Received progress update for document '%s'", user.Username, data.Document))
 	app.Db.Users[user.Username].Documents[data.Document] = FileData{
 		Progress:   data.Progress,
 		Percentage: data.Percentage,
@@ -300,6 +335,11 @@ func main() {
 		DatabaseFile: dbFileName,
 		Db:           db,
 		DbMutex:      sync.Mutex{},
+	}
+
+	// Perform schema migrations
+	if err := kosync.MigrateSchema(); err != nil {
+		panic(err)
 	}
 
 	// Persist database
