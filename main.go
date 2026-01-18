@@ -116,9 +116,10 @@ func (app *Kosync) BackupDatabase() error {
 	block := pem.Block{
 		Type: "KOSYNC BACKUP",
 		Headers: map[string]string{
-			"App":        "https://git.obth.eu/atjontv/kosync",
-			"Created-At": now.Format(time.RFC3339),
-			"Schema":     fmt.Sprintf("%d", app.Db.Schema),
+			"App":          "https://git.obth.eu/atjontv/kosync",
+			"Content-Type": "application/json",
+			"Created-At":   now.Format(time.RFC3339),
+			"Schema":       fmt.Sprintf("%d", app.Db.Schema),
 		},
 		Bytes: binaryData,
 	}
