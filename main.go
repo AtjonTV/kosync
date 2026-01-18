@@ -218,6 +218,7 @@ func (app *Kosync) HandleSyncsProgress(w http.ResponseWriter, r *http.Request) {
 		app.Db.Users[user.Username].History[data.Document] = HistoryData{
 			DocumentHistory: append(previousData, currentVersion),
 		}
+		app.DebugPrint(fmt.Sprintf("[user: %s]: Document '%s' progress went from %.2f %% to %.2f %%", user.Username, data.Document, currentVersion.Percentage*100, data.Percentage*100))
 	}
 
 	// Create document state
