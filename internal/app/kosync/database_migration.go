@@ -9,7 +9,7 @@ package kosync
 import "fmt"
 
 const (
-	SchemaVersion = 1
+	SchemaVersion = 2
 )
 
 func (app *Kosync) MigrateSchema() error {
@@ -26,12 +26,14 @@ func (app *Kosync) MigrateSchema() error {
 				}
 			}
 		},
+		2: func() {
+			app.Db.Config.BackupEncodingType = BackupEncodingTypeMsgpack
+		},
 	}
 
 	if app.Db.Schema < SchemaVersion {
 		app.DebugPrint("[DB] Migrations are available, performing backup.")
-		err := app.BackupDatabase()
-		if err != nil {
+		if err := app.BackupDatabase(); err != nil {
 			return err
 		}
 	} else {

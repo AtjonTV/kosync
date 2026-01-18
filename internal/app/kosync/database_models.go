@@ -17,6 +17,7 @@ type ConfigData struct {
 	DisableRegistration bool   `json:"disable_registration"`
 	DebugLog            bool   `json:"enable_debug_log"`
 	StoreHistory        bool   `json:"store_history"`
+	BackupEncodingType  string `json:"backup_encoding_type"`
 }
 
 type UserData struct {

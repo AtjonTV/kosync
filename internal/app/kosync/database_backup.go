@@ -16,10 +16,14 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/shamaton/msgpack/v3"
 )
 
 const (
-	BackupFileType = "KOSYNC BACKUP"
+	BackupFileType            = "KOSYNC BACKUP"
+	BackupEncodingTypeJson    = "json"
+	BackupEncodingTypeMsgpack = "msgpack"
 )
 
 func (app *Kosync) BackupDatabase() error {
@@ -30,7 +34,19 @@ func (app *Kosync) BackupDatabase() error {
 	app.DbMutex.Lock()
 	defer app.DbMutex.Unlock()
 
-	binaryData, err := json.Marshal(app.Db)
+	var contentType = ""
+	var binaryData []byte
+	var err error
+
+	if app.Db.Config.BackupEncodingType == BackupEncodingTypeJson || app.Db.Schema < 2 {
+		binaryData, err = json.Marshal(app.Db)
+		contentType = "application/json"
+	} else if app.Db.Config.BackupEncodingType == BackupEncodingTypeMsgpack {
+		binaryData, err = msgpack.Marshal(app.Db)
+		contentType = "application/vnd.msgpack"
+	} else {
+		return fmt.Errorf("can not create database backup for unknown content type '%s'", app.Db.Config.BackupEncodingType)
+	}
 	if err != nil {
 		return err
 	}
@@ -40,7 +56,7 @@ func (app *Kosync) BackupDatabase() error {
 		Type: BackupFileType,
 		Headers: map[string]string{
 			"App":          "https://git.obth.eu/atjontv/kosync",
-			"Content-Type": "application/json",
+			"Content-Type": contentType,
 			"Created-At":   now.Format(time.RFC3339),
 			"Schema":       fmt.Sprintf("%d", app.Db.Schema),
 		},
@@ -105,6 +121,12 @@ func RestoreDatabase(backupFile string) error {
 		if err := json.Unmarshal(pemData.Bytes, &db); err != nil {
 			return err
 		}
+	} else if contentType == "application/vnd.msgpack" {
+		if err := msgpack.Unmarshal(pemData.Bytes, &db); err != nil {
+			return err
+		}
+	} else {
+		return fmt.Errorf("content type of backup file is not supported '%s'", contentType)
 	}
 
 	if db.Schema > SchemaVersion {

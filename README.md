@@ -142,19 +142,11 @@ the server automatically creates a backup file `.bak`.
 These backup files are a bit special, instead of just copying the database file,  
 they are PEM encoded files.
 
-I have chosen to use PEM for two reasons:
+I have chosen to use PEM for three reasons:
 
-- fun. Just though it would be funny.
+- fun. (just though it would be funny)
 - Metadata, PEM has the feature of "Headers"
-
-Another potential reason is binary encodings.
-
-I have tested using [msgpack](https://msgpack.io) as input and saw a good 20% size reduction  
-between a JSON and msgpack encoded PEM file.
-
-The only reason it does not use msgpack already is: I do not want to add external dependencies yet.
-
-Anyway.
+- Alternative encodings (like [msgpack](https://msgpack.io))
 
 Backup files can be restored by adding the `--restore <path/to/database.bak>` command line option.  
 The server will try restore the database and then start on success.

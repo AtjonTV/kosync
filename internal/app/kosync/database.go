@@ -61,6 +61,7 @@ func LoadOrInitDatabase() (string, Database, error) {
 				DisableRegistration: false,
 				DebugLog:            false,
 				StoreHistory:        false,
+				BackupEncodingType:  "msgpack",
 			},
 			Users: make(map[string]UserData),
 		}
