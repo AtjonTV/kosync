@@ -90,6 +90,15 @@ func (app *Kosync) handleSyncsProgressGetDocument(w http.ResponseWriter, r *http
 		return
 	}
 
+	type ProgressResponse struct {
+		Document   string  `json:"document"`
+		Progress   string  `json:"progress"`
+		Percentage float32 `json:"percentage"`
+		Device     string  `json:"device"`
+		DeviceId   string  `json:"device_id"`
+		Timestamp  int64   `json:"timestamp"`
+	}
+
 	// Create DTO
 	wireFormat := ProgressResponse{
 		Document:   documentId,
