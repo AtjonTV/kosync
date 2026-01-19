@@ -28,7 +28,7 @@ func (app *Kosync) DebugPrint(s string) {
 }
 
 func Run() {
-	log.Println("[KOsync] KOsync Server v2026.02.0 by Thomas Obernosterer (https://obth.eu)")
+	log.Println("[KOsync] KOsync Server v2026.03.0 by Thomas Obernosterer (https://obth.eu)")
 	log.Println("[KOsync] Copyright 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later.")
 	log.Println("[KOsync] Obtain the Source Code at https://git.obth.eu/atjontv/kosync")
 	log.Println("[KOsync] ")

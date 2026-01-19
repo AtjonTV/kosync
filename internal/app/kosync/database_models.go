@@ -27,12 +27,21 @@ type UserData struct {
 	History   map[string]HistoryData `json:"history"`
 }
 
-type FileData struct {
+type ProgressData struct {
 	Progress   string  `json:"progress"`
 	Percentage float32 `json:"percentage"`
 	Device     string  `json:"device"`
 	DeviceId   string  `json:"device_id"`
-	Timestamp  int64   `json:"timestamp"`
+}
+
+type DocumentData struct {
+	ProgressData
+	Document string `json:"document"`
+}
+
+type FileData struct {
+	ProgressData
+	Timestamp int64 `json:"timestamp"`
 }
 
 type HistoryData struct {

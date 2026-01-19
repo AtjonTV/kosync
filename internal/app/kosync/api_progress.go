@@ -54,11 +54,13 @@ func (app *Kosync) handleSyncsProgress(w http.ResponseWriter, r *http.Request) {
 
 	// Create document state
 	app.Db.Users[user.Username].Documents[data.Document] = FileData{
-		Progress:   data.Progress,
-		Percentage: data.Percentage,
-		Device:     data.Device,
-		DeviceId:   data.DeviceId,
-		Timestamp:  time.Now().Unix(),
+		ProgressData: ProgressData{
+			Progress:   data.Progress,
+			Percentage: data.Percentage,
+			Device:     data.Device,
+			DeviceId:   data.DeviceId,
+		},
+		Timestamp: time.Now().Unix(),
 	}
 
 	// Persist
