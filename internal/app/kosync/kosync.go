@@ -36,12 +36,17 @@ func (app *Kosync) Print(marker, requestId, s string) {
 	log.Infof("RequestId=%s, Module=%s: %s\n", requestId, marker, s)
 }
 
+func (app *Kosync) PrintError(marker, requestId, s string) {
+	log.Errorf("RequestId=%s, Module=%s: %s\n", requestId, marker, s)
+}
+
 func Run() {
 	log.Infof("KOsync Server v%s by Thomas Obernosterer (https://obth.eu)", KosyncVersion)
 	log.Info("Copyright 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later.")
 	log.Info("Obtain the Source Code at https://git.obth.eu/atjontv/kosync")
 
 	restoreFile := flag.String("restore", "", "Specify a .bak file to restore")
+	makeBackup := flag.Bool("backup", false, "Create a .bak file before startup")
 	flag.Parse()
 
 	if restoreFile != nil && len(*restoreFile) > 0 {
@@ -67,6 +72,12 @@ func Run() {
 
 	if err := koapp.MigrateSchema(); err != nil {
 		panic(err)
+	}
+
+	if makeBackup != nil && *makeBackup {
+		if err := koapp.BackupDatabase(); err != nil {
+			koapp.PrintError("CLI", "backup", fmt.Sprintf("Failed to create backup, continuing startup: %v", err))
+		}
 	}
 
 	app := fiber.New()
