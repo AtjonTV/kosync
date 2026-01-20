@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 )
 
 func FindDatabaseFile() (string, error) {
@@ -76,21 +77,62 @@ func LoadOrInitDatabase() (string, Database, error) {
 }
 
 func (app *Kosync) PersistDatabase() error {
-	// Try to get a mutex lock, so that two gorountines cant write at the same time
-	app.DbMutex.Lock()
-	defer app.DbMutex.Unlock()
-
 	// marshal to json
 	data, err := json.MarshalIndent(app.Db, "", "  ")
 	if err != nil {
-		app.DebugPrint(fmt.Sprintf("Failed to marshel the Database into JSON: %e", err))
+		app.DebugPrint("DB", "-", fmt.Sprintf("Failed to marshel the Database into JSON: %e", err))
 		return err
 	}
 	// write to disk
-	err = os.WriteFile(app.DatabaseFile, data, 0644)
+	err = os.WriteFile(app.DbFile, data, 0644)
 	if err != nil {
-		app.DebugPrint(fmt.Sprintf("Failed to save the Database to disk: %e", err))
+		app.DebugPrint("DB", "-", fmt.Sprintf("Failed to save the Database to disk: %e", err))
 		return err
 	}
+	app.DebugPrint("DB", "-", fmt.Sprintf("Wrote %d bytes to disk", len(data)))
 	return nil
+}
+
+func (app *Kosync) AddUser(username, password string) error {
+	app.DbLock.Lock()
+	defer app.DbLock.Unlock()
+
+	_, found := app.Db.Users[username]
+	if found {
+		return fmt.Errorf("username is already taken")
+	}
+
+	// Create user
+	app.Db.Users[username] = UserData{
+		Username:  username,
+		Password:  password,
+		Documents: make(map[string]FileData),
+		History:   make(map[string]HistoryData),
+	}
+
+	// Persist new user
+	return app.PersistDatabase()
+}
+
+func (app *Kosync) AddOrUpdateDocument(username string, document DocumentData) error {
+	app.DbLock.Lock()
+	defer app.DbLock.Unlock()
+
+	if app.Db.Config.StoreHistory {
+		var currentVersion = app.Db.Users[username].Documents[document.Document]
+		var previousData = app.Db.Users[username].History[document.Document].DocumentHistory
+		app.Db.Users[username].History[document.Document] = HistoryData{
+			DocumentHistory: append(previousData, currentVersion),
+		}
+		app.DebugPrint("DB", "-", fmt.Sprintf("[user: %s]: Document '%s' progress went from %.2f %% to %.2f %%", username, document.Document, currentVersion.Percentage*100, document.Percentage*100))
+	}
+
+	// Create document state
+	app.Db.Users[username].Documents[document.Document] = FileData{
+		ProgressData: document.ProgressData,
+		Timestamp:    time.Now().Unix(),
+	}
+
+	// Persist new user
+	return app.PersistDatabase()
 }

@@ -1,4 +1,10 @@
-package kosyncng
+//
+// File:        internal/app/kosync/middleware.go
+// Project:     https://git.obth.eu/atjontv/kosync
+// Copyright:   © 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
+//
+
+package kosync
 
 import (
 	"fmt"
@@ -6,7 +12,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func (app *KosyncNg) NewAuthMiddleware() fiber.Handler {
+func (app *Kosync) NewAuthMiddleware() fiber.Handler {
 	// Return new handler
 	return func(c *fiber.Ctx) error {
 		// Do not require auth for signup

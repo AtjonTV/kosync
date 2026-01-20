@@ -31,8 +31,8 @@ func (app *Kosync) BackupDatabase() error {
 		return err
 	}
 
-	app.DbMutex.Lock()
-	defer app.DbMutex.Unlock()
+	app.DbLock.Lock()
+	defer app.DbLock.Unlock()
 
 	var contentType = ""
 	var binaryData []byte
@@ -72,7 +72,7 @@ func (app *Kosync) BackupDatabase() error {
 	defer func(backupFile *os.File) {
 		err := backupFile.Close()
 		if err != nil {
-			app.DebugPrint(fmt.Sprintf("[Backup]: Failed to close backup file '%s': %v", backupFileName, err))
+			app.DebugPrint("Backup", "-", fmt.Sprintf("Failed to close backup file '%s': %v", backupFileName, err))
 		}
 	}(backupFile)
 	if err != nil {
@@ -83,7 +83,7 @@ func (app *Kosync) BackupDatabase() error {
 	if err != nil {
 		return err
 	}
-	app.DebugPrint(fmt.Sprintf("[Backup]: Created backup file '%s'", backupFileName))
+	app.DebugPrint("Backup", "-", fmt.Sprintf("Created backup file '%s'", backupFileName))
 	return nil
 }
 
@@ -137,7 +137,7 @@ func RestoreDatabase(backupFile string) error {
 	tmpKosync := Kosync{
 		DatabaseFile: dbFile,
 		Db:           db,
-		DbMutex:      sync.Mutex{},
+		DbLock:       sync.Mutex{},
 	}
 
 	if err := tmpKosync.PersistDatabase(); err != nil {

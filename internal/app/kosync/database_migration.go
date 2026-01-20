@@ -13,7 +13,7 @@ const (
 )
 
 func (app *Kosync) MigrateSchema() error {
-	app.DebugPrint("[DB] Checking for Database schema migrations.")
+	app.DebugPrint("DB", "-", "Checking for Database schema migrations.")
 
 	migrations := map[int]interface{}{
 		1: func() {
@@ -32,18 +32,18 @@ func (app *Kosync) MigrateSchema() error {
 	}
 
 	if app.Db.Schema < SchemaVersion {
-		app.DebugPrint("[DB] Migrations are available, performing backup.")
+		app.DebugPrint("DB", "-", "Migrations are available, performing backup.")
 		if err := app.BackupDatabase(); err != nil {
 			return err
 		}
 	} else {
-		app.DebugPrint("[DB] No Migrations to do.")
+		app.DebugPrint("DB", "-", "No Migrations to do.")
 		return nil
 	}
 
 	for ver, migrate := range migrations {
 		if app.Db.Schema < ver {
-			app.DebugPrint(fmt.Sprintf("[DB] Migrating Schema from %d to %d", app.Db.Schema, ver))
+			app.DebugPrint("DB", "-", fmt.Sprintf("Migrating Schema from %d to %d", app.Db.Schema, ver))
 			migrate.(func())()
 			app.Db.Schema = ver
 		}
