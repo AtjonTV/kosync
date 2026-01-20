@@ -64,7 +64,7 @@ func (app *Kosync) BackupDatabase() error {
 	}
 
 	backupFileName := fmt.Sprintf("%s_%s-%s.bak",
-		strings.Replace(app.DatabaseFile, ".json", "", 1),
+		strings.Replace(app.DbFile, ".json", "", 1),
 		now.Format(time.DateOnly),
 		now.Format(time.TimeOnly),
 	)
@@ -135,9 +135,9 @@ func RestoreDatabase(backupFile string) error {
 
 	log.Println("[Restore]: Restoring the database file")
 	tmpKosync := Kosync{
-		DatabaseFile: dbFile,
-		Db:           db,
-		DbLock:       sync.Mutex{},
+		Db:     db,
+		DbLock: sync.Mutex{},
+		DbFile: dbFile,
 	}
 
 	if err := tmpKosync.PersistDatabase(); err != nil {

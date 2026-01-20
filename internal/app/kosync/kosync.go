@@ -20,10 +20,9 @@ import (
 const KosyncVersion = "2026.03.0"
 
 type Kosync struct {
-	DatabaseFile string
-	Db           Database
-	DbLock       sync.Mutex
-	DbFile       string
+	Db     Database
+	DbLock sync.Mutex
+	DbFile string
 }
 
 func (app *Kosync) DebugPrint(marker, requestId, s string) {
