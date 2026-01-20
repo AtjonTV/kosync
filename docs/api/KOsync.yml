@@ -1,0 +1,131 @@
+openapi: 3.0.0
+info:
+  title: KOsync API
+  version: 1.0.0
+  description: KOsync API based on the KOReader Progress Sync Server API
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: https://kos.api.obth.eu
+    description: Public server
+
+components:
+  securitySchemes:
+    UserAuth:
+      type: apiKey
+      in: header
+      name: x-auth-user
+    KeyAuth:
+      type: apiKey
+      in: header
+      name: x-auth-key
+
+  schemas:
+    UserCredentials:
+      type: object
+      properties:
+        username:
+          type: string
+          description: Unique username.
+        password:
+          type: string
+          description: Pre-hashed Password.
+      required:
+        - username
+        - password
+
+    ProgressUpdate:
+      type: object
+      properties:
+        document:
+          type: string
+          description: Unique identifier for the document (hash).
+        progress:
+          type: string
+          description: Path or fragment identifier within the document.
+        percentage:
+          type: number
+          format: float
+          example: 0.0033
+        device:
+          type: string
+          example: Flatpak
+        device_id:
+          type: string
+          example: BDD3C5BCA1624FE996EB00FC7948468E
+      required:
+        - document
+        - progress
+        - percentage
+        - device
+        - device_id
+
+paths:
+  /users/auth:
+    get:
+      summary: Verify user credentials
+      security:
+        - UserAuth: []
+          KeyAuth: []
+      responses:
+        '200':
+          description: Credentials verified successfully
+        '401':
+          description: Unauthorized
+
+  /users/create:
+    post:
+      summary: Create a new user account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCredentials'
+      responses:
+        '201':
+          description: User created successfully
+        '400':
+          description: Invalid input
+
+  /syncs/progress/{documentId}:
+    get:
+      summary: Get document progress
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The hash/ID of the document.
+      security:
+        - UserAuth: []
+          KeyAuth: []
+      responses:
+        '200':
+          description: Progress retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgressUpdate'
+        '404':
+          description: Document progress not found
+
+  /syncs/progress:
+    post:
+      summary: Create/Update document progress
+      security:
+        - UserAuth: []
+          KeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProgressUpdate'
+      responses:
+        '200':
+          description: Progress saved successfully
+        '401':
+          description: Unauthorized
