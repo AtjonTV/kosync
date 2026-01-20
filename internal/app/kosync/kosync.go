@@ -41,12 +41,11 @@ func Run() {
 	log.Info("Copyright 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later.")
 	log.Info("Obtain the Source Code at https://git.obth.eu/atjontv/kosync")
 
-	var restoreFile string
-	flag.StringVar(&restoreFile, "restore", "", "Specify a .bak file to restore")
+	restoreFile := flag.String("restore", "", "Specify a .bak file to restore")
 	flag.Parse()
 
-	if len(restoreFile) > 0 {
-		if err := RestoreDatabase(restoreFile); err != nil {
+	if restoreFile != nil && len(*restoreFile) > 0 {
+		if err := RestoreDatabase(*restoreFile); err != nil {
 			panic(err)
 		}
 	}
