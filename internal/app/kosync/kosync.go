@@ -66,6 +66,10 @@ func Run() {
 		_ = koapp.PersistDatabase()
 	}(&koapp)
 
+	if err := koapp.MigrateSchema(); err != nil {
+		panic(err)
+	}
+
 	app := fiber.New()
 	defer func(app *fiber.App) {
 		err := app.Shutdown()
