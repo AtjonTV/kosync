@@ -25,7 +25,7 @@ type Kosync struct {
 	DbFile string
 }
 
-func (app *Kosync) DebugPrint(marker, requestId, s string) {
+func (app *Kosync) PrintDebug(marker, requestId, s string) {
 	// Only print debugs when enabled
 	if app.Db.Config.DebugLog {
 		log.Debugf("RequestId=%s, Module=%s: %s\n", requestId, marker, s)
@@ -94,7 +94,7 @@ func Run() {
 	app.Use(koapp.NewAuthMiddleware())
 
 	app.Get("/users/auth", func(c *fiber.Ctx) error {
-		koapp.DebugPrint("Users", c.Locals("requestid").(string), fmt.Sprintf("Login of user '%s'", c.Locals("current_user").(string)))
+		koapp.PrintDebug("Users", c.Locals("requestid").(string), fmt.Sprintf("Login of user '%s'", c.Locals("current_user").(string)))
 		return c.SendStatus(fiber.StatusOK)
 	})
 
@@ -112,7 +112,7 @@ func Run() {
 			return err
 		}
 
-		koapp.DebugPrint("Users", c.Locals("requestid").(string), fmt.Sprintf("Signup of new user '%s'", data.Username))
+		koapp.PrintDebug("Users", c.Locals("requestid").(string), fmt.Sprintf("Signup of new user '%s'", data.Username))
 		if err := koapp.AddUser(data.Username, data.Password); err != nil {
 			return err
 		}
@@ -127,7 +127,7 @@ func Run() {
 			return err
 		}
 
-		koapp.DebugPrint("Syncs", c.Locals("requestid").(string), fmt.Sprintf("User '%s' sent progress for document '%s'", c.Locals("current_user").(string), data.Document))
+		koapp.PrintDebug("Syncs", c.Locals("requestid").(string), fmt.Sprintf("User '%s' sent progress for document '%s'", c.Locals("current_user").(string), data.Document))
 		if err := koapp.AddOrUpdateDocument(c.Locals("current_user").(string), data); err != nil {
 			return err
 		}
@@ -140,7 +140,7 @@ func Run() {
 		if documentId == "-" {
 			return fiber.ErrNotFound
 		}
-		koapp.DebugPrint("Syncs", c.Locals("requestid").(string), fmt.Sprintf("User '%s' requested progress of document '%s'", c.Locals("current_user").(string), documentId))
+		koapp.PrintDebug("Syncs", c.Locals("requestid").(string), fmt.Sprintf("User '%s' requested progress of document '%s'", c.Locals("current_user").(string), documentId))
 
 		// Find document
 		docData, found := koapp.Db.Users[c.Locals("current_user").(string)].Documents[documentId]

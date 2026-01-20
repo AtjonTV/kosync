@@ -80,16 +80,16 @@ func (app *Kosync) PersistDatabase() error {
 	// marshal to json
 	data, err := json.MarshalIndent(app.Db, "", "  ")
 	if err != nil {
-		app.DebugPrint("DB", "-", fmt.Sprintf("Failed to marshel the Database into JSON: %e", err))
+		app.PrintDebug("DB", "-", fmt.Sprintf("Failed to marshel the Database into JSON: %e", err))
 		return err
 	}
 	// write to disk
 	err = os.WriteFile(app.DbFile, data, 0644)
 	if err != nil {
-		app.DebugPrint("DB", "-", fmt.Sprintf("Failed to save the Database to disk: %e", err))
+		app.PrintDebug("DB", "-", fmt.Sprintf("Failed to save the Database to disk: %e", err))
 		return err
 	}
-	app.DebugPrint("DB", "-", fmt.Sprintf("Wrote %d bytes to disk", len(data)))
+	app.PrintDebug("DB", "-", fmt.Sprintf("Wrote %d bytes to disk", len(data)))
 	return nil
 }
 
@@ -124,7 +124,7 @@ func (app *Kosync) AddOrUpdateDocument(username string, document DocumentData) e
 		app.Db.Users[username].History[document.Document] = HistoryData{
 			DocumentHistory: append(previousData, currentVersion),
 		}
-		app.DebugPrint("DB", "-", fmt.Sprintf("[user: %s]: Document '%s' progress went from %.2f %% to %.2f %%", username, document.Document, currentVersion.Percentage*100, document.Percentage*100))
+		app.PrintDebug("DB", "-", fmt.Sprintf("[user: %s]: Document '%s' progress went from %.2f %% to %.2f %%", username, document.Document, currentVersion.Percentage*100, document.Percentage*100))
 	}
 
 	// Create document state

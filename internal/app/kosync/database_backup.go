@@ -72,7 +72,7 @@ func (app *Kosync) BackupDatabase() error {
 	defer func(backupFile *os.File) {
 		err := backupFile.Close()
 		if err != nil {
-			app.DebugPrint("Backup", "-", fmt.Sprintf("Failed to close backup file '%s': %v", backupFileName, err))
+			app.PrintDebug("Backup", "-", fmt.Sprintf("Failed to close backup file '%s': %v", backupFileName, err))
 		}
 	}(backupFile)
 	if err != nil {
@@ -83,7 +83,7 @@ func (app *Kosync) BackupDatabase() error {
 	if err != nil {
 		return err
 	}
-	app.DebugPrint("Backup", "-", fmt.Sprintf("Created backup file '%s'", backupFileName))
+	app.PrintDebug("Backup", "-", fmt.Sprintf("Created backup file '%s'", backupFileName))
 	return nil
 }
 
