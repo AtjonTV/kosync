@@ -56,15 +56,15 @@ Consult the KOReader documentation for the configuration options.
 
 ### Database File
 
-See [docs/database.md]()
+See [docs/database.md](docs/database.md)
 
 ### Backup Files
 
-See [docs/backups.md]()
+See [docs/backups.md](docs/backups.md)
 
 ### API Specification
 
-See [docs/api.md]()
+See [docs/api.md](docs/api.md)
 
 ## License
 
