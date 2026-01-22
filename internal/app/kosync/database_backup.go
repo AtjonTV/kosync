@@ -13,7 +13,7 @@ import (
 	"io/fs"
 	"log"
 	"os"
-	"strings"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -63,8 +63,8 @@ func (app *Kosync) BackupDatabase() error {
 		Bytes: binaryData,
 	}
 
-	backupFileName := fmt.Sprintf("%s_%s-%s.bak",
-		strings.Replace(app.DbFile, ".json", "", 1),
+	backupFileName := fmt.Sprintf("%sbackup_%s-%s.bak",
+		filepath.Dir(app.DbFile)+string(os.PathSeparator),
 		now.Format(time.DateOnly),
 		now.Format(time.TimeOnly),
 	)
