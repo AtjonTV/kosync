@@ -97,7 +97,7 @@ func (app *Kosync) PersistDatabase() error {
 		return err
 	}
 	// write to disk
-	err = os.WriteFile(app.DbFile, data, 0644)
+	err = os.WriteFile(app.DbFile, data, 0600)
 	if err != nil {
 		app.PrintDebug("DB", "-", fmt.Sprintf("Failed to save the Database to disk: %e", err))
 		return err
