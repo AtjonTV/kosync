@@ -13,45 +13,58 @@ import (
 	"time"
 )
 
-func FindDatabaseFile() (string, error) {
+func FindDatabaseFile() (bool, string, error) {
 	searchPaths := []string{
 		"/data/database.json",
 		"database.json",
 	}
 
-	foundDbFile := searchPaths[0] // Default to /data
+	foundDbFile := searchPaths[1] // Default to ./database.json
+	if _, err := os.ReadFile(searchPaths[0]); os.IsExist(err) {
+		foundDbFile = searchPaths[0] // Default to /data/database.json when inside a docker container
+	}
 
 	for _, path := range searchPaths {
 		stat, _ := os.Stat(path)
 		if stat != nil && stat.Size() > 0 {
-			return path, nil
+			return true, path, nil
 		}
 	}
-	return foundDbFile, nil
+	return false, foundDbFile, nil
 }
 
 func LoadOrInitDatabase() (string, Database, error) {
 	var db Database
 
-	foundDbFile, err := FindDatabaseFile()
+	found, foundDbFile, err := FindDatabaseFile()
 	if err != nil {
 		return "", Database{}, err
 	}
 
-	// Handle reading database
 	createEmptyDatabase := true
-	data, err := os.ReadFile(foundDbFile)
-	if err != nil {
-		return "", Database{}, err
-	}
-
-	if len(data) > 1 {
-		err = json.Unmarshal(data, &db)
+	if found {
+		// Handle reading database
+		data, err := os.ReadFile(foundDbFile)
 		if err != nil {
 			return "", Database{}, err
 		}
 
-		createEmptyDatabase = false
+		if len(data) > 1 {
+			err = json.Unmarshal(data, &db)
+			if err != nil {
+				return "", Database{}, err
+			}
+
+			createEmptyDatabase = false
+		}
+	} else {
+		f, err := os.Create(foundDbFile)
+		if err != nil {
+			return "", Database{}, err
+		}
+		if err := f.Close(); err != nil {
+			return "", Database{}, err
+		}
 	}
 
 	// Fallback to empty

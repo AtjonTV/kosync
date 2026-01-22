@@ -90,7 +90,7 @@ func (app *Kosync) BackupDatabase() error {
 func RestoreDatabase(backupFile string) error {
 	log.Println(fmt.Sprintf("[Restore]: Trying to restore database from file '%s'", backupFile))
 
-	dbFile, err := FindDatabaseFile()
+	_, dbFile, err := FindDatabaseFile()
 	if err != nil {
 		return err
 	}
