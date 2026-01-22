@@ -17,7 +17,7 @@ COPY ../.. .
 
 # Build a static binary named 'kosync'
 ENV CGO_ENABLED=0
-RUN go build -tags netgo -ldflags='-s -w -extldflags "-static"' -o /out/kosync cmd/kosync/kosync.go && strip /out/kosync
+RUN go build -tags netgo -ldflags='-s -w -extldflags "-static"' -o /out/kosync kosync.go && strip /out/kosync
 
 
 # 2) Runtime stage

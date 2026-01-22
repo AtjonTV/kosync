@@ -36,7 +36,7 @@ Additional differences, that should be known:
 **Simple Code**  
 KOsync is written in Go and uses the standard library as much as possible.
 
-Compilation only requires the Go Toolchain with this command `go build -tags netgo -o kosync.exe cmd/kosync/kosync.go`.  
+Compilation only requires the Go Toolchain with this command `go build -tags netgo -o kosync.exe kosync.go`.  
 The command compiles KOsync to a single static executable named `kosync.exe`.
 
 Alternatively, a Docker image can be build with `docker buildx build -f build/package/Dockerfile -t docker.obth.eu/atjontv/kosync:custom .`.  
