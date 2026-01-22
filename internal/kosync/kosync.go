@@ -17,7 +17,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 )
 
-const KosyncVersion = "2026.03.0"
+const Version = "2026.03.0"
 
 type Kosync struct {
 	Db     Database
@@ -41,7 +41,7 @@ func (app *Kosync) PrintError(marker, requestId, s string) {
 }
 
 func Run() {
-	log.Infof("KOsync Server v%s by Thomas Obernosterer (https://obth.eu)", KosyncVersion)
+	log.Infof("KOsync Server v%s by Thomas Obernosterer (https://obth.eu)", Version)
 	log.Info("Copyright 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later.")
 	log.Info("Obtain the Source Code at https://git.obth.eu/atjontv/kosync")
 
@@ -81,7 +81,7 @@ func Run() {
 	}
 
 	app := fiber.New(fiber.Config{
-		AppName:      fmt.Sprintf("KOsync v%s", KosyncVersion),
+		AppName:      fmt.Sprintf("KOsync v%s", Version),
 		ServerHeader: "KOsync (https://git.obth.eu/atjontv/kosync)",
 	})
 	defer func(app *fiber.App) {
