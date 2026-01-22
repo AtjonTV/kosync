@@ -1,0 +1,12 @@
+include:
+  - template: Jobs/SAST.gitlab-ci.yml
+
+image: golang:1.25-alpine3.23
+
+compile:
+  stage: build
+  script:
+    - go build -tags netgo -o kosync.exe kosync.go
+  artifacts:
+    paths:
+      - kosync.exe
