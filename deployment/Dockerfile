@@ -9,11 +9,11 @@ WORKDIR /src
 RUN apk add --no-cache ca-certificates git build-base
 
 # Cache go modules first
-COPY ../../go.mod ./
+COPY ../go.mod ./
 RUN go mod download
 
 # Copy the rest of the source
-COPY ../.. .
+COPY .. .
 
 # Build a static binary named 'kosync'
 ENV CGO_ENABLED=0

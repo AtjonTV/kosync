@@ -1,7 +1,7 @@
 services:
   kosync:
     #build:
-    #  dockerfile: ../build/package/Dockerfile
+    #  dockerfile: Dockerfile
     #  context: .
     image: docker.obth.eu/atjontv/kosync:latest
     pull_policy: daily # If this fails for your compose version, replace with 'always'
