@@ -64,6 +64,9 @@ func (app *Kosync) BackupDatabase() error {
 	}
 
 	backupFileName := filepath.Join(filepath.Dir(app.DbFile), fmt.Sprintf("backup_%s-%s.bak", now.Format(time.DateOnly), now.Format(time.TimeOnly)))
+	// INFO: Disable Semgrep warning about Path Traversal.
+	//     The backup path we construct above is constructed from the database path which is either ./database.json or /data/database.json.
+	// nosemgrep: gosec.G304-1
 	backupFile, err := os.OpenFile(backupFileName, os.O_CREATE+os.O_RDWR, fs.FileMode(0644))
 	defer func(backupFile *os.File) {
 		err := backupFile.Close()
