@@ -6,7 +6,9 @@
 
 package main
 
-import "git.obth.eu/atjontv/kosync/internal/app/kosync"
+import (
+	"git.obth.eu/atjontv/kosync/internal/kosync"
+)
 
 func main() {
 	kosync.Run()
