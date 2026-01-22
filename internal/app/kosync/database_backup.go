@@ -63,11 +63,7 @@ func (app *Kosync) BackupDatabase() error {
 		Bytes: binaryData,
 	}
 
-	backupFileName := fmt.Sprintf("%sbackup_%s-%s.bak",
-		filepath.Dir(app.DbFile)+string(os.PathSeparator),
-		now.Format(time.DateOnly),
-		now.Format(time.TimeOnly),
-	)
+	backupFileName := filepath.Join(filepath.Dir(app.DbFile), fmt.Sprintf("backup_%s-%s.bak", now.Format(time.DateOnly), now.Format(time.TimeOnly)))
 	backupFile, err := os.OpenFile(backupFileName, os.O_CREATE+os.O_RDWR, fs.FileMode(0644))
 	defer func(backupFile *os.File) {
 		err := backupFile.Close()
