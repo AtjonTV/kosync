@@ -80,7 +80,10 @@ func Run() {
 		}
 	}
 
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		AppName:      fmt.Sprintf("KOsync v%s", KosyncVersion),
+		ServerHeader: "KOsync (https://git.obth.eu/atjontv/kosync)",
+	})
 	defer func(app *fiber.App) {
 		err := app.Shutdown()
 		if err != nil {
