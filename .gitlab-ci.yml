@@ -16,6 +16,15 @@ bearer:
     paths:
       - bearer-report.html
 
+wwhrd:
+  stage: validate
+  allow_failure: true # Allow failure so other stages also run, but issues are still shown in the pipeline overview.
+  before_script:
+    - go install github.com/frapposelli/wwhrd@9ccc2ff
+    - go mod vendor
+  script:
+    - wwhrd check
+
 compile:
   stage: build
   script:

@@ -13,3 +13,6 @@ database.json
 
 # Local docker files
 .docker
+
+# Go vendor
+vendor/
