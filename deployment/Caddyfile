@@ -1,0 +1,5 @@
+# Host on "example.com" over HTTP (remove "http://" or replace with "https://" for automatic Let's Encrypt certificate retrieval
+http://example.com {
+    # Docker: If the port is not exposed on localhost, replace "localhost" with the containers IP
+    reverse_proxy localhost:8080
+}

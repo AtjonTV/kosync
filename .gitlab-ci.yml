@@ -1,0 +1,34 @@
+image: golang:1.25-alpine3.23
+
+stages:
+  - validate
+  - build
+
+bearer:
+  stage: validate
+  image:
+    name: bearer/bearer:1.51.1
+    entrypoint: [""]
+  allow_failure: true # Allow failure so other stages also run, but a "high" severity is still shown in the pipeline overview.
+  script: bearer scan . --format html --output bearer-report.html --fail-on-severity high
+  artifacts:
+    when: always
+    paths:
+      - bearer-report.html
+
+wwhrd:
+  stage: validate
+  allow_failure: true # Allow failure so other stages also run, but issues are still shown in the pipeline overview.
+  before_script:
+    - go install github.com/frapposelli/wwhrd@9ccc2ff
+    - go mod vendor
+  script:
+    - wwhrd check
+
+compile:
+  stage: build
+  script:
+    - go build -tags netgo -o kosync.exe kosync.go
+  artifacts:
+    paths:
+      - kosync.exe

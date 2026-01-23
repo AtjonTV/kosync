@@ -36,11 +36,19 @@ Additional differences, that should be known:
 **Simple Code**  
 KOsync is written in Go and uses the standard library as much as possible.
 
-Compilation only requires the Go Toolchain with this command `go build -tags netgo main.go`.  
-The command compiles the main.go file to a single static executable.
+Compilation only requires the Go Toolchain with this command `go build -tags netgo -o kosync.exe kosync.go`.  
+The command compiles KOsync to a single static executable named `kosync.exe`.
 
-Alternatively, a Docker image can be build with `docker buildx build -f Dockerfile -t docker.obth.eu/atjontv/kosync:custom .`.  
-Every tagged version also has a pre-build image at `docker.obth.eu/atjontv/kosync:latest` (you can replace `latest` with the version too).
+There are also two other options for installation:  
+
+If you have Go installed, you can use `go install -tags netgo git.obth.eu/atjontv/kosync@latest` to install the latest version.  
+The binary `kosync` will be placed in `$GOPATH/bin`, which is usually `$HOME/go/bin`.
+
+The second alternative is the Docker image, which can be created with `docker buildx build -f deployment/Dockerfile -t docker.obth.eu/atjontv/kosync:custom .`.  
+Every tagged version also has a pre-build image at `docker.obth.eu/atjontv/kosync:latest` (you can replace `latest` with the version tag so you know what version you pulled).
+
+For deployment, you can use Docker Compose with the `deployment/compose.yml` file.  
+If you used one of the executable installation methods, you can simply execute the binary.
 
 **Simple Datastore**  
 KOsync stores all data, both configuration and user data, in a single JSON file.
@@ -56,108 +64,15 @@ Consult the KOReader documentation for the configuration options.
 
 ### Database File
 
-The database file consists of three sections:
-- schema
-- config
-- users
-
-While schema and users is "managed" by the server depending on what is happening,  
-the config is where you can configure how KOsync works.
-
-File Example:
-```json
-{
-  "schema": 1,
-  "config": {
-    "listen_address": ":8080",
-    "disable_registration": false,
-    "enable_debug_log": false,
-    "store_history": false
-  },
-  "users": {
-    "<username>": {
-      "username": "<username>",
-      "password": "<password>",
-      "documents": {
-        "<filehash>": {
-          "percentage": 0.10,
-          "progress": "/body/DocFragment[9]/body/section/p[110]/text().0",
-          "device": "<device>",
-          "device_id": "<device_id>",
-          "timestamp": 3
-        }
-      },
-      "history": {
-        "<filehash>": [
-          {
-            "percentage": 0.02,
-            "progress": "/body/DocFragment[3]/body/section/p[110]/text().0",
-            "device": "<device>",
-            "device_id": "<device_id>",
-            "timestamp": 1
-          },
-          {
-            "percentage": 0.06,
-            "progress": "/body/DocFragment[1]/body/section/p[110]/text().0",
-            "device": "<device>",
-            "device_id": "<device_id>",
-            "timestamp": 2
-          }
-        ]
-      }
-    }
-  }
-}
-```
-**Schema**
-* `schema`: Is set by the server and is used for schema alterations/migrations
-
-**Config**
-* `listen_address`: Configures the IP and Port the server listens on. Format `ip_address:port`, defaults to `:8080`.
-* `disable_registration`: Rejects registration requests when enabled, defaults to `false`.
-* `enable_debug_log`: Enables verbose logging for debugging
-* `store_history`: Enables storing historic records for each file
-
-**Users**
-* `<username>`: The name provided during register in KOReader and used for login
-* `<password>`: The password entered into KOReader hashed with MD5 in KOReader itself
-
-**Documents**
-* `<filehash>`: Determined by KOReader, defaults to MD5 hash of the read file
-* `percentage`: Progress as number between 0 and 1 (so `0.1` is 10 percent)
-* `progress`: URI within position inside of the file
-* `device`: Name of the KOReader device
-* `device_id`: Unique ID of the KOReader device
-* `timestamp`: Unix Timestamp when the progress update was recieved by the server
-
-**History** (when `store_history` is enabled, otherwise empty as `{}`)
-* `<filehash>`: Same as `Documents.<filehash>`
-* `document_history`: Array of `Documents[]` objects sorted from oldest to newest
+See [docs/database.md](docs/database.md)
 
 ### Backup Files
 
-When a newer version of KOsync is started which changes the database.json schema,  
-the server automatically creates a backup file `.bak`.
+See [docs/backups.md](docs/backups.md)
 
-These backup files are a bit special, instead of just copying the database file,  
-they are PEM encoded files.
+### API Specification
 
-I have chosen to use PEM for two reasons:
-
-- fun. Just though it would be funny.
-- Metadata, PEM has the feature of "Headers"
-
-Another potential reason is binary encodings.
-
-I have tested using [msgpack](https://msgpack.io) as input and saw a good 20% size reduction  
-between a JSON and msgpack encoded PEM file.
-
-The only reason it does not use msgpack already is: I do not want to add external dependencies yet.
-
-Anyway.
-
-Backup files can not yet be restored automatically.  
-But because they are just base64 encoded, any base64 decoder will give you the original database.json.
+See [docs/api.md](docs/api.md)
 
 ## License
 

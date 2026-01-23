@@ -1,0 +1,160 @@
+//
+// File:        internal/kosync/kosync.go
+// Project:     https://git.obth.eu/atjontv/kosync
+// Copyright:   © 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
+//
+
+package kosync
+
+import (
+	"flag"
+	"fmt"
+	"sync"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/log"
+	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/fiber/v2/middleware/requestid"
+)
+
+const Version = "2026.03.0"
+
+type Kosync struct {
+	Db     Database
+	DbLock sync.Mutex
+	DbFile string
+}
+
+func (app *Kosync) PrintDebug(marker, requestId, s string) {
+	// Only print debugs when enabled
+	if app.Db.Config.DebugLog {
+		log.Debugf("RequestId=%s, Module=%s: %s\n", requestId, marker, s)
+	}
+}
+
+func (app *Kosync) Print(marker, requestId, s string) {
+	log.Infof("RequestId=%s, Module=%s: %s\n", requestId, marker, s)
+}
+
+func (app *Kosync) PrintError(marker, requestId, s string) {
+	log.Errorf("RequestId=%s, Module=%s: %s\n", requestId, marker, s)
+}
+
+func Run() {
+	log.Infof("KOsync Server v%s by Thomas Obernosterer (https://obth.eu)", Version)
+	log.Info("Copyright 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later.")
+	log.Info("Obtain the Source Code at https://git.obth.eu/atjontv/kosync")
+
+	restoreFile := flag.String("restore", "", "Specify a .bak file to restore")
+	makeBackup := flag.Bool("backup", false, "Create a .bak file before startup")
+	flag.Parse()
+
+	if restoreFile != nil && len(*restoreFile) > 0 {
+		if err := RestoreDatabase(*restoreFile); err != nil {
+			panic(err)
+		}
+	}
+
+	// Try to find the database or create a new one
+	foundDbFile, db, err := LoadOrInitDatabase()
+	if err != nil {
+		panic(err)
+	}
+
+	koapp := Kosync{
+		Db:     db,
+		DbFile: foundDbFile,
+		DbLock: sync.Mutex{},
+	}
+	defer func(koapp *Kosync) {
+		_ = koapp.PersistDatabase()
+	}(&koapp)
+
+	if err := koapp.MigrateSchema(); err != nil {
+		panic(err)
+	}
+
+	if makeBackup != nil && *makeBackup {
+		if err := koapp.BackupDatabase(); err != nil {
+			koapp.PrintError("CLI", "backup", fmt.Sprintf("Failed to create backup, continuing startup: %v", err))
+		}
+	}
+
+	app := fiber.New(fiber.Config{
+		AppName:      fmt.Sprintf("KOsync v%s", Version),
+		ServerHeader: "KOsync (https://git.obth.eu/atjontv/kosync)",
+	})
+	defer func(app *fiber.App) {
+		err := app.Shutdown()
+		if err != nil {
+			panic(err)
+		}
+	}(app)
+	app.Use(requestid.New())
+	app.Use(logger.New(logger.Config{
+		Format: "${time} | ${locals:requestid} | ${status} | ${latency} | ${ip} | ${method} | ${path} | ${error}\n",
+	}))
+	app.Use(koapp.NewAuthMiddleware())
+
+	app.Get("/users/auth", func(c *fiber.Ctx) error {
+		koapp.PrintDebug("Users", c.Locals("requestid").(string), fmt.Sprintf("Login of user '%s'", c.Locals("current_user").(string)))
+		return c.SendStatus(fiber.StatusOK)
+	})
+
+	app.Post("/users/create", func(c *fiber.Ctx) error {
+		if koapp.Db.Config.DisableRegistration {
+			return fiber.ErrForbidden
+		}
+
+		var data struct {
+			Username string `json:"username"`
+			Password string `json:"password"`
+		}
+
+		if err := c.BodyParser(&data); err != nil {
+			return err
+		}
+
+		koapp.PrintDebug("Users", c.Locals("requestid").(string), fmt.Sprintf("Signup of new user '%s'", data.Username))
+		if err := koapp.AddUser(data.Username, data.Password); err != nil {
+			return err
+		}
+
+		return c.SendStatus(fiber.StatusCreated)
+	})
+
+	app.Post("/syncs/progress", func(c *fiber.Ctx) error {
+		// Parse payload
+		var data DocumentData
+		if err := c.BodyParser(&data); err != nil {
+			return err
+		}
+
+		koapp.PrintDebug("Syncs", c.Locals("requestid").(string), fmt.Sprintf("User '%s' sent progress for document '%s'", c.Locals("current_user").(string), data.Document))
+		if err := koapp.AddOrUpdateDocument(c.Locals("current_user").(string), data); err != nil {
+			return err
+		}
+
+		return c.SendStatus(fiber.StatusOK)
+	})
+
+	app.Get("/syncs/progress/:document", func(c *fiber.Ctx) error {
+		documentId := c.Params("document", "-")
+		if documentId == "-" {
+			return fiber.ErrNotFound
+		}
+		koapp.PrintDebug("Syncs", c.Locals("requestid").(string), fmt.Sprintf("User '%s' requested progress of document '%s'", c.Locals("current_user").(string), documentId))
+
+		// Find document
+		docData, found := koapp.Db.Users[c.Locals("current_user").(string)].Documents[documentId]
+		if !found {
+			return fiber.ErrNotFound
+		}
+
+		return c.JSON(DocumentData{ProgressData: docData.ProgressData, Document: documentId})
+	})
+
+	if err = app.Listen(koapp.Db.Config.ListenAddress); err != nil {
+		panic(err)
+	}
+}
