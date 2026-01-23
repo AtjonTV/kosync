@@ -1,7 +1,18 @@
-include:
-  - template: Jobs/SAST.gitlab-ci.yml
-
 image: golang:1.25-alpine3.23
+
+stages:
+  - validate
+  - build
+
+bearer:
+  stage: validate
+  image:
+    name: bearer/bearer:1.51.1
+    entrypoint: [""]
+  script: bearer scan . --format html --output bearer-report.html --fail-on-severity high
+  artifacts:
+    paths:
+      - bearer-report.html
 
 compile:
   stage: build
