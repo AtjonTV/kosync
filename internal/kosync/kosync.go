@@ -80,6 +80,12 @@ func Run() {
 		}
 	}
 
+	if koapp.Db.Config.BackupOnStartup {
+		if err := koapp.BackupDatabase(); err != nil {
+			koapp.PrintError("Backup", "-", fmt.Sprintf("Failed to create backup, continuing startup: %v", err))
+		}
+	}
+
 	app := fiber.New(fiber.Config{
 		AppName:      fmt.Sprintf("KOsync v%s", Version),
 		ServerHeader: "KOsync (https://git.obth.eu/atjontv/kosync)",

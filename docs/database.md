@@ -17,7 +17,8 @@ File Example:
     "disable_registration": false,
     "enable_debug_log": false,
     "store_history": false,
-    "backup_encoding_type": "msgpack"
+    "backup_encoding_type": "msgpack",
+    "backup_on_startup": false
   },
   "users": {
     "<username>": {
@@ -63,6 +64,7 @@ File Example:
 * `enable_debug_log`: Enables verbose logging for debugging
 * `store_history`: Enables storing historic records for each file
 * `backup_encoding_type`: Specifies the content-type used for the PEM backup file, defaults to `msgpack` (available are `json` and `msgpack`)
+* `backup_on_startup`: Enables creation of a backup on startup, defaults to `false`
 
 **Users**
 * `<username>`: The name provided during register in KOReader and used for login

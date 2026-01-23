@@ -9,7 +9,7 @@ package kosync
 import "fmt"
 
 const (
-	SchemaVersion = 2
+	SchemaVersion = 3
 )
 
 func (app *Kosync) MigrateSchema() error {
@@ -28,6 +28,9 @@ func (app *Kosync) MigrateSchema() error {
 		},
 		2: func() {
 			app.Db.Config.BackupEncodingType = BackupEncodingTypeMsgpack
+		},
+		3: func() {
+			app.Db.Config.BackupOnStartup = false
 		},
 	}
 
