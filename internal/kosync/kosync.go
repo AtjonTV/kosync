@@ -103,7 +103,7 @@ func Run() {
 
 	app.Post("/users/create", func(c *fiber.Ctx) error {
 		if koapp.Db.Config.DisableRegistration {
-			return fiber.ErrForbidden
+			return fiber.ErrPaymentRequired // KORSS also returns 402
 		}
 
 		var data struct {

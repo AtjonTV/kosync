@@ -88,6 +88,8 @@ paths:
           description: User created successfully
         '400':
           description: Invalid input
+        '402':
+          description: User registration not available
 
   /syncs/progress/{documentId}:
     get:
