@@ -9,10 +9,13 @@ package kosync
 import (
 	"flag"
 	"fmt"
+	"net/http"
 	"sync"
 
+	"git.obth.eu/atjontv/kosync/internal/webui"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
+	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 )
@@ -47,6 +50,7 @@ func Run() {
 
 	restoreFile := flag.String("restore", "", "Specify a .bak file to restore")
 	makeBackup := flag.Bool("backup", false, "Create a .bak file before startup")
+	enableWeb := flag.Bool("webui", false, "Enable the web interface at /web")
 	flag.Parse()
 
 	if restoreFile != nil && len(*restoreFile) > 0 {
@@ -101,6 +105,21 @@ func Run() {
 		Format: "${time} | ${locals:requestid} | ${status} | ${latency} | ${ip} | ${method} | ${path} | ${error}\n",
 	}))
 	app.Use(koapp.NewAuthMiddleware())
+
+	if enableWeb != nil && *enableWeb {
+		app.Use("/web", filesystem.New(filesystem.Config{
+			Root:       http.FS(webui.WebUi),
+			PathPrefix: "public",
+		}))
+
+		app.Get("/", func(c *fiber.Ctx) error {
+			return c.Redirect("/web")
+		})
+	} else {
+		app.Get("/", func(c *fiber.Ctx) error {
+			return c.SendString("WebUI is not enabled. If you want to use the web interface, restart KOsync with the --webui flag.")
+		})
+	}
 
 	app.Get("/users/auth", func(c *fiber.Ctx) error {
 		koapp.PrintDebug("Users", c.Locals("requestid").(string), fmt.Sprintf("Login of user '%s'", c.Locals("current_user").(string)))

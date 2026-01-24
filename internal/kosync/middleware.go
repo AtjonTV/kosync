@@ -8,15 +8,26 @@ package kosync
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 func (app *Kosync) NewAuthMiddleware() fiber.Handler {
+	enableUrl := []string{
+		"/users/auth",
+		"/syncs",
+	}
+
 	// Return new handler
 	return func(c *fiber.Ctx) error {
-		// Do not require auth for signup
-		if c.Path() == "/users/create" {
+		doHandle := false
+		for _, url := range enableUrl {
+			if strings.HasPrefix(c.Path(), url) {
+				doHandle = true
+			}
+		}
+		if !doHandle {
 			return c.Next()
 		}
 

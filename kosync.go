@@ -10,6 +10,8 @@ import (
 	"git.obth.eu/atjontv/kosync/internal/kosync"
 )
 
+//go:generate go generate internal/webui/webui.go
+
 func main() {
 	kosync.Run()
 }
