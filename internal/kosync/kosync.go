@@ -122,63 +122,11 @@ func Run() {
 		})
 	}
 
-	app.Get("/users/auth", func(c *fiber.Ctx) error {
-		koapp.PrintDebug("Users", c.Locals("requestid").(string), fmt.Sprintf("Login of user '%s'", c.Locals("current_user").(string)))
-		return c.SendStatus(fiber.StatusOK)
-	})
+	app.Get("/users/auth", koapp.UsersAuth)
+	app.Post("/users/create", koapp.UsersCreate)
 
-	app.Post("/users/create", func(c *fiber.Ctx) error {
-		if koapp.Db.Config.DisableRegistration {
-			return fiber.ErrPaymentRequired // KORSS also returns 402
-		}
-
-		var data struct {
-			Username string `json:"username"`
-			Password string `json:"password"`
-		}
-
-		if err := c.BodyParser(&data); err != nil {
-			return err
-		}
-
-		koapp.PrintDebug("Users", c.Locals("requestid").(string), fmt.Sprintf("Signup of new user '%s'", data.Username))
-		if err := koapp.AddUser(data.Username, data.Password); err != nil {
-			return err
-		}
-
-		return c.SendStatus(fiber.StatusCreated)
-	})
-
-	app.Put("/syncs/progress", func(c *fiber.Ctx) error {
-		// Parse payload
-		var data DocumentData
-		if err := c.BodyParser(&data); err != nil {
-			return err
-		}
-
-		koapp.PrintDebug("Syncs", c.Locals("requestid").(string), fmt.Sprintf("User '%s' sent progress for document '%s'", c.Locals("current_user").(string), data.Document))
-		if err := koapp.AddOrUpdateDocument(c.Locals("current_user").(string), data); err != nil {
-			return err
-		}
-
-		return c.SendStatus(fiber.StatusOK)
-	})
-
-	app.Get("/syncs/progress/:document", func(c *fiber.Ctx) error {
-		documentId := c.Params("document", "-")
-		if documentId == "-" {
-			return fiber.ErrNotFound
-		}
-		koapp.PrintDebug("Syncs", c.Locals("requestid").(string), fmt.Sprintf("User '%s' requested progress of document '%s'", c.Locals("current_user").(string), documentId))
-
-		// Find document
-		docData, found := koapp.Db.Users[c.Locals("current_user").(string)].Documents[documentId]
-		if !found {
-			return fiber.ErrNotFound
-		}
-
-		return c.JSON(DocumentData{ProgressData: docData.ProgressData, Document: documentId})
-	})
+	app.Post("/syncs/progress", koapp.SyncsPostProgress)
+	app.Get("/syncs/progress/:document", koapp.SyncsGetProgress)
 
 	if err = app.Listen(koapp.Db.Config.ListenAddress); err != nil {
 		panic(err)
