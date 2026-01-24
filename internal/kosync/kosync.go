@@ -106,6 +106,7 @@ func Run() {
 	}))
 	app.Use(koapp.NewAuthMiddleware())
 
+	// TODO: Allow enabling web with Config option
 	if enableWeb != nil && *enableWeb {
 		app.Use("/web", filesystem.New(filesystem.Config{
 			Root:       http.FS(webui.WebUi),
