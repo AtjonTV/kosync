@@ -16,7 +16,7 @@ export async function fetchApi<T>(route: string, options: RequestInit): Promise<
         headers: {...options.headers, 'x-auth-user': userStore.user.username, 'x-auth-key': userStore.user.key}
       }
     );
-    if (!response.ok) return Promise.reject({data: null, error: response});
+    if (!response.ok) return Promise.reject({data: null, error: response.statusText});
 
     const data = await response.json() as T;
     return Promise.resolve({data, error: null});

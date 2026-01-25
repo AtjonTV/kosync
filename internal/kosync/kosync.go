@@ -7,6 +7,7 @@
 package kosync
 
 import (
+	// bearer:disable go_gosec_blocklist_md5
 	"crypto/md5"
 	"flag"
 	"fmt"
@@ -115,6 +116,9 @@ func Run() {
 		app.Use("/api/auth.basic", basicauth.New(basicauth.Config{
 			Realm: "KOsync",
 			Authorizer: func(user string, pass string) bool {
+				// NOTE: Must be MD5 because that is what the KOReader Plugin is hardcoded to use
+				// bearer:disable go_gosec_crypto_weak_crypto
+				// bearer:disable go_lang_weak_hash_md5
 				pwHash := fmt.Sprintf("%x", md5.Sum([]byte(pass)))
 
 				userData, found := koapp.Db.Users[user]
