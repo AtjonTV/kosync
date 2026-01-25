@@ -142,6 +142,7 @@ func (app *Kosync) AddOrUpdateDocument(username string, document DocumentData) e
 
 	// Create document state
 	app.Db.Users[username].Documents[document.Document] = FileData{
+		DocumentId:   document.Document,
 		ProgressData: document.ProgressData,
 		Timestamp:    time.Now().Unix(),
 	}

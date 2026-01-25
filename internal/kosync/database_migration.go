@@ -9,7 +9,7 @@ package kosync
 import "fmt"
 
 const (
-	SchemaVersion = 3
+	SchemaVersion = 4
 )
 
 func (app *Kosync) MigrateSchema() error {
@@ -31,6 +31,18 @@ func (app *Kosync) MigrateSchema() error {
 		},
 		3: func() {
 			app.Db.Config.BackupOnStartup = false
+		},
+		4: func() {
+			// Add document id to documents
+			for userId, user := range app.Db.Users {
+				for docId, doc := range user.Documents {
+					app.Db.Users[userId].Documents[docId] = FileData{
+						DocumentId:   docId,
+						ProgressData: doc.ProgressData,
+						Timestamp:    doc.Timestamp,
+					}
+				}
+			}
 		},
 	}
 

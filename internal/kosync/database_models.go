@@ -42,7 +42,8 @@ type DocumentData struct {
 
 type FileData struct {
 	ProgressData
-	Timestamp int64 `json:"timestamp"`
+	DocumentId string `json:"document"`
+	Timestamp  int64  `json:"timestamp"`
 }
 
 type HistoryData struct {
