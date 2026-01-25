@@ -129,7 +129,7 @@ func Run() {
 		return c.SendStatus(fiber.StatusCreated)
 	})
 
-	app.Post("/syncs/progress", func(c *fiber.Ctx) error {
+	app.Put("/syncs/progress", func(c *fiber.Ctx) error {
 		// Parse payload
 		var data DocumentData
 		if err := c.BodyParser(&data); err != nil {

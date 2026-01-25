@@ -115,7 +115,7 @@ paths:
           description: Document progress not found
 
   /syncs/progress:
-    post:
+    put:
       summary: Create/Update document progress
       security:
         - UserAuth: []
