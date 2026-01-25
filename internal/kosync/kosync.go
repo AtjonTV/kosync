@@ -78,13 +78,12 @@ func Run() {
 		panic(err)
 	}
 
-	if makeBackup != nil && *makeBackup {
-		if err := koapp.BackupDatabase(); err != nil {
-			koapp.PrintError("CLI", "backup", fmt.Sprintf("Failed to create backup, continuing startup: %v", err))
-		}
+	// Persist migrated database
+	if err := koapp.PersistDatabase(); err != nil {
+		panic(err)
 	}
 
-	if koapp.Db.Config.BackupOnStartup {
+	if koapp.Db.Config.BackupOnStartup || (makeBackup != nil && *makeBackup) {
 		if err := koapp.BackupDatabase(); err != nil {
 			koapp.PrintError("Backup", "-", fmt.Sprintf("Failed to create backup, continuing startup: %v", err))
 		}
