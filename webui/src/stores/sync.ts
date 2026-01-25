@@ -21,7 +21,7 @@ export const useSyncStore = defineStore('sync', () => {
     });
 
     if (documents !== null) {
-      sync.value = {documents};
+      sync.value = {lastSync: now, documents};
     }
 
     sessionStorage.setItem('syncState', btoa(JSON.stringify(sync.value)))
