@@ -40,7 +40,7 @@ func (app *Kosync) ApiGetDocumentsAll(c *fiber.Ctx) error {
 }
 
 func (app *Kosync) ApiAuthBasic(c *fiber.Ctx) error {
-	user, _ := app.Db.Users[c.Locals("current_user").(string)]
+	user := app.Db.Users[c.Locals("current_user").(string)]
 	type UserData struct {
 		Username string `json:"username"`
 		Key      string `json:"key"`
