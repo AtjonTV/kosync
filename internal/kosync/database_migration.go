@@ -17,6 +17,7 @@ func (app *Kosync) MigrateSchema() error {
 
 	migrations := map[int]interface{}{
 		1: func() {
+			// Add history to users
 			for id, user := range app.Db.Users {
 				app.Db.Users[id] = UserData{
 					Username:  user.Username,
@@ -27,9 +28,11 @@ func (app *Kosync) MigrateSchema() error {
 			}
 		},
 		2: func() {
+			// Default backup encoding to msgpack
 			app.Db.Config.BackupEncodingType = BackupEncodingTypeMsgpack
 		},
 		3: func() {
+			// Disable backup on startup
 			app.Db.Config.BackupOnStartup = false
 		},
 		4: func() {
