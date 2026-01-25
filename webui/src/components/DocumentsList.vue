@@ -40,10 +40,11 @@ const onEditComplete = async (event: any) => {
           :value="syncStore.sync.documents"
           paginator :rows="15" :rowsPerPageOptions="[15, 25, 50, 100]"
           editMode="cell" @cellEditComplete="onEditComplete"
+          resizableColumns columnResizeMode="fit" tableStyle="min-width: 100rem"
       >
         <Column expander style="width: 5rem" />
-        <Column field="id" header="ID" :sortable="true"></Column>
-        <Column field="pretty_name" header="Title" :sortable="true">
+        <Column field="id" header="ID" :sortable="true" style="width: 25%"></Column>
+        <Column field="pretty_name" header="Title" :sortable="true" style="width: 25%">
             <template #editor="{data, field}">
                 <InputText v-model="data[field]" :defaultValue="data[field]" autofocus fluid />
             </template>
