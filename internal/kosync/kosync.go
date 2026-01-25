@@ -7,6 +7,7 @@
 package kosync
 
 import (
+	"crypto/md5"
 	"flag"
 	"fmt"
 	"net/http"
@@ -15,6 +16,8 @@ import (
 	"git.obth.eu/atjontv/kosync/internal/webui"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
+	"github.com/gofiber/fiber/v2/middleware/basicauth"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
@@ -103,10 +106,28 @@ func Run() {
 	app.Use(logger.New(logger.Config{
 		Format: "${time} | ${locals:requestid} | ${status} | ${latency} | ${ip} | ${method} | ${path} | ${error}\n",
 	}))
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: "*",
+	}))
 	app.Use(koapp.NewAuthMiddleware())
 
 	// TODO: Allow enabling web with Config option
 	if enableWeb != nil && *enableWeb {
+		app.Use("/api/auth.basic", basicauth.New(basicauth.Config{
+			Realm: "KOsync",
+			Authorizer: func(user string, pass string) bool {
+				pwHash := fmt.Sprintf("%x", md5.Sum([]byte(pass)))
+
+				userData, found := koapp.Db.Users[user]
+				if !found {
+					return false
+				}
+
+				return userData.Password == pwHash
+			},
+			ContextUsername: "current_user",
+		}))
+
 		app.Use("/web", filesystem.New(filesystem.Config{
 			Root:       http.FS(webui.WebUi),
 			PathPrefix: "public",
@@ -126,6 +147,9 @@ func Run() {
 
 	app.Post("/syncs/progress", koapp.SyncsPostProgress)
 	app.Get("/syncs/progress/:document", koapp.SyncsGetProgress)
+
+	app.Get("/api/documents.all", koapp.ApiGetDocumentsAll)
+	app.Get("/api/auth.basic", koapp.ApiAuthBasic)
 
 	if err = app.Listen(koapp.Db.Config.ListenAddress); err != nil {
 		panic(err)

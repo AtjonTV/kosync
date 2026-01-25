@@ -17,6 +17,7 @@ func (app *Kosync) NewAuthMiddleware() fiber.Handler {
 	enableUrl := []string{
 		"/users/auth",
 		"/syncs",
+		"/api/documents.all",
 	}
 
 	// Return new handler
