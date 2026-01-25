@@ -150,3 +150,18 @@ func (app *Kosync) AddOrUpdateDocument(username string, document DocumentData) e
 	// Persist new user
 	return app.PersistDatabase()
 }
+
+func (app *Kosync) UpdateDocumentPrettyName(userId, documentId, prettyName string) error {
+	app.DbLock.Lock()
+	defer app.DbLock.Unlock()
+
+	origDoc := app.Db.Users[userId].Documents[documentId]
+	app.Db.Users[userId].Documents[documentId] = FileData{
+		ProgressData: origDoc.ProgressData,
+		DocumentId:   origDoc.DocumentId,
+		Timestamp:    origDoc.Timestamp,
+		PrettyName:   prettyName,
+	}
+
+	return app.PersistDatabase()
+}

@@ -18,8 +18,12 @@ export async function fetchApi<T>(route: string, options: RequestInit): Promise<
     );
     if (!response.ok) return Promise.reject({data: null, error: response.statusText});
 
-    const data = await response.json() as T;
-    return Promise.resolve({data, error: null});
+    if (response.headers.get('content-type')?.startsWith('application/json')) {
+        const data = await response.json() as T;
+        return Promise.resolve({data, error: null});
+    } else {
+        return Promise.resolve({data: await response.text() as T, error: null});
+    }
 }
 
 export async function fetchUrl<T>(route: string, options: RequestInit): Promise<{data: T | null, error: string | Response | null}> {

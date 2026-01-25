@@ -2,6 +2,7 @@
 
 import {useSyncStore} from "@/stores/sync.ts";
 import {ref} from "vue";
+import {fetchApi} from "@/api.ts";
 
 const {customTitle} = defineProps<{customTitle?: string}>()
 
@@ -9,32 +10,61 @@ const syncStore = useSyncStore();
 syncStore.doSync();
 
 const expandedRows = ref({});
+
+const onEditComplete = async (event: any) => {
+    const result = await fetchApi("/api/documents.update", {
+        method: "PUT",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(event.newData)
+    });
+    if (result.error !== null) alert("Failed to update document: " + result.error)
+
+    let {data, newValue, field} = event;
+    if (newValue.trim().length > 0) {
+        data[field] = newValue;
+    } else {
+        event.preventDefault();
+    }
+
+    await syncStore.doSync(true);
+}
 </script>
 
 <template>
   <div class="flex flex-col gap-4">
     <h1 class="text-3xl">{{ customTitle ?? 'Documents' }}</h1>
     <div>
-      <DataTable v-model:expandedRows="expandedRows" dataKey="id" :value="syncStore.sync.documents" paginator :rows="15" :rowsPerPageOptions="[15, 25, 50, 100]">
+      <DataTable
+          v-model:expandedRows="expandedRows"
+          dataKey="id"
+          :value="syncStore.sync.documents"
+          paginator :rows="15" :rowsPerPageOptions="[15, 25, 50, 100]"
+          editMode="cell" @cellEditComplete="onEditComplete"
+      >
         <Column expander style="width: 5rem" />
-        <Column field="id" header="Document Hash" :sortable="true"></Column>
-        <Column field="document.percentage" header="Reading progress" :sortable="true">
+        <Column field="id" header="ID" :sortable="true"></Column>
+        <Column field="pretty_name" header="Title" :sortable="true">
+            <template #editor="{data, field}">
+                <InputText v-model="data[field]" :defaultValue="data[field]" autofocus fluid />
+            </template>
+        </Column>
+        <Column field="percentage" header="Reading progress" :sortable="true">
           <template #body="slotProps">
-            {{ Number(slotProps.data.document.percentage*100).toFixed(2) }}%
+            {{ Number(slotProps.data.percentage*100).toFixed(2) }}%
           </template>
         </Column>
-        <Column field="document.device" header="Device" :sortable="true"></Column>
-        <Column field="document.timestamp" header="Last read" :sortable="true">
+        <Column field="device" header="Device" :sortable="true"></Column>
+        <Column field="timestamp" header="Last read" :sortable="true">
           <template #body="slotProps">
-            {{ new Date(slotProps.data.document.timestamp*1000).toISOString() }}
+            {{ new Date(slotProps.data.timestamp*1000).toISOString() }}
           </template>
         </Column>
 
         <template #expansion="slotProps">
           <div class="p-4 flex flex-col gap-2">
             <h3 class="text-2xl">History</h3>
-            <div v-if="slotProps.data.document_history !== null">
-              <DataTable :value="slotProps.data.document_history">
+            <div v-if="slotProps.data.history !== null">
+              <DataTable :value="slotProps.data.history">
                 <Column field="percentage" header="Reading progress" :sortable="true">
                   <template #body="slotProps">
                     {{ Number(slotProps.data.percentage*100).toFixed(2) }}%

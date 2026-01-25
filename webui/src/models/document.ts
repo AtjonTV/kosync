@@ -1,8 +1,8 @@
 
-export interface SyncDoc {
-  id: string;
-  document: SyncDocData;
-  document_history: SyncDocData[];
+export interface SyncDoc extends SyncDocData {
+    id: string;
+    pretty_name: string;
+    history: SyncDocData[];
 }
 
 export interface SyncDocData {

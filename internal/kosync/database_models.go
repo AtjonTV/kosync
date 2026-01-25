@@ -45,6 +45,7 @@ type FileData struct {
 	ProgressData
 	DocumentId string `json:"document"`
 	Timestamp  int64  `json:"timestamp"`
+	PrettyName string `json:"pretty_name"` // User given name of Document, set via WebUI
 }
 
 type HistoryData struct {

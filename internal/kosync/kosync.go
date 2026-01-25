@@ -152,6 +152,7 @@ func Run() {
 	app.Get("/syncs/progress/:document", koapp.SyncsGetProgress)
 
 	app.Get("/api/documents.all", koapp.ApiGetDocumentsAll)
+	app.Put("/api/documents.update", koapp.ApiPutDocument)
 	app.Get("/api/auth.basic", koapp.ApiAuthBasic)
 
 	if err = app.Listen(koapp.Db.Config.ListenAddress); err != nil {

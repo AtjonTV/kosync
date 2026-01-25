@@ -18,6 +18,7 @@ func (app *Kosync) NewAuthMiddleware() fiber.Handler {
 		"/users/auth",
 		"/syncs",
 		"/api/documents.all",
+		"/api/documents.update",
 	}
 
 	// Return new handler

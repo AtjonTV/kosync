@@ -13,30 +13,43 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+type UiDocumentData struct {
+	Id string `json:"id"`
+	FileData
+	History []FileData `json:"history"`
+}
+
 func (app *Kosync) ApiGetDocumentsAll(c *fiber.Ctx) error {
 	data, found := app.Db.Users[c.Locals("current_user").(string)]
 	if !found {
 		return fiber.ErrNotFound
 	}
 
-	type ResponseRecord struct {
-		Id       string   `json:"id"`
-		Document FileData `json:"document"`
-		HistoryData
-	}
-
-	result := make([]ResponseRecord, 0, len(data.Documents))
+	result := make([]UiDocumentData, 0, len(data.Documents))
 	for id, doc := range data.Documents {
 		history, found := data.History[doc.DocumentId]
 		if !found {
-			result = append(result, ResponseRecord{id, doc, HistoryData{}})
+			result = append(result, UiDocumentData{id, doc, make([]FileData, 0)})
 		} else {
-			result = append(result, ResponseRecord{id, doc, history})
+			result = append(result, UiDocumentData{id, doc, history.DocumentHistory})
 		}
 	}
 
 	c.Set("Access-Control-Allow-Origin", "*")
 	return c.JSON(result)
+}
+
+func (app *Kosync) ApiPutDocument(c *fiber.Ctx) error {
+	var document UiDocumentData
+	if err := c.BodyParser(&document); err != nil {
+		return err
+	}
+
+	if err := app.UpdateDocumentPrettyName(c.Locals("current_user").(string), document.DocumentId, document.PrettyName); err != nil {
+		return err
+	}
+
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 func (app *Kosync) ApiAuthBasic(c *fiber.Ctx) error {

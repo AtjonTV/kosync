@@ -9,7 +9,7 @@ package kosync
 import "fmt"
 
 const (
-	SchemaVersion = 5
+	SchemaVersion = 6
 )
 
 func (app *Kosync) MigrateSchema() error {
@@ -50,6 +50,19 @@ func (app *Kosync) MigrateSchema() error {
 		5: func() {
 			// Disable webui
 			app.Db.Config.WebUi = false
+		},
+		6: func() {
+			// Set an empty pretty name to documents (because string can't be nil)
+			for userId, user := range app.Db.Users {
+				for docId, doc := range user.Documents {
+					app.Db.Users[userId].Documents[docId] = FileData{
+						DocumentId:   docId,
+						ProgressData: doc.ProgressData,
+						Timestamp:    doc.Timestamp,
+						PrettyName:   "",
+					}
+				}
+			}
 		},
 	}
 
