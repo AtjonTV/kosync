@@ -9,7 +9,7 @@ package kosync
 import "fmt"
 
 const (
-	SchemaVersion = 4
+	SchemaVersion = 5
 )
 
 func (app *Kosync) MigrateSchema() error {
@@ -46,6 +46,10 @@ func (app *Kosync) MigrateSchema() error {
 					}
 				}
 			}
+		},
+		5: func() {
+			// Disable webui
+			app.Db.Config.WebUi = false
 		},
 	}
 

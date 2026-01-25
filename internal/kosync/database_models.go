@@ -19,6 +19,7 @@ type ConfigData struct {
 	StoreHistory        bool   `json:"store_history"`
 	BackupEncodingType  string `json:"backup_encoding_type"`
 	BackupOnStartup     bool   `json:"backup_on_startup"`
+	WebUi               bool   `json:"enable_webui"`
 }
 
 type UserData struct {

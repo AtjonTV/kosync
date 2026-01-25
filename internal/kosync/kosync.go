@@ -111,8 +111,7 @@ func Run() {
 	}))
 	app.Use(koapp.NewAuthMiddleware())
 
-	// TODO: Allow enabling web with Config option
-	if enableWeb != nil && *enableWeb {
+	if koapp.Db.Config.WebUi || (enableWeb != nil && *enableWeb) {
 		app.Use("/api/auth.basic", basicauth.New(basicauth.Config{
 			Realm: "KOsync",
 			Authorizer: func(user string, pass string) bool {
