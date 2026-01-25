@@ -148,7 +148,7 @@ func Run() {
 	app.Get("/users/auth", koapp.UsersAuth)
 	app.Post("/users/create", koapp.UsersCreate)
 
-	app.Post("/syncs/progress", koapp.SyncsPostProgress)
+	app.Put("/syncs/progress", koapp.SyncsPostProgress)
 	app.Get("/syncs/progress/:document", koapp.SyncsGetProgress)
 
 	app.Get("/api/documents.all", koapp.ApiGetDocumentsAll)
