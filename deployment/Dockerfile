@@ -5,8 +5,8 @@ FROM golang:1.25-alpine AS builder
 
 WORKDIR /src
 
-# Install build deps (just in case) and CA certs
-RUN apk add --no-cache ca-certificates git build-base
+# Install build deps
+RUN apk add --cache=no ca-certificates git build-base nodejs npm && npm install -g bun@1.3.5
 
 # Cache go modules first
 COPY ../go.mod ./
@@ -14,6 +14,9 @@ RUN go mod download
 
 # Copy the rest of the source
 COPY .. .
+
+# Build webui
+RUN go generate kosync.go
 
 # Build a static binary named 'kosync'
 ENV CGO_ENABLED=0
