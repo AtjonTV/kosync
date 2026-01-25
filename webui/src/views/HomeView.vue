@@ -40,6 +40,6 @@ const doLogout = async () => {
       <Button v-if="userStore.isLoggedIn()" variant="secondary" disabled>Logged in as '{{userStore.user.username}}'</Button>
       <Button v-if="userStore.isLoggedIn()" @click="doLogout">Logout</Button>
     </div>
-    <DocumentsList customTitle="My documents" />
+    <DocumentsList v-if="userStore.isLoggedIn()" customTitle="My documents" />
   </main>
 </template>
