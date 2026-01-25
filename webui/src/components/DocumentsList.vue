@@ -41,6 +41,7 @@ const onEditComplete = async (event: any) => {
           paginator :rows="15" :rowsPerPageOptions="[15, 25, 50, 100]"
           editMode="cell" @cellEditComplete="onEditComplete"
           resizableColumns columnResizeMode="fit" tableStyle="min-width: 100rem"
+          sortField="timestamp" :sortOrder="-1"
       >
         <Column expander style="width: 5rem" />
         <Column field="id" header="ID" :sortable="true" style="width: 25%"></Column>
