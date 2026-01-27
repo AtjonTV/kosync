@@ -14,14 +14,14 @@ In addition to requiring Nginx, OpenResty and Redis, the official server is not 
 The last feature adding commits was around 2016.
 
 While KOsync does not yet have additional features compared to the official server,  
-there are plans to add some. A web interface for viewing and managing would be nice, right?
+there are plans to add some. A [web interface](webui/README.md) for viewing and managing would be nice, right?
 
 ## KOsync vs [KOReader Sync Server](https://github.com/koreader/koreader-sync-server)
 
 You may choose KOsync over [KORSS](https://github.com/koreader/koreader-sync-server) due to the following differences:
 
 - Currently maintained
-- Open-minded to implement new features, be it a Web Interface or something else
+- Open-minded to implement new features, be it a [Web Interface](webui/README.md) or something else
 - Written in Go and deploys as a single executable
 - Single JSON file as database plus configuration instead of Redis
 
@@ -62,6 +62,10 @@ See [docs/backups.md](docs/backups.md)
 ### API Specification
 
 See [docs/api.md](docs/api.md)
+
+### WebUI
+
+See [webui/README.md](webui/README.md)
 
 ## License
 
