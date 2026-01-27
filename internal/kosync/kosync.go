@@ -24,7 +24,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 )
 
-const Version = "2026.04.0"
+const Version = "2026.04.1"
 
 type Kosync struct {
 	Db     Database
