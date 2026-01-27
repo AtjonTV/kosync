@@ -1,27 +1,35 @@
-# ./webui
+# KOsync WebUI
 
-This template should help get you started developing with Vue 3 in Vite.
+This is the WebUI of KOsync, built using Vue 3, PrimeVue, Pinia and TailwindCSS.
 
-## Recommended IDE Setup
+The goal of the WebUI is to provide a simple and easy to use interface for managing KOsync.
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+## How it works
 
-## Recommended Browser Setup
+The WebUI requests special APIs made for it.
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+There are currently three endpoints:
+- GET `/api/auth.basic` for HTTP-Basic-Auth login.
+- GET `/api/documents.all` which returns all documents in WebUI format.
+- PUT `/api/documents.update` which allows updating the `pretty_name` field.
 
-## Type Support for `.vue` Imports in TS
+The API Route names are in a RPC function name format instead of traditional RESTful ones.
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
+### Login Process
 
-## Customize configuration
+When a user wants to login and clicks the "Login" button, the app redirects the user to `/api/auth.basic`.  
+This endpoint will ask the browser to perform HTTP-Basic-Auth.
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+After the HTTP-Basic-Auth the server will send a redirect to `/web?user=<base64_encoded_userdata>`.  
+The app then reads the encoded data from the URL, decodes it and stores it in the `userStore`.
+
+In the user data the username and password-hash are included.  
+Because calculating MD5 hashes in JavaScript is not possible without legacy libraries, it gets the hash from the server.
+
+The reason why the app received the password hash at all, is because that is the authentication mechanism used by  
+KOReader's Sync Plugin, and the fact that I did not want to build a second mechanism.
+
+Logout works by removing the user data from the `userStore`.
 
 ## Project Setup
 
@@ -31,12 +39,17 @@ bun install
 
 ### Compile and Hot-Reload for Development
 
+Before you can develop the WebUI separate of KOsync, you must change the BASE_URL in `src/api.ts` to your local KOsync Address.  
+You also have to make sure that the KOsync Server is running at that address.
+
+This is required because in production the WebUI uses relative URIs for API calls.
+
+With this precondition fulfilled, you can start the vite development server with:
+
 ```sh
 bun dev
 ```
 
 ### Type-Check, Compile and Minify for Production
 
-```sh
-bun run build
-```
+Production builds are handled by running `go generate kosync.go` in the project root directory.
