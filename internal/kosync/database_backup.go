@@ -86,7 +86,7 @@ func (app *Kosync) BackupDatabase() error {
 func RestoreDatabase(backupFile string) error {
 	// bearer:disable go_lang_log_output_neutralization
 	// bearer:disable go_lang_logger_leak
-	log.Println(fmt.Sprintf("[Restore]: Trying to restore database from file '%s'", backupFile))
+	log.Printf("[Restore]: Trying to restore database from file '%s'\n", backupFile)
 
 	_, dbFile, err := FindDatabaseFile()
 	if err != nil {

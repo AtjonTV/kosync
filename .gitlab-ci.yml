@@ -25,6 +25,14 @@ wwhrd:
   script:
     - wwhrd check
 
+staticcheck:
+  stage: validate
+  allow_failure: true # Allow failure so other stages also run, but issues are still shown in the pipeline overview.
+  before_script:
+    - go install honnef.co/go/tools/cmd/staticcheck@2025.1.1
+  script:
+    - staticcheck ./...
+
 compile:
   stage: build
   script:

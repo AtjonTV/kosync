@@ -1,0 +1,50 @@
+{
+  "name": "kosync-webui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "author": {
+    "name": "Thomas Obernosterer",
+    "email": "thomas@obth.eu",
+    "url": "https://obth.eu"
+  },
+  "license": "EUPL-1.2",
+  "repository": {
+    "url": "https://git.obth.eu/atjontv/kosync",
+    "directory": "webui",
+    "type": "git"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "run-p type-check \"build-only {@}\" --",
+    "preview": "vite preview",
+    "build-only": "vite build",
+    "type-check": "vue-tsc --build"
+  },
+  "dependencies": {
+    "@primeuix/themes": "^2.0.3",
+    "@tailwindcss/vite": "^4.1.18",
+    "pinia": "^3.0.4",
+    "primevue": "^4.5.4",
+    "tailwindcss": "^4.1.18",
+    "tailwindcss-primeui": "^0.6.1",
+    "vue": "^3.5.26",
+    "vue-router": "^4.6.4"
+  },
+  "devDependencies": {
+    "@primevue/auto-import-resolver": "^4.5.4",
+    "@tsconfig/node24": "^24.0.4",
+    "@types/node": "^24.10.9",
+    "@vitejs/plugin-vue": "^6.0.3",
+    "@vue/tsconfig": "^0.8.1",
+    "npm-run-all2": "^8.0.4",
+    "typescript": "~5.9.3",
+    "unplugin-vue-components": "^31.0.0",
+    "vite": "^7.3.1",
+    "vite-plugin-vue-devtools": "^8.0.5",
+    "vue-tsc": "^3.2.2"
+  },
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  }
+}

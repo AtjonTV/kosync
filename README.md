@@ -13,21 +13,18 @@ KOsync wants to be simpler by not having any dependencies besides the OS itself.
 In addition to requiring Nginx, OpenResty and Redis, the official server is not very maintained.  
 The last feature adding commits was around 2016.
 
-While KOsync does not yet have additional features compared to the official server,  
-there are plans to add some. A web interface for viewing and managing would be nice, right?
-
 ## KOsync vs [KOReader Sync Server](https://github.com/koreader/koreader-sync-server)
 
 You may choose KOsync over [KORSS](https://github.com/koreader/koreader-sync-server) due to the following differences:
 
-- Currently maintained
-- Open-minded to implement new features, be it a Web Interface or something else
+- Actively maintained and open for feature requests
+- Simple [Web Interface](webui/README.md) (Prototype)
 - Written in Go and deploys as a single executable
 - Single JSON file as database plus configuration instead of Redis
 
-Additional differences, that should be known:
+Additional differences that should be known:
 
-- KOsync is licensed under the EUPL-1.2 (or later) compared to KORSS, which is AGPL-3.0 or later
+- KOsync is licensed under `EUPL-1.2 or later` compared to KORSS, which is `AGPL-3.0 or later`
 - Simple deployment via Docker
 - Requires a Reverse Proxy for TLS
 
@@ -37,19 +34,7 @@ Additional differences, that should be known:
 KOsync is written in Go with no external dependencies.  
 All you need to run KOsync is bundled into a single executable.
 
-Compilation only requires the Go Toolchain with this command `go build -tags netgo -o kosync.exe kosync.go`.  
-The command compiles KOsync to a single static executable named `kosync.exe`.
-
-There are also two other options for installation:  
-
-If you have Go installed, you can use `go install -tags netgo git.obth.eu/atjontv/kosync@latest` to install the latest version (you can also replace `@latest` with a version tag like `@v2026.03.0`)  .
-The binary `kosync` will be placed in `$GOPATH/bin`, which is usually `$HOME/go/bin`.
-
-The second alternative is the Docker image, which can be created with `docker buildx build -f deployment/Dockerfile -t docker.obth.eu/atjontv/kosync:custom .`.  
-Every tagged version also has a pre-build image at `docker.obth.eu/atjontv/kosync:latest` (you can replace `latest` with a version tag like `2026.03.0` so you know what version you pulled).
-
-For deployment, you can use Docker Compose with the `deployment/compose.yml` file.  
-If you used one of the executable installation methods, you can simply execute the binary.
+See [docs/build.md](docs/build.md) for build and deployment instructions.
 
 **Simple Datastore**  
 KOsync stores all data, both configuration and user data, in a single JSON file.
@@ -74,6 +59,10 @@ See [docs/backups.md](docs/backups.md)
 ### API Specification
 
 See [docs/api.md](docs/api.md)
+
+### WebUI
+
+See [webui/README.md](webui/README.md)
 
 ## License
 

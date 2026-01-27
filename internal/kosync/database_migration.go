@@ -9,7 +9,7 @@ package kosync
 import "fmt"
 
 const (
-	SchemaVersion = 3
+	SchemaVersion = 6
 )
 
 func (app *Kosync) MigrateSchema() error {
@@ -17,6 +17,7 @@ func (app *Kosync) MigrateSchema() error {
 
 	migrations := map[int]interface{}{
 		1: func() {
+			// Add history to users
 			for id, user := range app.Db.Users {
 				app.Db.Users[id] = UserData{
 					Username:  user.Username,
@@ -27,10 +28,41 @@ func (app *Kosync) MigrateSchema() error {
 			}
 		},
 		2: func() {
+			// Default backup encoding to msgpack
 			app.Db.Config.BackupEncodingType = BackupEncodingTypeMsgpack
 		},
 		3: func() {
+			// Disable backup on startup
 			app.Db.Config.BackupOnStartup = false
+		},
+		4: func() {
+			// Add document id to documents
+			for userId, user := range app.Db.Users {
+				for docId, doc := range user.Documents {
+					app.Db.Users[userId].Documents[docId] = FileData{
+						DocumentId:   docId,
+						ProgressData: doc.ProgressData,
+						Timestamp:    doc.Timestamp,
+					}
+				}
+			}
+		},
+		5: func() {
+			// Disable webui
+			app.Db.Config.WebUi = false
+		},
+		6: func() {
+			// Set an empty pretty name to documents (because string can't be nil)
+			for userId, user := range app.Db.Users {
+				for docId, doc := range user.Documents {
+					app.Db.Users[userId].Documents[docId] = FileData{
+						DocumentId:   docId,
+						ProgressData: doc.ProgressData,
+						Timestamp:    doc.Timestamp,
+						PrettyName:   "",
+					}
+				}
+			}
 		},
 	}
 

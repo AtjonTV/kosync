@@ -19,6 +19,7 @@ type ConfigData struct {
 	StoreHistory        bool   `json:"store_history"`
 	BackupEncodingType  string `json:"backup_encoding_type"`
 	BackupOnStartup     bool   `json:"backup_on_startup"`
+	WebUi               bool   `json:"enable_webui"`
 }
 
 type UserData struct {
@@ -42,7 +43,9 @@ type DocumentData struct {
 
 type FileData struct {
 	ProgressData
-	Timestamp int64 `json:"timestamp"`
+	DocumentId string `json:"document"`
+	Timestamp  int64  `json:"timestamp"`
+	PrettyName string `json:"pretty_name"` // User given name of Document, set via WebUI
 }
 
 type HistoryData struct {
