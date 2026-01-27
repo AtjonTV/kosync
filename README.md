@@ -37,19 +37,7 @@ Additional differences, that should be known:
 KOsync is written in Go with no external dependencies.  
 All you need to run KOsync is bundled into a single executable.
 
-Compilation only requires the Go Toolchain with this command `go build -tags netgo -o kosync.exe kosync.go`.  
-The command compiles KOsync to a single static executable named `kosync.exe`.
-
-There are also two other options for installation:  
-
-If you have Go installed, you can use `go install -tags netgo git.obth.eu/atjontv/kosync@latest` to install the latest version (you can also replace `@latest` with a version tag like `@v2026.03.0`)  .
-The binary `kosync` will be placed in `$GOPATH/bin`, which is usually `$HOME/go/bin`.
-
-The second alternative is the Docker image, which can be created with `docker buildx build -f deployment/Dockerfile -t docker.obth.eu/atjontv/kosync:custom .`.  
-Every tagged version also has a pre-build image at `docker.obth.eu/atjontv/kosync:latest` (you can replace `latest` with a version tag like `2026.03.0` so you know what version you pulled).
-
-For deployment, you can use Docker Compose with the `deployment/compose.yml` file.  
-If you used one of the executable installation methods, you can simply execute the binary.
+See [docs/build.md](docs/build.md) for build and deployment instructions.
 
 **Simple Datastore**  
 KOsync stores all data, both configuration and user data, in a single JSON file.
