@@ -131,8 +131,8 @@ func (app *Kosync) AddOrUpdateDocument(username string, document DocumentData) e
 	app.DbLock.Lock()
 	defer app.DbLock.Unlock()
 
+	var currentVersion, hasCurrent = app.Db.Users[username].Documents[document.Document]
 	if app.Db.Config.StoreHistory {
-		var currentVersion = app.Db.Users[username].Documents[document.Document]
 		var previousData = app.Db.Users[username].History[document.Document].DocumentHistory
 		app.Db.Users[username].History[document.Document] = HistoryData{
 			DocumentHistory: append(previousData, currentVersion),
@@ -140,11 +140,18 @@ func (app *Kosync) AddOrUpdateDocument(username string, document DocumentData) e
 		app.PrintDebug("DB", "-", fmt.Sprintf("[user: %s]: Document '%s' progress went from %.2f %% to %.2f %%", username, document.Document, currentVersion.Percentage*100, document.Percentage*100))
 	}
 
+	// Special handling to keep pretty name persistent
+	var prettyName = ""
+	if hasCurrent {
+		prettyName = currentVersion.PrettyName
+	}
+
 	// Create document state
 	app.Db.Users[username].Documents[document.Document] = FileData{
 		DocumentId:   document.Document,
 		ProgressData: document.ProgressData,
 		Timestamp:    time.Now().Unix(),
+		PrettyName:   prettyName,
 	}
 
 	// Persist new user
