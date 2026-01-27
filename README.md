@@ -13,21 +13,18 @@ KOsync wants to be simpler by not having any dependencies besides the OS itself.
 In addition to requiring Nginx, OpenResty and Redis, the official server is not very maintained.  
 The last feature adding commits was around 2016.
 
-While KOsync does not yet have additional features compared to the official server,  
-there are plans to add some. A [web interface](webui/README.md) for viewing and managing would be nice, right?
-
 ## KOsync vs [KOReader Sync Server](https://github.com/koreader/koreader-sync-server)
 
 You may choose KOsync over [KORSS](https://github.com/koreader/koreader-sync-server) due to the following differences:
 
-- Currently maintained
-- Open-minded to implement new features, be it a [Web Interface](webui/README.md) or something else
+- Actively maintained and open for feature requests
+- Simple [Web Interface](webui/README.md) (Prototype)
 - Written in Go and deploys as a single executable
 - Single JSON file as database plus configuration instead of Redis
 
-Additional differences, that should be known:
+Additional differences that should be known:
 
-- KOsync is licensed under the EUPL-1.2 (or later) compared to KORSS, which is AGPL-3.0 or later
+- KOsync is licensed under `EUPL-1.2 or later` compared to KORSS, which is `AGPL-3.0 or later`
 - Simple deployment via Docker
 - Requires a Reverse Proxy for TLS
 
