@@ -2,6 +2,7 @@ package webui
 
 import "embed"
 
+//go:generate bun install --cwd ../../webui
 //go:generate bun --cwd ../../webui build-only --base /web --emptyOutDir --outDir ../internal/webui/public
 
 //go:embed public/*
