@@ -47,7 +47,7 @@ sonarqube:
     paths:
       - .sonar/cache
   script:
-    - sonar-scanner
+    - sonar-scanner -Dsonar.host.url="${SONAR_HOST_URL}"
 
 compile:
   stage: build
