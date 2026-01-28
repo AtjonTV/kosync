@@ -3,6 +3,7 @@ image: golang:1.25-alpine3.23
 stages:
   - validate
   - build
+  - analyze
 
 bearer:
   stage: validate
@@ -33,8 +34,17 @@ staticcheck:
   script:
     - staticcheck ./...
 
+compile:
+  stage: build
+  script:
+    - go build -tags netgo -o kosync.exe kosync.go
+  artifacts:
+    paths:
+      - kosync.exe
+
+# Run sonarqube after compile
 sonarqube:
-  stage: validate
+  stage: analyze
   image:
     name: sonarsource/sonar-scanner-cli:12.0.0.3214_8.0.1
     entrypoint: [""]
@@ -47,14 +57,4 @@ sonarqube:
     paths:
       - .sonar/cache
   script:
-    - npm install -g bun@1.3.5
-    - bun install --cwd ./webui
     - sonar-scanner -Dsonar.host.url="${SONAR_HOST_URL}"
-
-compile:
-  stage: build
-  script:
-    - go build -tags netgo -o kosync.exe kosync.go
-  artifacts:
-    paths:
-      - kosync.exe
