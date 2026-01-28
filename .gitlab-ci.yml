@@ -1,4 +1,4 @@
-image: golang:1.25-alpine3.23
+image: golang:1.25.6-alpine3.23
 
 stages:
   - validate
@@ -8,7 +8,7 @@ stages:
 bearer:
   stage: validate
   image:
-    name: bearer/bearer:1.51.1
+    name: bearer/bearer:2.0.1
     entrypoint: [""]
   allow_failure: true # Allow failure so other stages also run, but a "high" severity is still shown in the pipeline overview.
   script: bearer scan . --format html --output bearer-report.html --fail-on-severity high

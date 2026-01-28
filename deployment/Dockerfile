@@ -1,7 +1,7 @@
 ## Multi-stage build: compile a single static Go binary, run it, and allow mounting database.json
 
 # 1) Build stage
-FROM golang:1.25-alpine AS builder
+FROM golang:1.25.6-alpine3.23 AS builder
 
 WORKDIR /src
 
@@ -24,7 +24,7 @@ RUN go build -tags netgo -ldflags='-s -w -extldflags "-static"' -o /out/kosync k
 
 
 # 2) Runtime stage
-FROM alpine:3.23
+FROM alpine:3.23.3
 
 WORKDIR /app
 
