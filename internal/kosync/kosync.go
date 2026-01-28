@@ -24,6 +24,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 )
 
+// Version NOTE: Must be the same as "sonar.projectVersion" in ../../sonar-project.properties
 const Version = "2026.04.1"
 
 type Kosync struct {
