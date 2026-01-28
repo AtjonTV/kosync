@@ -47,6 +47,8 @@ sonarqube:
     paths:
       - .sonar/cache
   script:
+    - npm install -g bun@1.3.5
+    - bun install --cwd ./webui
     - sonar-scanner -Dsonar.host.url="${SONAR_HOST_URL}"
 
 compile:
