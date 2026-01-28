@@ -47,7 +47,6 @@ sonarqube:
     paths:
       - .sonar/cache
   script:
-    - echo "${SONAR_HOST_URL}"
     - sonar-scanner -Dsonar.host.url="${SONAR_HOST_URL}"
 
 compile:
