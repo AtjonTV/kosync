@@ -35,7 +35,10 @@ staticcheck:
 
 compile:
   stage: build
+  before_script:
+    - apk add --cache=no nodejs npm && npm install -g bun@1.3.5
   script:
+    - go generate kosync.go
     - go build -tags netgo -o kosync.exe kosync.go
   artifacts:
     paths:
