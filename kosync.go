@@ -6,12 +6,21 @@
 
 package main
 
-import (
-	"git.obth.eu/atjontv/kosync/internal/kosync"
-)
+import "git.obth.eu/atjontv/kosync/internal/kosync"
 
 //go:generate go generate internal/webui/webui.go
 
 func main() {
-	kosync.Run()
+    //db, err := kosync.NewDatabase()
+    //if err != nil {
+    //	panic(err)
+    //}
+    //defer func(db *kosync.Database) {
+    //	err := db.Close()
+    //	if err != nil {
+    //		panic(err)
+    //	}
+    //}(db)
+
+    kosync.Run()
 }
