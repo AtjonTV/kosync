@@ -18,7 +18,7 @@ func (app *Kosync) UsersAuth(c *fiber.Ctx) error {
 }
 
 func (app *Kosync) UsersCreate(c *fiber.Ctx) error {
-	if app.Db.Config.DisableRegistration {
+	if app.LegacyDb.Db.Config.DisableRegistration {
 		return fiber.ErrPaymentRequired // KORSS also returns 402
 	}
 
@@ -32,7 +32,7 @@ func (app *Kosync) UsersCreate(c *fiber.Ctx) error {
 	}
 
 	app.PrintDebug("Users", c.Locals("requestid").(string), fmt.Sprintf("Signup of new user '%s'", data.Username))
-	if err := app.AddUser(data.Username, data.Password); err != nil {
+	if err := app.LegacyDb.AddUser(data.Username, data.Password); err != nil {
 		return err
 	}
 

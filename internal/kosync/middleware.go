@@ -38,7 +38,7 @@ func (app *Kosync) NewAuthMiddleware() fiber.Handler {
 		password := c.Get("x-auth-key")
 
 		// try to find the user
-		user, found := app.Db.Users[username]
+		user, found := app.LegacyDb.FindUser(username)
 		if !found {
 			app.PrintDebug("Auth", c.Locals("requestid").(string), fmt.Sprintf("Unauthorized request from unknown '%s'", username))
 			return fiber.ErrUnauthorized

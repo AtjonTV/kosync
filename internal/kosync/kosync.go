@@ -12,8 +12,8 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
-	"sync"
 
+	"git.obth.eu/atjontv/kosync/internal/legacy"
 	"git.obth.eu/atjontv/kosync/internal/webui"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
@@ -28,14 +28,12 @@ import (
 const Version = "2026.05.0-dev.0"
 
 type Kosync struct {
-	Db     Database
-	DbLock sync.Mutex
-	DbFile string
+	LegacyDb *legacy.LegacyDb
 }
 
 func (app *Kosync) PrintDebug(marker, requestId, s string) {
 	// Only print debugs when enabled
-	if app.Db.Config.DebugLog {
+	if app.LegacyDb.Db.Config.DebugLog {
 		log.Debugf("RequestId=%s, Module=%s: %s\n", requestId, marker, s)
 	}
 }
@@ -58,38 +56,18 @@ func Run() {
 	enableWeb := flag.Bool("webui", false, "Enable the web interface at /web")
 	flag.Parse()
 
-	if restoreFile != nil && len(*restoreFile) > 0 {
-		if err := RestoreDatabase(*restoreFile); err != nil {
-			panic(err)
-		}
-	}
-
-	// Try to find the database or create a new one
-	foundDbFile, db, err := LoadOrInitDatabase()
-	if err != nil {
-		panic(err)
-	}
-
 	koapp := Kosync{
-		Db:     db,
-		DbFile: foundDbFile,
-		DbLock: sync.Mutex{},
+		LegacyDb: legacy.New(legacy.LegacyConfig{
+			RestoreFile: restoreFile,
+			MakeBackup:  makeBackup,
+		}),
 	}
 	defer func(koapp *Kosync) {
-		_ = koapp.PersistDatabase()
+		_ = koapp.LegacyDb.PersistDatabase()
 	}(&koapp)
 
-	if err := koapp.MigrateSchema(); err != nil {
-		panic(err)
-	}
-
-	// Persist migrated database
-	if err := koapp.PersistDatabase(); err != nil {
-		panic(err)
-	}
-
-	if koapp.Db.Config.BackupOnStartup || (makeBackup != nil && *makeBackup) {
-		if err := koapp.BackupDatabase(); err != nil {
+	if koapp.LegacyDb.Db.Config.BackupOnStartup || (makeBackup != nil && *makeBackup) {
+		if err := koapp.LegacyDb.BackupDatabase(); err != nil {
 			koapp.PrintError("Backup", "-", fmt.Sprintf("Failed to create backup, continuing startup: %v", err))
 		}
 	}
@@ -113,7 +91,7 @@ func Run() {
 	}))
 	app.Use(koapp.NewAuthMiddleware())
 
-	if koapp.Db.Config.WebUi || (enableWeb != nil && *enableWeb) {
+	if koapp.LegacyDb.Db.Config.WebUi || (enableWeb != nil && *enableWeb) {
 		app.Use("/api/auth.basic", basicauth.New(basicauth.Config{
 			Realm: "KOsync",
 			Authorizer: func(user string, pass string) bool {
@@ -122,7 +100,7 @@ func Run() {
 				// bearer:disable go_lang_weak_hash_md5
 				pwHash := fmt.Sprintf("%x", md5.Sum([]byte(pass)))
 
-				userData, found := koapp.Db.Users[user]
+				userData, found := koapp.LegacyDb.Db.Users[user]
 				if !found {
 					return false
 				}
@@ -156,7 +134,7 @@ func Run() {
 	app.Put("/api/documents.update", koapp.ApiPutDocument)
 	app.Get("/api/auth.basic", koapp.ApiAuthBasic)
 
-	if err = app.Listen(koapp.Db.Config.ListenAddress); err != nil {
+	if err := app.Listen(koapp.LegacyDb.Db.Config.ListenAddress); err != nil {
 		panic(err)
 	}
 }

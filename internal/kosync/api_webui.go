@@ -10,17 +10,18 @@ import (
 	"encoding/base64"
 	"encoding/json"
 
+	"git.obth.eu/atjontv/kosync/internal/legacy"
 	"github.com/gofiber/fiber/v2"
 )
 
 type UiDocumentData struct {
 	Id string `json:"id"`
-	FileData
-	History []FileData `json:"history"`
+	legacy.FileData
+	History []legacy.FileData `json:"history"`
 }
 
 func (app *Kosync) ApiGetDocumentsAll(c *fiber.Ctx) error {
-	data, found := app.Db.Users[c.Locals("current_user").(string)]
+	data, found := app.LegacyDb.FindUser(c.Locals("current_user").(string))
 	if !found {
 		return fiber.ErrNotFound
 	}
@@ -29,7 +30,7 @@ func (app *Kosync) ApiGetDocumentsAll(c *fiber.Ctx) error {
 	for id, doc := range data.Documents {
 		history, found := data.History[doc.DocumentId]
 		if !found {
-			result = append(result, UiDocumentData{id, doc, make([]FileData, 0)})
+			result = append(result, UiDocumentData{id, doc, make([]legacy.FileData, 0)})
 		} else {
 			result = append(result, UiDocumentData{id, doc, history.DocumentHistory})
 		}
@@ -45,7 +46,7 @@ func (app *Kosync) ApiPutDocument(c *fiber.Ctx) error {
 		return err
 	}
 
-	if err := app.UpdateDocumentPrettyName(c.Locals("current_user").(string), document.DocumentId, document.PrettyName); err != nil {
+	if err := app.LegacyDb.UpdateDocumentPrettyName(c.Locals("current_user").(string), document.DocumentId, document.PrettyName); err != nil {
 		return err
 	}
 
@@ -53,7 +54,7 @@ func (app *Kosync) ApiPutDocument(c *fiber.Ctx) error {
 }
 
 func (app *Kosync) ApiAuthBasic(c *fiber.Ctx) error {
-	user := app.Db.Users[c.Locals("current_user").(string)]
+	user, _ := app.LegacyDb.FindUser(c.Locals("current_user").(string))
 	type UserData struct {
 		Username string `json:"username"`
 		Key      string `json:"key"`
