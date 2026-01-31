@@ -63,6 +63,10 @@ func New(cfg LegacyConfig) *LegacyDb {
 	return &ldb
 }
 
+func (db *LegacyDb) CheckMigrationToSqlite() bool {
+	return db.Db.Schema < 99
+}
+
 func (db *LegacyDb) PrintDebug(marker, requestId, s string) {
 	// Only print debugs when enabled
 	if db.Db.Config.DebugLog {

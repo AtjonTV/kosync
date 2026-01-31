@@ -53,8 +53,6 @@ func Run() {
 	log.Info("Copyright 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later.")
 	log.Info("Obtain the Source Code at https://git.obth.eu/atjontv/kosync")
 
-	restoreFile := flag.String("restore", "", "Specify a .bak file to restore")
-	makeBackup := flag.Bool("backup", false, "Create a .bak file before startup")
 	enableWeb := flag.Bool("webui", false, "Enable the web interface at /web")
 	flag.Parse()
 
@@ -68,10 +66,7 @@ func Run() {
 	}
 
 	koapp := Kosync{
-		LegacyDb: legacy.New(legacy.LegacyConfig{
-			RestoreFile: restoreFile,
-			MakeBackup:  makeBackup,
-		}),
+		LegacyDb: legacy.New(legacy.LegacyConfig{}),
 		Config:   config,
 		Db:       db,
 	}
@@ -80,9 +75,16 @@ func Run() {
 		_ = koapp.LegacyDb.PersistDatabase()
 	}(&koapp)
 
-	if koapp.LegacyDb.Db.Config.BackupOnStartup || (makeBackup != nil && *makeBackup) {
-		if err := koapp.LegacyDb.BackupDatabase(); err != nil {
-			koapp.PrintError("Backup", "-", fmt.Sprintf("Failed to create backup, continuing startup: %v", err))
+	if koapp.LegacyDb.CheckMigrationToSqlite() {
+		err := MigrateData(koapp.LegacyDb, koapp.Db)
+		if err != nil {
+			panic(err)
+		}
+
+		// persist schema version 99
+		err = koapp.LegacyDb.PersistDatabase()
+		if err != nil {
+			panic(err)
 		}
 	}
 
