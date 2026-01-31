@@ -31,3 +31,16 @@ func DocumentDataToNew(f *legacy.DocumentData, ownerId string) Document {
 		LastReadAt:         time.Now().Unix(),
 	}
 }
+
+func FileDataToNew(f *legacy.FileData, ownerId string) Document {
+	return Document{
+		Id:                 f.DocumentId,
+		OwnerId:            ownerId,
+		Title:              f.PrettyName,
+		CurrentLocation:    f.Progress,
+		Progress:           f.Percentage,
+		LastReadOnDevice:   f.Device,
+		LastReadOnDeviceId: f.DeviceId,
+		LastReadAt:         time.Now().Unix(),
+	}
+}

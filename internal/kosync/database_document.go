@@ -52,6 +52,93 @@ func (db *Database) FindDocumentById(ownerId, documentId string) (*Document, boo
 	return &doc, true, err
 }
 
+func (db *Database) AllDocumentsOfUser(ownerId string) ([]Document, error) {
+	var findAllDocuments = `
+        SELECT
+            id,
+            owner_id,
+            title,
+            current_location,
+            progress,
+            last_read_on_device,
+            last_read_on_device_id,
+            last_read_at
+        FROM documents
+        WHERE owner_id = ?;
+    `
+	rows, err := db.rawDb.Query(findAllDocuments, ownerId)
+	if err != nil {
+		return nil, err
+	}
+	defer func(rows *sql.Rows) {
+		_ = rows.Close()
+	}(rows)
+
+	var docs []Document
+	for rows.Next() {
+		var doc Document
+		err = rows.Scan(
+			&doc.Id,
+			&doc.OwnerId,
+			&doc.Title,
+			&doc.CurrentLocation,
+			&doc.Progress,
+			&doc.LastReadOnDevice,
+			&doc.LastReadOnDeviceId,
+			&doc.LastReadAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		docs = append(docs, doc)
+	}
+
+	return docs, nil
+}
+
+func (db *Database) GetDocumentHistory(ownerId, documentId string) ([]Document, error) {
+	var findDocumentHistory = `
+        SELECT
+            id,
+            owner_id,
+            title,
+            current_location,
+            progress,
+            last_read_on_device,
+            last_read_on_device_id,
+            last_read_at
+        FROM document_history
+        WHERE id = ? and owner_id = ?;
+    `
+	rows, err := db.rawDb.Query(findDocumentHistory, documentId, ownerId)
+	if err != nil {
+		return nil, err
+	}
+	defer func(rows *sql.Rows) {
+		_ = rows.Close()
+	}(rows)
+
+	var docs []Document
+	for rows.Next() {
+		var doc Document
+		err = rows.Scan(
+			&doc.Id,
+			&doc.OwnerId,
+			&doc.Title,
+			&doc.CurrentLocation,
+			&doc.Progress,
+			&doc.LastReadOnDevice,
+			&doc.LastReadOnDeviceId,
+			&doc.LastReadAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		docs = append(docs, doc)
+	}
+	return docs, nil
+}
+
 func (db *Database) CreateOrUpdateDocument(doc *Document) error {
 	err := db.createHistoryEntry(doc)
 	if err != nil {
