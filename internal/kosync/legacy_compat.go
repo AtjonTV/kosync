@@ -96,7 +96,7 @@ func MigrateData(oldDb *legacy.LegacyDb, newDb *Database) error {
 	config[ConfigFieldDisableRegistration] = boolToString(oldDb.Db.Config.DisableRegistration)
 	config[ConfigFieldEnableWebUi] = boolToString(oldDb.Db.Config.WebUi)
 
-	configFile, err := os.OpenFile("kosync.env", os.O_RDWR|os.O_CREATE, 0600)
+	configFile, err := os.OpenFile(ConfigFileName, os.O_RDWR|os.O_CREATE, 0600)
 	if err != nil {
 		return err
 	}
