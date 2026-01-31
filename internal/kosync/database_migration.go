@@ -7,6 +7,7 @@
 package kosync
 
 import (
+	"database/sql"
 	"strings"
 	"time"
 )
@@ -16,6 +17,11 @@ func (db *Database) checkAndRunMigrations() error {
 	if err != nil && !strings.Contains(err.Error(), "no such table: schema_versions") {
 		return err
 	}
+	defer func(versionsRes *sql.Rows) {
+		if versionsRes != nil {
+			_ = versionsRes.Close()
+		}
+	}(versionsRes)
 	var currentVersion int
 	if versionsRes != nil && versionsRes.Next() {
 		if err := versionsRes.Scan(&currentVersion); err != nil {
