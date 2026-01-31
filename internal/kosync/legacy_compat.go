@@ -48,6 +48,8 @@ func FileDataToNew(f *legacy.FileData, ownerId string) Document {
 }
 
 func MigrateData(oldDb *legacy.LegacyDb, newDb *Database) error {
+	log.Info("Migrating data from legacy database to new database, this may take a few seconds...")
+
 	oldDb.DbLock.Lock()
 	defer (func() {
 		oldDb.Db.Schema = 99
@@ -114,5 +116,6 @@ func MigrateData(oldDb *legacy.LegacyDb, newDb *Database) error {
 		}
 	}
 
+	log.Info("Done migrating, will continue with startup")
 	return nil
 }

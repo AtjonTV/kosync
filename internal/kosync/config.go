@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/gofiber/fiber/v2/log"
 	"github.com/joho/godotenv"
 )
 
@@ -34,6 +35,10 @@ func NewConfig(override *Config) *Config {
 
 	if override != nil {
 		conf.EnableWebUi = override.EnableWebUi
+	}
+
+	if conf.PrintDebugLog {
+		log.Debugf("Loaded Config: %+v\n", *conf)
 	}
 
 	return conf
