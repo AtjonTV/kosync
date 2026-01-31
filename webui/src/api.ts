@@ -6,7 +6,7 @@ const BASE_URL = "";
 export async function fetchApi<T>(route: string, options: RequestInit): Promise<{data: T | null, error: string | Response | null}> {
     const userStore = useUserStore();
     if (!userStore.user.username || !userStore.user.key) {
-        return Promise.resolve({data: null, error: "Not logged in"});
+        return {data: null, error: "Not logged in"}
     }
 
     const response = await fetch(
@@ -20,9 +20,9 @@ export async function fetchApi<T>(route: string, options: RequestInit): Promise<
 
     if (response.headers.get('content-type')?.startsWith('application/json')) {
         const data = await response.json() as T;
-        return Promise.resolve({data, error: null});
+        return {data, error: null}
     } else {
-        return Promise.resolve({data: await response.text() as T, error: null});
+        return {data: await response.text() as T, error: null}
     }
 }
 
@@ -35,8 +35,8 @@ export async function fetchUrl<T>(route: string, options: RequestInit): Promise<
 
   if (response.headers.get('content-type')?.startsWith('application/json')) {
     const data = await response.json() as T;
-    return Promise.resolve({data, error: null});
+    return {data, error: null}
   } else {
-    return Promise.resolve({data: await response.text() as T, error: null});
+    return {data: await response.text() as T, error: null}
   }
 }
