@@ -145,11 +145,10 @@ func (db *Database) CreateOrUpdateDocument(doc *Document) error {
 		return err
 	}
 	var updateDocument = `
-        INSERT INTO documents (id, owner_id, title, current_location, progress, last_read_on_device, last_read_on_device_id, last_read_at, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO documents (id, owner_id, current_location, progress, last_read_on_device, last_read_on_device_id, last_read_at, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT (id, owner_id) DO
             UPDATE SET
-                       title = ?,
                        current_location = ?,
                        progress = ?,
                        last_read_on_device = ?,
@@ -162,14 +161,12 @@ func (db *Database) CreateOrUpdateDocument(doc *Document) error {
 		updateDocument,
 		doc.Id,
 		doc.OwnerId,
-		doc.Title,
 		doc.CurrentLocation,
 		doc.Progress,
 		doc.LastReadOnDevice,
 		doc.LastReadOnDeviceId,
 		doc.LastReadAt,
 		now,
-		doc.Title,
 		doc.CurrentLocation,
 		doc.Progress,
 		doc.LastReadOnDevice,
