@@ -2,6 +2,7 @@ package kosync
 
 import (
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/joho/godotenv"
@@ -40,6 +41,9 @@ func GetEnv(key, fallback string) string {
 }
 
 func GetEnvBool(key string, fallback bool) bool {
-	lowerEnv := strings.ToLower(GetEnv(key, "false"))
-	return lowerEnv == "true" || lowerEnv == "yes" || lowerEnv == "1" || lowerEnv == "on" || lowerEnv == "t" || lowerEnv == "y" || fallback
+	if s, err := strconv.ParseBool(strings.ToLower(GetEnv(key, "false"))); err == nil {
+		return fallback
+	} else {
+		return s
+	}
 }
