@@ -10,6 +10,11 @@ import (
 
 const ConfigFileName = "./kosync.env"
 
+const ConfigFieldListenAddress = "LISTEN_ADDRESS"
+const ConfigFieldDebugLog = "DEBUG_LOG"
+const ConfigFieldDisableRegistration = "DISABLE_REGISTRATION"
+const ConfigFieldEnableWebUi = "ENABLE_WEBUI"
+
 type Config struct {
 	ListenAddress       string
 	PrintDebugLog       bool
@@ -21,10 +26,10 @@ func NewConfig(override *Config) *Config {
 	_ = godotenv.Overload(ConfigFileName)
 
 	conf := &Config{
-		ListenAddress:       GetEnv("LISTEN_ADDRESS", ":8080"),
-		PrintDebugLog:       GetEnvBool("DEBUG_LOG", false),
-		DisableRegistration: GetEnvBool("DISABLE_REGISTRATION", false),
-		EnableWebUi:         GetEnvBool("ENABLE_WEBUI", false),
+		ListenAddress:       GetEnv(ConfigFieldListenAddress, ":8080"),
+		PrintDebugLog:       GetEnvBool(ConfigFieldDebugLog, false),
+		DisableRegistration: GetEnvBool(ConfigFieldDisableRegistration, false),
+		EnableWebUi:         GetEnvBool(ConfigFieldEnableWebUi, false),
 	}
 
 	if override != nil {

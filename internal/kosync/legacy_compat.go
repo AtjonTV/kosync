@@ -91,10 +91,10 @@ func MigrateData(oldDb *legacy.LegacyDb, newDb *Database) error {
 	}
 
 	config := map[string]string{}
-	config["LISTEN_ADDRESS"] = oldDb.Db.Config.ListenAddress
-	config["ENABLE_DEBUG_LOG"] = boolToString(oldDb.Db.Config.DebugLog)
-	config["DISABLE_REGISTRATION"] = boolToString(oldDb.Db.Config.DisableRegistration)
-	config["ENABLE_WEBUI"] = boolToString(oldDb.Db.Config.WebUi)
+	config[ConfigFieldListenAddress] = oldDb.Db.Config.ListenAddress
+	config[ConfigFieldDebugLog] = boolToString(oldDb.Db.Config.DebugLog)
+	config[ConfigFieldDisableRegistration] = boolToString(oldDb.Db.Config.DisableRegistration)
+	config[ConfigFieldEnableWebUi] = boolToString(oldDb.Db.Config.WebUi)
 
 	configFile, err := os.OpenFile("kosync.env", os.O_RDWR|os.O_CREATE, 0600)
 	if err != nil {
