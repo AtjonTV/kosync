@@ -1,9 +1,9 @@
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { defineStore } from 'pinia'
 
 export const useUserStore = defineStore('user', () => {
   const userStateEncoded = localStorage.getItem('userState')
-  const userState = userStateEncoded !== null ? JSON.parse(atob(userStateEncoded)) : null
+  const userState = userStateEncoded === null ? null : JSON.parse(atob(userStateEncoded))
 
   const user = ref(userState ?? {
     username: "",
