@@ -12,6 +12,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+const DatabaseFileName = "./kosync.db"
 const SchemaVersion = 100
 
 type Database struct {
@@ -20,7 +21,7 @@ type Database struct {
 }
 
 func NewDatabase() (*Database, error) {
-	rawDb, err := sql.Open("sqlite", GetEnv("DATABASE_FILE", "./kosync.db"))
+	rawDb, err := sql.Open("sqlite", GetEnv("DATABASE_FILE", DatabaseFileName))
 	if err != nil {
 		return nil, err
 	}
