@@ -70,7 +70,7 @@ func (db *Database) CreateUser(username, password string) (*User, error) {
 	}
 	found, err := db.IsUserExists(newId.String(), username)
 	if found {
-		return nil, UserAlreadyExistsError
+		return nil, ErrUserAlreadyExists
 	} else if err != nil {
 		return nil, err
 	}
