@@ -108,6 +108,10 @@ func MigrateData(oldDb *legacy.LegacyDb, newDb *Database) error {
 		if err != nil {
 			return err
 		}
+		err = os.Setenv(key, value)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

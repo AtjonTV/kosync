@@ -88,6 +88,9 @@ func Run() {
 		if err != nil {
 			panic(err)
 		}
+
+		// apply the migrated config
+		koapp.Config = NewConfig(nil)
 	}
 
 	app := fiber.New(fiber.Config{
