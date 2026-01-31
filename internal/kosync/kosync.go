@@ -29,12 +29,13 @@ const Version = "2026.05.0-dev.0"
 
 type Kosync struct {
 	LegacyDb *legacy.LegacyDb
+	Config   *Config
 	Db       *Database
 }
 
 func (app *Kosync) PrintDebug(marker, requestId, s string) {
 	// Only print debugs when enabled
-	if app.LegacyDb.Db.Config.DebugLog {
+	if app.Config.PrintDebugLog {
 		log.Debugf("RequestId=%s, Module=%s: %s\n", requestId, marker, s)
 	}
 }
@@ -57,6 +58,10 @@ func Run() {
 	enableWeb := flag.Bool("webui", false, "Enable the web interface at /web")
 	flag.Parse()
 
+	config := NewConfig(&Config{
+		EnableWebUi: enableWeb != nil && *enableWeb,
+	})
+
 	db, err := NewDatabase()
 	if err != nil {
 		panic(err)
@@ -67,7 +72,8 @@ func Run() {
 			RestoreFile: restoreFile,
 			MakeBackup:  makeBackup,
 		}),
-		Db: db,
+		Config:   config,
+		Db:       db,
 	}
 	defer func(koapp *Kosync) {
 		_ = koapp.Db.Close()
@@ -99,7 +105,7 @@ func Run() {
 	}))
 	app.Use(koapp.NewAuthMiddleware())
 
-	if koapp.LegacyDb.Db.Config.WebUi || (enableWeb != nil && *enableWeb) {
+	if koapp.Config.EnableWebUi {
 		app.Use("/api/auth.basic", basicauth.New(basicauth.Config{
 			Realm: "KOsync",
 			Authorizer: func(user string, pass string) bool {
@@ -143,7 +149,7 @@ func Run() {
 	app.Put("/api/documents.update", koapp.ApiPutDocument)
 	app.Get("/api/auth.basic", koapp.ApiAuthBasic)
 
-	if err := app.Listen(koapp.LegacyDb.Db.Config.ListenAddress); err != nil {
+	if err := app.Listen(koapp.Config.ListenAddress); err != nil {
 		panic(err)
 	}
 }

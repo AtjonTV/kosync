@@ -18,7 +18,7 @@ func (app *Kosync) UsersAuth(c *fiber.Ctx) error {
 }
 
 func (app *Kosync) UsersCreate(c *fiber.Ctx) error {
-	if app.LegacyDb.Db.Config.DisableRegistration {
+	if app.Config.DisableRegistration {
 		return fiber.ErrPaymentRequired // KORSS also returns 402
 	}
 

@@ -4,6 +4,8 @@ go 1.25
 
 require (
 	github.com/gofiber/fiber/v2 v2.52.10
+	github.com/google/uuid v1.6.0
+	github.com/joho/godotenv v1.5.1
 	github.com/shamaton/msgpack/v3 v3.0.0
 	modernc.org/sqlite v1.44.3
 )
@@ -13,7 +15,6 @@ require (
 	github.com/clipperhouse/stringish v0.1.1 // indirect
 	github.com/clipperhouse/uax29/v2 v2.4.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/klauspost/compress v1.18.3 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
