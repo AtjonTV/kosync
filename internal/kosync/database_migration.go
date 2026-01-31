@@ -54,7 +54,7 @@ func (db *Database) migrateTo(targetVersion int) error {
 		var createUsersTable = `
             CREATE TABLE IF NOT EXISTS users (
                 id TEXT PRIMARY KEY,
-                username TEXT UNIQE,
+                username TEXT UNIQUE,
                 password TEXT,
                 created_at INTEGER NOT NULL,
                 updated_at INTEGER,
