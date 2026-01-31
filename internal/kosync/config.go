@@ -23,7 +23,7 @@ type Config struct {
 	EnableWebUi         bool
 }
 
-func NewConfig(override *Config) *Config {
+func NewConfig(fallback *Config) *Config {
 	_ = godotenv.Overload(ConfigFileName)
 
 	conf := &Config{
@@ -33,8 +33,8 @@ func NewConfig(override *Config) *Config {
 		EnableWebUi:         GetEnvBool(ConfigFieldEnableWebUi, false),
 	}
 
-	if override != nil {
-		conf.EnableWebUi = override.EnableWebUi
+	if fallback != nil {
+		conf.EnableWebUi = conf.EnableWebUi || fallback.EnableWebUi
 	}
 
 	if conf.PrintDebugLog {
