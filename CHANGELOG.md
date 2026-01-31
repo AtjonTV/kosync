@@ -8,10 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- SQLite Database (named `kosync.db`) with automatic migration from JSON to SQLite
+- `.env` Configuration File (named `kosync.env`)
 
 ### Changed
 
 ### Deprecated
+- `database.json` Database file
+- Backup creation and restore (can no longer be done via CLI)
 
 ### Removed
 

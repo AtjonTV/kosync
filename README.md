@@ -20,7 +20,7 @@ You may choose KOsync over [KORSS](https://github.com/koreader/koreader-sync-ser
 - Actively maintained and open for feature requests
 - Simple [Web Interface](webui/README.md) (Prototype)
 - Written in Go and deploys as a single executable
-- Single JSON file as database plus configuration instead of Redis
+- Simple SQLite database and ENV configuration instead of Redis
 
 Additional differences that should be known:
 
@@ -37,9 +37,7 @@ All you need to run KOsync is bundled into a single executable.
 See [docs/build.md](docs/build.md) for build and deployment instructions.
 
 **Simple Datastore**  
-KOsync stores all data, both configuration and user data, in a single JSON file.
-
-The Schema of the file is shown and explained in the next section.
+KOsync stores all user data in an SQLite database while configuration is stored in an environment file.
 
 Users can, after entering the custom URL, use the KOReader registration to signup.  
 After that, they push and pull progress states.
@@ -51,10 +49,6 @@ Consult the KOReader documentation for the configuration options.
 ### Database File
 
 See [docs/database.md](docs/database.md)
-
-### Backup Files
-
-See [docs/backups.md](docs/backups.md)
 
 ### API Specification
 
