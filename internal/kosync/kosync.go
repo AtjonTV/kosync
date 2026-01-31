@@ -72,10 +72,12 @@ func Run() {
 	}
 	defer func(koapp *Kosync) {
 		_ = koapp.Db.Close()
-		_ = koapp.LegacyDb.PersistDatabase()
+		if koapp.LegacyDb != nil {
+			_ = koapp.LegacyDb.PersistDatabase()
+		}
 	}(&koapp)
 
-	if koapp.LegacyDb.CheckMigrationToSqlite() {
+	if koapp.LegacyDb != nil && koapp.LegacyDb.CheckMigrationToSqlite() {
 		err := MigrateData(koapp.LegacyDb, koapp.Db)
 		if err != nil {
 			panic(err)

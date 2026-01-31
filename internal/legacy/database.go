@@ -40,8 +40,12 @@ func New(cfg LegacyConfig) *LegacyDb {
 		panic(err)
 	}
 
+	if db == nil {
+		return nil
+	}
+
 	ldb := LegacyDb{
-		Db:     db,
+		Db:     *db,
 		DbLock: sync.Mutex{},
 		DbFile: foundDbFile,
 	}
@@ -97,12 +101,12 @@ func FindDatabaseFile() (bool, string, error) {
 	return false, foundDbFile, nil
 }
 
-func LoadOrInitDatabase() (string, Database, error) {
+func LoadOrInitDatabase() (string, *Database, error) {
 	var db Database
 
 	found, foundDbFile, err := FindDatabaseFile()
 	if err != nil {
-		return "", Database{}, err
+		return "", &Database{}, err
 	}
 
 	createEmptyDatabase := true
@@ -110,25 +114,19 @@ func LoadOrInitDatabase() (string, Database, error) {
 		// Handle reading database
 		data, err := os.ReadFile(foundDbFile)
 		if err != nil {
-			return "", Database{}, err
+			return "", &Database{}, err
 		}
 
 		if len(data) > 1 {
 			err = json.Unmarshal(data, &db)
 			if err != nil {
-				return "", Database{}, err
+				return "", &Database{}, err
 			}
 
 			createEmptyDatabase = false
 		}
 	} else {
-		f, err := os.Create(foundDbFile)
-		if err != nil {
-			return "", Database{}, err
-		}
-		if err := f.Close(); err != nil {
-			return "", Database{}, err
-		}
+		return "", nil, nil
 	}
 
 	// Fallback to empty
@@ -150,7 +148,7 @@ func LoadOrInitDatabase() (string, Database, error) {
 		db.Config.ListenAddress = ":8080"
 	}
 
-	return foundDbFile, db, nil
+	return foundDbFile, &db, nil
 }
 
 func (db *LegacyDb) PersistDatabase() error {
