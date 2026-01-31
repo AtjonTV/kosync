@@ -16,7 +16,7 @@ type Config struct {
 }
 
 func NewConfig(override *Config) *Config {
-	godotenv.Load("kosync.env")
+	_ = godotenv.Load("kosync.env")
 
 	conf := &Config{
 		ListenAddress:       GetEnv("LISTEN_ADDRESS", ":8080"),
