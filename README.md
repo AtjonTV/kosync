@@ -50,6 +50,32 @@ Consult the KOReader documentation for the configuration options.
 
 See [docs/database.md](docs/database.md)
 
+### Backup Files
+
+Since the SQLite migration, backup and restore functions are no longer available.
+
+Backup and Restore can be done like with any other application that uses SQLite.  
+Stop KOsync and copy the database file to create a backup or replace the database to restore.
+
+In the future KOsync will provide a backup and restore feature again.
+
+KOsync uses [modernc sqlite](https://pkg.go.dev/modernc.org/sqlite#Backup) which supports backup and restore natively.
+
+(Code Example of the API for later reference)
+```go
+type SQLiteBackuper interface {
+    NewBackup(string) (*sqlite.Backup, error)
+    NewRestore(string) (*sqlite.Backup, error)
+}
+
+c, _ := db.Conn(context.Background())
+c.Raw(func(driverConn any) error {
+    bak, err := driverConn.(SQLiteBackuper).NewBackup("pathToBackupTo.db")
+    bakCon, err := bak.Commit()
+    err = bak.Finish()
+})
+```
+
 ### API Specification
 
 See [docs/api.md](docs/api.md)
