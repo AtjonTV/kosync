@@ -48,7 +48,7 @@ func GetEnv(key, fallback string) string {
 }
 
 func GetEnvBool(key string, fallback bool) bool {
-	if s, err := strconv.ParseBool(strings.ToLower(GetEnv(key, "false"))); err == nil {
+	if s, err := strconv.ParseBool(strings.ToLower(GetEnv(key, "false"))); err != nil {
 		return fallback
 	} else {
 		return s
