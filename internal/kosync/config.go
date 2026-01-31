@@ -8,6 +8,8 @@ import (
 	"github.com/joho/godotenv"
 )
 
+const ConfigFileName = "./kosync.env"
+
 type Config struct {
 	ListenAddress       string
 	PrintDebugLog       bool
@@ -16,7 +18,7 @@ type Config struct {
 }
 
 func NewConfig(override *Config) *Config {
-	_ = godotenv.Load("kosync.env")
+	_ = godotenv.Overload(ConfigFileName)
 
 	conf := &Config{
 		ListenAddress:       GetEnv("LISTEN_ADDRESS", ":8080"),
