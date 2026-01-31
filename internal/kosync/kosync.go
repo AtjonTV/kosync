@@ -29,6 +29,7 @@ const Version = "2026.05.0-dev.0"
 
 type Kosync struct {
 	LegacyDb *legacy.LegacyDb
+	Db       *Database
 }
 
 func (app *Kosync) PrintDebug(marker, requestId, s string) {
@@ -56,13 +57,20 @@ func Run() {
 	enableWeb := flag.Bool("webui", false, "Enable the web interface at /web")
 	flag.Parse()
 
+	db, err := NewDatabase()
+	if err != nil {
+		panic(err)
+	}
+
 	koapp := Kosync{
 		LegacyDb: legacy.New(legacy.LegacyConfig{
 			RestoreFile: restoreFile,
 			MakeBackup:  makeBackup,
 		}),
+		Db: db,
 	}
 	defer func(koapp *Kosync) {
+		_ = koapp.Db.Close()
 		_ = koapp.LegacyDb.PersistDatabase()
 	}(&koapp)
 
@@ -100,14 +108,15 @@ func Run() {
 				// bearer:disable go_lang_weak_hash_md5
 				pwHash := fmt.Sprintf("%x", md5.Sum([]byte(pass)))
 
-				userData, found := koapp.LegacyDb.Db.Users[user]
-				if !found {
+				userData, found, _ := koapp.Db.FindUserByUsername(user)
+				//userData, found := koapp.LegacyDb.Db.Users[user]
+				if !found || userData == nil {
 					return false
 				}
 
 				return userData.Password == pwHash
 			},
-			ContextUsername: "current_user",
+			ContextUsername: "current_user_name",
 		}))
 
 		app.Use("/web", filesystem.New(filesystem.Config{

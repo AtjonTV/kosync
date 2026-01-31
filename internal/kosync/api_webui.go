@@ -21,7 +21,7 @@ type UiDocumentData struct {
 }
 
 func (app *Kosync) ApiGetDocumentsAll(c *fiber.Ctx) error {
-	data, found := app.LegacyDb.FindUser(c.Locals("current_user").(string))
+	data, found := app.LegacyDb.FindUser(c.Locals("current_user_name").(string))
 	if !found {
 		return fiber.ErrNotFound
 	}
@@ -46,7 +46,7 @@ func (app *Kosync) ApiPutDocument(c *fiber.Ctx) error {
 		return err
 	}
 
-	if err := app.LegacyDb.UpdateDocumentPrettyName(c.Locals("current_user").(string), document.DocumentId, document.PrettyName); err != nil {
+	if err := app.LegacyDb.UpdateDocumentPrettyName(c.Locals("current_user_name").(string), document.DocumentId, document.PrettyName); err != nil {
 		return err
 	}
 
@@ -54,7 +54,7 @@ func (app *Kosync) ApiPutDocument(c *fiber.Ctx) error {
 }
 
 func (app *Kosync) ApiAuthBasic(c *fiber.Ctx) error {
-	user, _ := app.LegacyDb.FindUser(c.Locals("current_user").(string))
+	user, _ := app.LegacyDb.FindUser(c.Locals("current_user_name").(string))
 	type UserData struct {
 		Username string `json:"username"`
 		Key      string `json:"key"`

@@ -19,9 +19,11 @@ func (app *Kosync) SyncsPostProgress(c *fiber.Ctx) error {
 	if err := c.BodyParser(&data); err != nil {
 		return err
 	}
+	doc := DocumentDataToNew(&data, c.Locals("current_user_id").(string))
 
-	app.PrintDebug("Syncs", c.Locals("requestid").(string), fmt.Sprintf("User '%s' sent progress for document '%s'", c.Locals("current_user").(string), data.Document))
-	if err := app.LegacyDb.AddOrUpdateDocument(c.Locals("current_user").(string), data); err != nil {
+	app.PrintDebug("Syncs", c.Locals("requestid").(string), fmt.Sprintf("User '%s' sent progress for document '%s'", c.Locals("current_user_name").(string), data.Document))
+	//if err := app.LegacyDb.AddOrUpdateDocument(c.Locals("current_user_name").(string), data); err != nil {
+	if err := app.Db.CreateOrUpdateDocument(&doc); err != nil {
 		return err
 	}
 
@@ -33,13 +35,17 @@ func (app *Kosync) SyncsGetProgress(c *fiber.Ctx) error {
 	if documentId == "-" {
 		return fiber.ErrNotFound
 	}
-	app.PrintDebug("Syncs", c.Locals("requestid").(string), fmt.Sprintf("User '%s' requested progress of document '%s'", c.Locals("current_user").(string), documentId))
+	app.PrintDebug("Syncs", c.Locals("requestid").(string), fmt.Sprintf("User '%s' requested progress of document '%s'", c.Locals("current_user_name").(string), documentId))
 
 	// Find document
-	docData, found := app.LegacyDb.GetUser(c.Locals("current_user").(string)).Documents[documentId]
+	//docData, found := app.LegacyDb.GetUser(c.Locals("current_user_name").(string)).Documents[documentId]
+	docData, found, err := app.Db.FindDocumentById(c.Locals("current_user_id").(string), documentId)
+	if err != nil {
+		return err
+	}
 	if !found {
 		return fiber.ErrNotFound
 	}
 
-	return c.JSON(legacy.DocumentData{ProgressData: docData.ProgressData, Document: documentId})
+	return c.JSON(FileDataFromNew(docData))
 }
