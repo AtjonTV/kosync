@@ -38,7 +38,7 @@ type Config struct {
 
 func NewConfig(fallback *Config) *Config {
 	// Load environment variables from file
-	_ = godotenv.Overload(ConfigFileName)
+	_ = godotenv.Load(ConfigFileName)
 
 	conf := Config{}
 
