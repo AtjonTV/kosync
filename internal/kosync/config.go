@@ -37,12 +37,43 @@ type Config struct {
 }
 
 func NewConfig(fallback *Config) *Config {
+	// Load environment variables from file
 	_ = godotenv.Overload(ConfigFileName)
 
 	conf := Config{}
 
+	loadConfigFromEnvironment(&conf)
+
+	if fallback != nil {
+		conf.EnableWebUi = conf.EnableWebUi || fallback.EnableWebUi
+	}
+
+	if conf.DebugLog {
+		log.Debugf("Loaded Config: %+v\n", conf)
+	}
+
+	return &conf
+}
+
+func GetEnv(key, fallback string) string {
+	value := os.Getenv(key)
+	if len(value) == 0 {
+		return fallback
+	}
+	return value
+}
+
+func GetEnvBool(key string, fallback bool) bool {
+	if s, err := strconv.ParseBool(strings.ToLower(GetEnv(key, strconv.FormatBool(fallback)))); err != nil {
+		return fallback
+	} else {
+		return s
+	}
+}
+
+func loadConfigFromEnvironment(conf *Config) {
 	// Get a referential (pointer) reflection of conf, without "&" it would get a copy
-	confReflect := reflect.ValueOf(&conf)
+	confReflect := reflect.ValueOf(conf)
 	// Writable instance of confReflect
 	confReValue := confReflect.Elem()
 	for i := 0; i < confReValue.NumField(); i++ {
@@ -85,31 +116,5 @@ func NewConfig(fallback *Config) *Config {
 				panic(fmt.Sprintf("Config: Unsupported type '%s' of field '%s'.", fieldType.Type.Name(), fieldType.Name))
 			}
 		}
-	}
-
-	if fallback != nil {
-		conf.EnableWebUi = conf.EnableWebUi || fallback.EnableWebUi
-	}
-
-	if conf.DebugLog {
-		log.Debugf("Loaded Config: %+v\n", conf)
-	}
-
-	return &conf
-}
-
-func GetEnv(key, fallback string) string {
-	value := os.Getenv(key)
-	if len(value) == 0 {
-		return fallback
-	}
-	return value
-}
-
-func GetEnvBool(key string, fallback bool) bool {
-	if s, err := strconv.ParseBool(strings.ToLower(GetEnv(key, strconv.FormatBool(fallback)))); err != nil {
-		return fallback
-	} else {
-		return s
 	}
 }
