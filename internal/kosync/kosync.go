@@ -99,6 +99,7 @@ func Run() {
 		ServerHeader:            "KOsync (https://git.obth.eu/atjontv/kosync)",
 		EnableTrustedProxyCheck: config.EnableTrustedProxies,
 		TrustedProxies:          strings.Split(config.TrustedProxies, ","),
+		ProxyHeader:             fiber.HeaderXForwardedFor,
 	})
 	defer func(app *fiber.App) {
 		err := app.Shutdown()
