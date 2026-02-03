@@ -28,7 +28,7 @@ const ConfigFieldEnableWebUi = "ENABLE_WEBUI"
 type Config struct {
 	DatabaseFile         string `env:"DATABASE_FILE" default:"./kosync.db"`
 	ListenAddress        string `env:"LISTEN_ADDRESS" default:":8080"`
-	PrintDebugLog        bool   `env:"DEBUG_LOG" default:"false"`
+	DebugLog             bool   `env:"DEBUG_LOG" default:"false"`
 	DisableRegistration  bool   `env:"DISABLE_REGISTRATION" default:"false"`
 	EnableWebUi          bool   `env:"ENABLE_WEBUI" default:"false"`
 	EnableTrustedProxies bool   `env:"ENABLE_TRUSTED_PROXIES" default:"false"`
@@ -81,7 +81,7 @@ func NewConfig(fallback *Config) *Config {
 		conf.EnableWebUi = conf.EnableWebUi || fallback.EnableWebUi
 	}
 
-	if conf.PrintDebugLog {
+	if conf.DebugLog {
 		log.Debugf("Loaded Config: %+v\n", conf)
 	}
 

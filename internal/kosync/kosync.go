@@ -36,7 +36,7 @@ type Kosync struct {
 
 func (app *Kosync) PrintDebug(marker, requestId, s string) {
 	// Only print debugs when enabled
-	if app.Config.PrintDebugLog {
+	if app.Config.DebugLog {
 		log.Debugf("RequestId=%s, Module=%s: %s\n", requestId, marker, s)
 	}
 }
