@@ -12,6 +12,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"git.obth.eu/atjontv/kosync/internal/legacy"
 	"git.obth.eu/atjontv/kosync/internal/webui"
@@ -94,8 +95,10 @@ func Run() {
 	}
 
 	app := fiber.New(fiber.Config{
-		AppName:      fmt.Sprintf("KOsync v%s", Version),
-		ServerHeader: "KOsync (https://git.obth.eu/atjontv/kosync)",
+		AppName:                 fmt.Sprintf("KOsync v%s", Version),
+		ServerHeader:            "KOsync (https://git.obth.eu/atjontv/kosync)",
+		EnableTrustedProxyCheck: config.EnableTrustedProxies,
+		TrustedProxies:          strings.Split(config.TrustedProxies, ","),
 	})
 	defer func(app *fiber.App) {
 		err := app.Shutdown()
