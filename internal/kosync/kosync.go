@@ -60,7 +60,7 @@ func Run() {
 		EnableWebUi: enableWeb != nil && *enableWeb,
 	})
 
-	db, err := NewDatabase()
+	db, err := NewDatabase(config)
 	if err != nil {
 		panic(err)
 	}

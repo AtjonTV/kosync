@@ -20,8 +20,8 @@ type Database struct {
 	currentSchema int
 }
 
-func NewDatabase() (*Database, error) {
-	rawDb, err := sql.Open("sqlite", GetEnv("DATABASE_FILE", DatabaseFileName))
+func NewDatabase(config *Config) (*Database, error) {
+	rawDb, err := sql.Open("sqlite", config.DatabaseFile)
 	if err != nil {
 		return nil, err
 	}
