@@ -1,7 +1,9 @@
 package kosync
 
 import (
+	"fmt"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -11,29 +13,66 @@ import (
 
 const ConfigFileName = "./kosync.env"
 
-const ConfigFieldDatabaseFile = "DATABASE_FILE"
+// ConfigFieldListenAddress TODO: Remove when 'legacy' is removed
 const ConfigFieldListenAddress = "LISTEN_ADDRESS"
+
+// ConfigFieldDebugLog TODO: Remove when 'legacy' is removed
 const ConfigFieldDebugLog = "DEBUG_LOG"
+
+// ConfigFieldDisableRegistration TODO: Remove when 'legacy' is removed
 const ConfigFieldDisableRegistration = "DISABLE_REGISTRATION"
+
+// ConfigFieldEnableWebUi TODO: Remove when 'legacy' is removed
 const ConfigFieldEnableWebUi = "ENABLE_WEBUI"
 
 type Config struct {
-	DatabaseFile        string
-	ListenAddress       string
-	PrintDebugLog       bool
-	DisableRegistration bool
-	EnableWebUi         bool
+	DatabaseFile        string `env:"DATABASE_FILE" default:"./kosync.db"`
+	ListenAddress       string `env:"LISTEN_ADDRESS" default:":8080"`
+	PrintDebugLog       bool   `env:"DEBUG_LOG" default:"false"`
+	DisableRegistration bool   `env:"DISABLE_REGISTRATION" default:"false"`
+	EnableWebUi         bool   `env:"ENABLE_WEBUI" default:"false"`
 }
 
 func NewConfig(fallback *Config) *Config {
 	_ = godotenv.Overload(ConfigFileName)
 
-	conf := &Config{
-		DatabaseFile:        GetEnv(ConfigFieldDatabaseFile, "./kosync.db"),
-		ListenAddress:       GetEnv(ConfigFieldListenAddress, ":8080"),
-		PrintDebugLog:       GetEnvBool(ConfigFieldDebugLog, false),
-		DisableRegistration: GetEnvBool(ConfigFieldDisableRegistration, false),
-		EnableWebUi:         GetEnvBool(ConfigFieldEnableWebUi, false),
+	conf := Config{}
+
+	sv := reflect.ValueOf(&conf)
+	e := sv.Elem()
+	for i := 0; i < e.NumField(); i++ {
+		field := e.Field(i)
+		fieldType := e.Type().Field(i)
+		if alias, ok := fieldType.Tag.Lookup("env"); ok {
+			if alias == "" {
+				continue
+			}
+			if field.Kind() == reflect.Bool {
+				fieldFallback := false
+				if def, ok := fieldType.Tag.Lookup("default"); ok {
+					fieldFallback, _ = strconv.ParseBool(strings.ToLower(def))
+				}
+				if field.CanSet() {
+					field.SetBool(GetEnvBool(alias, fieldFallback))
+				} else {
+					println("Cannot set bool value for field: " + fieldType.Name)
+				}
+				continue
+			} else if field.Kind() == reflect.String {
+				fieldFallback := ""
+				if def, ok := fieldType.Tag.Lookup("default"); ok {
+					fieldFallback = def
+				}
+				if field.CanSet() {
+					field.SetString(GetEnv(alias, fieldFallback))
+				} else {
+					println("Cannot set string value for field: " + fieldType.Name)
+				}
+				continue
+			} else {
+				panic(fmt.Sprintf("Config: Unsupported type '%s' of field '%s'.", fieldType.Type.Name(), fieldType.Name))
+			}
+		}
 	}
 
 	if fallback != nil {
@@ -41,10 +80,10 @@ func NewConfig(fallback *Config) *Config {
 	}
 
 	if conf.PrintDebugLog {
-		log.Debugf("Loaded Config: %+v\n", *conf)
+		log.Debugf("Loaded Config: %+v\n", conf)
 	}
 
-	return conf
+	return &conf
 }
 
 func GetEnv(key, fallback string) string {
