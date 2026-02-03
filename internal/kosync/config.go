@@ -41,33 +41,42 @@ func NewConfig(fallback *Config) *Config {
 
 	conf := Config{}
 
-	sv := reflect.ValueOf(&conf)
-	e := sv.Elem()
-	for i := 0; i < e.NumField(); i++ {
-		field := e.Field(i)
-		fieldType := e.Type().Field(i)
+	// Get a referential (pointer) reflection of conf, without "&" it would get a copy
+	confReflect := reflect.ValueOf(&conf)
+	// Writable instance of confReflect
+	confReValue := confReflect.Elem()
+	for i := 0; i < confReValue.NumField(); i++ {
+		field := confReValue.Field(i)
+		fieldType := confReValue.Type().Field(i)
+		// Only process fields with the env tag, ignore all others
 		if alias, ok := fieldType.Tag.Lookup("env"); ok {
+			// Require a tag to be actually present
 			if alias == "" {
 				continue
 			}
+
 			if field.Kind() == reflect.Bool {
-				fieldFallback := false
+				fieldDefault := false
+				// Try to get a default
 				if def, ok := fieldType.Tag.Lookup("default"); ok {
-					fieldFallback, _ = strconv.ParseBool(strings.ToLower(def))
+					fieldDefault, _ = strconv.ParseBool(strings.ToLower(def))
 				}
+				// Set if possible
 				if field.CanSet() {
-					field.SetBool(GetEnvBool(alias, fieldFallback))
+					field.SetBool(GetEnvBool(alias, fieldDefault))
 				} else {
 					println("Cannot set bool value for field: " + fieldType.Name)
 				}
 				continue
 			} else if field.Kind() == reflect.String {
-				fieldFallback := ""
+				fieldDefault := ""
+				// Try to get a default
 				if def, ok := fieldType.Tag.Lookup("default"); ok {
-					fieldFallback = def
+					fieldDefault = def
 				}
+				// Set if possible
 				if field.CanSet() {
-					field.SetString(GetEnv(alias, fieldFallback))
+					field.SetString(GetEnv(alias, fieldDefault))
 				} else {
 					println("Cannot set string value for field: " + fieldType.Name)
 				}
