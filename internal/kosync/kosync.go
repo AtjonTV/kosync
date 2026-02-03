@@ -100,6 +100,7 @@ func Run() {
 		EnableTrustedProxyCheck: config.EnableTrustedProxies,
 		TrustedProxies:          strings.Split(config.TrustedProxies, ","),
 		ProxyHeader:             fiber.HeaderXForwardedFor,
+		EnableIPValidation:      config.EnableIPValidation,
 	})
 	defer func(app *fiber.App) {
 		err := app.Shutdown()

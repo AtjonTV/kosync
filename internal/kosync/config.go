@@ -33,6 +33,7 @@ type Config struct {
 	EnableWebUi          bool   `env:"ENABLE_WEBUI" default:"false"`
 	EnableTrustedProxies bool   `env:"ENABLE_TRUSTED_PROXIES" default:"false"`
 	TrustedProxies       string `env:"TRUSTED_PROXIES" default:""`
+	EnableIPValidation   bool   `env:"ENABLE_IP_VALIDATION" default:"false"` // Only useful in combination with EnableTrustedProxies
 }
 
 func NewConfig(fallback *Config) *Config {
