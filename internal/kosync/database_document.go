@@ -8,6 +8,7 @@ package kosync
 
 import (
 	"database/sql"
+	"errors"
 	"time"
 )
 
@@ -140,8 +141,16 @@ func (db *Database) GetDocumentHistory(ownerId, documentId string) ([]Document, 
 }
 
 func (db *Database) CreateOrUpdateDocument(doc *Document) error {
-	err := db.createHistoryEntry(doc)
+	t, err := db.rawDb.Begin()
 	if err != nil {
+		return err
+	}
+	err = db.prepareHistoryCreationInTransaction(t, doc)
+	if err != nil {
+		rbErr := t.Rollback()
+		if rbErr != nil {
+			return errors.Join(err, rbErr)
+		}
 		return err
 	}
 	var updateDocument = `
@@ -158,7 +167,7 @@ func (db *Database) CreateOrUpdateDocument(doc *Document) error {
                        updated_at = ?;
     `
 	now := time.Now().Unix()
-	_, err = db.rawDb.Exec(
+	_, err = t.Exec(
 		updateDocument,
 		doc.Id,
 		doc.OwnerId,
@@ -178,10 +187,17 @@ func (db *Database) CreateOrUpdateDocument(doc *Document) error {
 		doc.LastReadAt,
 		now,
 	)
-	return err
+	if err != nil {
+		rbErr := t.Rollback()
+		if rbErr != nil {
+			return errors.Join(err, rbErr)
+		}
+		return err
+	}
+	return t.Commit()
 }
 
-func (db *Database) createHistoryEntry(doc *Document) error {
+func (db *Database) prepareHistoryCreationInTransaction(tx *sql.Tx, doc *Document) error {
 	_, found, err := db.FindDocumentById(doc.OwnerId, doc.Id)
 	if !found || err != nil {
 		return err
@@ -203,6 +219,6 @@ func (db *Database) createHistoryEntry(doc *Document) error {
         WHERE id = ? AND owner_id = ?;
     `
 	now := time.Now().Unix()
-	_, err = db.rawDb.Exec(copyToHistory, now, doc.Id, doc.OwnerId)
+	_, err = tx.Exec(copyToHistory, now, doc.Id, doc.OwnerId)
 	return err
 }
