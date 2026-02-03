@@ -26,7 +26,7 @@ import (
 )
 
 // Version NOTE: Must be the same as "sonar.projectVersion" in ../../sonar-project.properties
-const Version = "2026.05.0-dev.3"
+const Version = "2026.05.0-dev.4"
 
 type Kosync struct {
 	LegacyDb *legacy.LegacyDb
