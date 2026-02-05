@@ -12,8 +12,9 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
-	"sync"
+	"strings"
 
+	"git.obth.eu/atjontv/kosync/internal/legacy"
 	"git.obth.eu/atjontv/kosync/internal/webui"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
@@ -25,17 +26,17 @@ import (
 )
 
 // Version NOTE: Must be the same as "sonar.projectVersion" in ../../sonar-project.properties
-const Version = "2026.04.1"
+const Version = "2026.05.0-dev.4"
 
 type Kosync struct {
-	Db     Database
-	DbLock sync.Mutex
-	DbFile string
+	LegacyDb *legacy.LegacyDb
+	Config   *Config
+	Db       *Database
 }
 
 func (app *Kosync) PrintDebug(marker, requestId, s string) {
 	// Only print debugs when enabled
-	if app.Db.Config.DebugLog {
+	if app.Config.DebugLog {
 		log.Debugf("RequestId=%s, Module=%s: %s\n", requestId, marker, s)
 	}
 }
@@ -53,50 +54,53 @@ func Run() {
 	log.Info("Copyright 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later.")
 	log.Info("Obtain the Source Code at https://git.obth.eu/atjontv/kosync")
 
-	restoreFile := flag.String("restore", "", "Specify a .bak file to restore")
-	makeBackup := flag.Bool("backup", false, "Create a .bak file before startup")
 	enableWeb := flag.Bool("webui", false, "Enable the web interface at /web")
 	flag.Parse()
 
-	if restoreFile != nil && len(*restoreFile) > 0 {
-		if err := RestoreDatabase(*restoreFile); err != nil {
-			panic(err)
-		}
-	}
+	config := NewConfig(&Config{
+		EnableWebUi: enableWeb != nil && *enableWeb,
+	})
 
-	// Try to find the database or create a new one
-	foundDbFile, db, err := LoadOrInitDatabase()
+	db, err := NewDatabase(config)
 	if err != nil {
 		panic(err)
 	}
 
 	koapp := Kosync{
-		Db:     db,
-		DbFile: foundDbFile,
-		DbLock: sync.Mutex{},
+		LegacyDb: legacy.New(legacy.LegacyConfig{}),
+		Config:   config,
+		Db:       db,
 	}
 	defer func(koapp *Kosync) {
-		_ = koapp.PersistDatabase()
+		_ = koapp.Db.Close()
+		if koapp.LegacyDb != nil {
+			_ = koapp.LegacyDb.PersistDatabase()
+		}
 	}(&koapp)
 
-	if err := koapp.MigrateSchema(); err != nil {
-		panic(err)
-	}
-
-	// Persist migrated database
-	if err := koapp.PersistDatabase(); err != nil {
-		panic(err)
-	}
-
-	if koapp.Db.Config.BackupOnStartup || (makeBackup != nil && *makeBackup) {
-		if err := koapp.BackupDatabase(); err != nil {
-			koapp.PrintError("Backup", "-", fmt.Sprintf("Failed to create backup, continuing startup: %v", err))
+	if koapp.LegacyDb != nil && koapp.LegacyDb.CheckMigrationToSqlite() {
+		err := MigrateData(koapp.LegacyDb, koapp.Db)
+		if err != nil {
+			panic(err)
 		}
+
+		// persist schema version 99
+		err = koapp.LegacyDb.PersistDatabase()
+		if err != nil {
+			panic(err)
+		}
+
+		// apply the migrated config
+		koapp.Config = NewConfig(nil)
 	}
 
 	app := fiber.New(fiber.Config{
-		AppName:      fmt.Sprintf("KOsync v%s", Version),
-		ServerHeader: "KOsync (https://git.obth.eu/atjontv/kosync)",
+		AppName:                 fmt.Sprintf("KOsync v%s", Version),
+		ServerHeader:            "KOsync (https://git.obth.eu/atjontv/kosync)",
+		EnableTrustedProxyCheck: config.EnableTrustedProxies,
+		TrustedProxies:          strings.Split(config.TrustedProxies, ","),
+		ProxyHeader:             fiber.HeaderXForwardedFor,
+		EnableIPValidation:      config.EnableIPValidation,
 	})
 	defer func(app *fiber.App) {
 		err := app.Shutdown()
@@ -113,7 +117,7 @@ func Run() {
 	}))
 	app.Use(koapp.NewAuthMiddleware())
 
-	if koapp.Db.Config.WebUi || (enableWeb != nil && *enableWeb) {
+	if koapp.Config.EnableWebUi {
 		app.Use("/api/auth.basic", basicauth.New(basicauth.Config{
 			Realm: "KOsync",
 			Authorizer: func(user string, pass string) bool {
@@ -122,14 +126,15 @@ func Run() {
 				// bearer:disable go_lang_weak_hash_md5
 				pwHash := fmt.Sprintf("%x", md5.Sum([]byte(pass)))
 
-				userData, found := koapp.Db.Users[user]
-				if !found {
+				userData, found, _ := koapp.Db.FindUserByUsername(user)
+				//userData, found := koapp.LegacyDb.Db.Users[user]
+				if !found || userData == nil {
 					return false
 				}
 
 				return userData.Password == pwHash
 			},
-			ContextUsername: "current_user",
+			ContextUsername: "current_user_name",
 		}))
 
 		app.Use("/web", filesystem.New(filesystem.Config{
@@ -156,7 +161,7 @@ func Run() {
 	app.Put("/api/documents.update", koapp.ApiPutDocument)
 	app.Get("/api/auth.basic", koapp.ApiAuthBasic)
 
-	if err = app.Listen(koapp.Db.Config.ListenAddress); err != nil {
+	if err := app.Listen(koapp.Config.ListenAddress); err != nil {
 		panic(err)
 	}
 }

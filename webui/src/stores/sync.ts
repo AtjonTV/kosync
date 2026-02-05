@@ -14,7 +14,7 @@ export const useSyncStore = defineStore('sync', () => {
 
   async function doSync(forceRefresh = false) {
     const now = Date.now();
-    if (!forceRefresh && (now - sync.value.lastSync < 60_000)) return;
+    if (!forceRefresh && (now - sync.value.lastSync < 10_000)) return;
 
     const {data: documents, error} = await fetchApi<SyncDoc[]>("/api/documents.all", {
       method: "GET"

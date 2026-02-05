@@ -6,81 +6,117 @@
 
 package kosync
 
-import "fmt"
-
-const (
-	SchemaVersion = 6
+import (
+	"database/sql"
+	"strings"
+	"time"
 )
 
-func (app *Kosync) MigrateSchema() error {
-	app.PrintDebug("DB", "-", "Checking for Database schema migrations.")
-
-	migrations := map[int]interface{}{
-		1: func() {
-			// Add history to users
-			for id, user := range app.Db.Users {
-				app.Db.Users[id] = UserData{
-					Username:  user.Username,
-					Password:  user.Password,
-					Documents: user.Documents,
-					History:   make(map[string]HistoryData),
-				}
-			}
-		},
-		2: func() {
-			// Default backup encoding to msgpack
-			app.Db.Config.BackupEncodingType = BackupEncodingTypeMsgpack
-		},
-		3: func() {
-			// Disable backup on startup
-			app.Db.Config.BackupOnStartup = false
-		},
-		4: func() {
-			// Add document id to documents
-			for userId, user := range app.Db.Users {
-				for docId, doc := range user.Documents {
-					app.Db.Users[userId].Documents[docId] = FileData{
-						DocumentId:   docId,
-						ProgressData: doc.ProgressData,
-						Timestamp:    doc.Timestamp,
-					}
-				}
-			}
-		},
-		5: func() {
-			// Disable webui
-			app.Db.Config.WebUi = false
-		},
-		6: func() {
-			// Set an empty pretty name to documents (because string can't be nil)
-			for userId, user := range app.Db.Users {
-				for docId, doc := range user.Documents {
-					app.Db.Users[userId].Documents[docId] = FileData{
-						DocumentId:   docId,
-						ProgressData: doc.ProgressData,
-						Timestamp:    doc.Timestamp,
-						PrettyName:   "",
-					}
-				}
-			}
-		},
+func (db *Database) checkAndRunMigrations() error {
+	versionsRes, err := db.rawDb.Query("SELECT version FROM schema_versions ORDER BY version DESC LIMIT 1;")
+	if err != nil && !strings.Contains(err.Error(), "no such table: schema_versions") {
+		return err
 	}
-
-	if app.Db.Schema < SchemaVersion {
-		app.PrintDebug("DB", "-", "Migrations are available, performing backup.")
-		if err := app.BackupDatabase(); err != nil {
+	defer func(versionsRes *sql.Rows) {
+		if versionsRes != nil {
+			_ = versionsRes.Close()
+		}
+	}(versionsRes)
+	var currentVersion int
+	if versionsRes != nil && versionsRes.Next() {
+		if err := versionsRes.Scan(&currentVersion); err != nil {
 			return err
 		}
 	} else {
-		app.PrintDebug("DB", "-", "No Migrations to do.")
-		return nil
+		currentVersion = 0
+	}
+	if currentVersion < SchemaVersion {
+		db.currentSchema = currentVersion
+
+		for ver := currentVersion + 1; ver <= SchemaVersion; ver++ {
+			if err := db.migrateTo(ver); err != nil {
+				return err
+			}
+		}
 	}
 
-	for ver, migrate := range migrations {
-		if app.Db.Schema < ver {
-			app.PrintDebug("DB", "-", fmt.Sprintf("Migrating Schema from %d to %d", app.Db.Schema, ver))
-			migrate.(func())()
-			app.Db.Schema = ver
+	return nil
+}
+
+func (db *Database) migrateTo(targetVersion int) error {
+	var insertSchemaVersion = `INSERT INTO schema_versions (version, installed_at) VALUES (?, ?)`
+
+	if targetVersion == 100 {
+		var createSchemaVersionTable = `
+            CREATE TABLE IF NOT EXISTS schema_versions (
+                version INTEGER PRIMARY KEY,
+                installed_at INTEGER NOT NULL
+            );
+        `
+		if _, err := db.rawDb.Exec(createSchemaVersionTable); err != nil {
+			return err
+		}
+
+		var createUsersTable = `
+            CREATE TABLE IF NOT EXISTS users (
+                id TEXT PRIMARY KEY,
+                username TEXT UNIQUE,
+                password TEXT,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER,
+                deleted_at INTEGER
+            );
+        `
+		if _, err := db.rawDb.Exec(createUsersTable); err != nil {
+			return err
+		}
+
+		var createDocumentsTable = `
+            CREATE TABLE IF NOT EXISTS documents (
+                id TEXT NOT NULL,
+                owner_id TEXT NOT NULL,
+                
+                title TEXT,
+                current_location TEXT,
+                progress FLOAT,
+                last_read_on_device TEXT,
+                last_read_on_device_id TEXT,
+                last_read_at INTEGER,
+                
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER,
+                deleted_at INTEGER,
+                PRIMARY KEY (id, owner_id)
+            );
+        `
+		if _, err := db.rawDb.Exec(createDocumentsTable); err != nil {
+			return err
+		}
+
+		var createDocumentHistoryTable = `
+            CREATE TABLE IF NOT EXISTS document_history (
+                id TEXT NOT NULL,
+                owner_id TEXT NOT NULL,
+                last_read_at INTEGER NOT NULL,
+                
+                title TEXT,
+                current_location TEXT,
+                progress FLOAT,
+                last_read_on_device TEXT,
+                last_read_on_device_id TEXT,
+                
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER,
+                deleted_at INTEGER,
+                PRIMARY KEY (id, owner_id, last_read_at)
+            );
+        `
+		if _, err := db.rawDb.Exec(createDocumentHistoryTable); err != nil {
+			return err
+		}
+
+		if _, err := db.rawDb.Exec(insertSchemaVersion, 100, time.Now().Unix()); err != nil {
+			return err
 		}
 	}
 

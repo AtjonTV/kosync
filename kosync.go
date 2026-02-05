@@ -6,9 +6,7 @@
 
 package main
 
-import (
-	"git.obth.eu/atjontv/kosync/internal/kosync"
-)
+import "git.obth.eu/atjontv/kosync/internal/kosync"
 
 //go:generate go generate internal/webui/webui.go
 

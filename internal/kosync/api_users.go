@@ -13,12 +13,12 @@ import (
 )
 
 func (app *Kosync) UsersAuth(c *fiber.Ctx) error {
-	app.PrintDebug("Users", c.Locals("requestid").(string), fmt.Sprintf("Login of user '%s'", c.Locals("current_user").(string)))
+	app.PrintDebug("Users", c.Locals("requestid").(string), fmt.Sprintf("Login of user '%s'", c.Locals("current_user_name").(string)))
 	return c.SendStatus(fiber.StatusOK)
 }
 
 func (app *Kosync) UsersCreate(c *fiber.Ctx) error {
-	if app.Db.Config.DisableRegistration {
+	if app.Config.DisableRegistration {
 		return fiber.ErrPaymentRequired // KORSS also returns 402
 	}
 
@@ -32,7 +32,7 @@ func (app *Kosync) UsersCreate(c *fiber.Ctx) error {
 	}
 
 	app.PrintDebug("Users", c.Locals("requestid").(string), fmt.Sprintf("Signup of new user '%s'", data.Username))
-	if err := app.AddUser(data.Username, data.Password); err != nil {
+	if _, err := app.Db.CreateUser(data.Username, data.Password); err != nil {
 		return err
 	}
 

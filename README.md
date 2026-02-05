@@ -20,7 +20,7 @@ You may choose KOsync over [KORSS](https://github.com/koreader/koreader-sync-ser
 - Actively maintained and open for feature requests
 - Simple [Web Interface](webui/README.md) (Prototype)
 - Written in Go and deploys as a single executable
-- Single JSON file as database plus configuration instead of Redis
+- Simple SQLite database and ENV configuration instead of Redis
 
 Additional differences that should be known:
 
@@ -37,9 +37,7 @@ All you need to run KOsync is bundled into a single executable.
 See [docs/build.md](docs/build.md) for build and deployment instructions.
 
 **Simple Datastore**  
-KOsync stores all data, both configuration and user data, in a single JSON file.
-
-The Schema of the file is shown and explained in the next section.
+KOsync stores all user data in an SQLite database while configuration is stored in an environment file.
 
 Users can, after entering the custom URL, use the KOReader registration to signup.  
 After that, they push and pull progress states.
@@ -48,13 +46,37 @@ Documents are uploaded by KOReader during progress push.
 The push must be triggered by hand or configured to be done automatically when switching pages.  
 Consult the KOReader documentation for the configuration options.
 
-### Database File
+### Configuration
+
+See [docs/config.md](docs/config.md)
+
+### Database
 
 See [docs/database.md](docs/database.md)
 
-### Backup Files
+### Backups
 
-See [docs/backups.md](docs/backups.md)
+Backup and Restore can be done manually or with automation tools made for SQLite.  
+Stop KOsync and copy the database file to create a backup or replace the database to restore.
+
+In the future KOsync will provide a backup and restore mechanism.
+
+KOsync uses [modernc sqlite](https://pkg.go.dev/modernc.org/sqlite#Backup) which supports backup and restore natively.
+
+(Code Example of the API for later reference)
+```go
+type SQLiteBackuper interface {
+    NewBackup(string) (*sqlite.Backup, error)
+    NewRestore(string) (*sqlite.Backup, error)
+}
+
+c, _ := db.Conn(context.Background())
+c.Raw(func(driverConn any) error {
+    bak, err := driverConn.(SQLiteBackuper).NewBackup("pathToBackupTo.db")
+    bakCon, err := bak.Commit()
+    err = bak.Finish()
+})
+```
 
 ### API Specification
 

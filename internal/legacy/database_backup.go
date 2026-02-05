@@ -1,10 +1,10 @@
 //
-// File:        internal/kosync/database_backup.go
+// File:        internal/legacy/database_backup.go
 // Project:     https://git.obth.eu/atjontv/kosync
 // Copyright:   © 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
 //
 
-package kosync
+package legacy
 
 import (
 	"encoding/json"
@@ -26,26 +26,26 @@ const (
 	BackupEncodingTypeMsgpack = "msgpack"
 )
 
-func (app *Kosync) BackupDatabase() error {
-	if err := app.PersistDatabase(); err != nil {
+func (db *LegacyDb) BackupDatabase() error {
+	if err := db.PersistDatabase(); err != nil {
 		return err
 	}
 
-	app.DbLock.Lock()
-	defer app.DbLock.Unlock()
+	db.DbLock.Lock()
+	defer db.DbLock.Unlock()
 
 	var contentType = ""
 	var binaryData []byte
 	var err error
 
-	if app.Db.Config.BackupEncodingType == BackupEncodingTypeJson || app.Db.Schema < 2 {
-		binaryData, err = json.Marshal(app.Db)
+	if db.Db.Config.BackupEncodingType == BackupEncodingTypeJson || db.Db.Schema < 2 {
+		binaryData, err = json.Marshal(db.Db)
 		contentType = "application/json"
-	} else if app.Db.Config.BackupEncodingType == BackupEncodingTypeMsgpack {
-		binaryData, err = msgpack.Marshal(app.Db)
+	} else if db.Db.Config.BackupEncodingType == BackupEncodingTypeMsgpack {
+		binaryData, err = msgpack.Marshal(db.Db)
 		contentType = "application/vnd.msgpack"
 	} else {
-		return fmt.Errorf("can not create database backup for unknown content type '%s'", app.Db.Config.BackupEncodingType)
+		return fmt.Errorf("can not create database backup for unknown content type '%s'", db.Db.Config.BackupEncodingType)
 	}
 	if err != nil {
 		return err
@@ -58,17 +58,17 @@ func (app *Kosync) BackupDatabase() error {
 			"App":          "https://git.obth.eu/atjontv/kosync",
 			"Content-Type": contentType,
 			"Created-At":   now.Format(time.RFC3339),
-			"Schema":       fmt.Sprintf("%d", app.Db.Schema),
+			"Schema":       fmt.Sprintf("%d", db.Db.Schema),
 		},
 		Bytes: binaryData,
 	}
 
-	backupFileName := filepath.Join(filepath.Dir(app.DbFile), fmt.Sprintf("database_%s-%s.bak", now.Format(time.DateOnly), now.Format(time.TimeOnly)))
+	backupFileName := filepath.Join(filepath.Dir(db.DbFile), fmt.Sprintf("database_%s-%s.bak", now.Format(time.DateOnly), now.Format(time.TimeOnly)))
 	backupFile, err := os.OpenFile(backupFileName, os.O_CREATE+os.O_RDWR, fs.FileMode(0600))
 	defer func(backupFile *os.File) {
 		err := backupFile.Close()
 		if err != nil {
-			app.PrintDebug("Backup", "-", fmt.Sprintf("Failed to close backup file '%s': %v", backupFileName, err))
+			db.PrintDebug("Backup", "-", fmt.Sprintf("Failed to close backup file '%s': %v", backupFileName, err))
 		}
 	}(backupFile)
 	if err != nil {
@@ -79,7 +79,7 @@ func (app *Kosync) BackupDatabase() error {
 	if err != nil {
 		return err
 	}
-	app.PrintDebug("Backup", "-", fmt.Sprintf("Created backup file '%s'", backupFileName))
+	db.PrintDebug("Backup", "-", fmt.Sprintf("Created backup file '%s'", backupFileName))
 	return nil
 }
 
@@ -133,13 +133,13 @@ func RestoreDatabase(backupFile string) error {
 	}
 
 	log.Println("[Restore]: Restoring the database file")
-	tmpKosync := Kosync{
+	tempDb := LegacyDb{
 		Db:     db,
 		DbLock: sync.Mutex{},
 		DbFile: dbFile,
 	}
 
-	if err := tmpKosync.PersistDatabase(); err != nil {
+	if err := tempDb.PersistDatabase(); err != nil {
 		return err
 	}
 

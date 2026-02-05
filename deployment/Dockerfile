@@ -26,8 +26,6 @@ RUN go build -tags netgo -ldflags='-s -w -extldflags "-static"' -o /out/kosync k
 # 2) Runtime stage
 FROM alpine:3.23.3
 
-WORKDIR /app
-
 # Install CA certs for HTTPS outbound, if needed
 RUN apk add --no-cache ca-certificates && update-ca-certificates
 
@@ -38,5 +36,6 @@ COPY --from=builder /out/kosync /app/kosync
 EXPOSE 8080
 
 VOLUME /data
+WORKDIR /data
 
 ENTRYPOINT ["/app/kosync"]
