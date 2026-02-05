@@ -22,7 +22,6 @@ func (app *Kosync) SyncsPostProgress(c *fiber.Ctx) error {
 	doc := DocumentDataToNew(&data, c.Locals("current_user_id").(string))
 
 	app.PrintDebug("Syncs", c.Locals("requestid").(string), fmt.Sprintf("User '%s' sent progress for document '%s'", c.Locals("current_user_name").(string), data.Document))
-	//if err := app.LegacyDb.AddOrUpdateDocument(c.Locals("current_user_name").(string), data); err != nil {
 	if err := app.Db.CreateOrUpdateDocument(&doc); err != nil {
 		return err
 	}
@@ -38,7 +37,6 @@ func (app *Kosync) SyncsGetProgress(c *fiber.Ctx) error {
 	app.PrintDebug("Syncs", c.Locals("requestid").(string), fmt.Sprintf("User '%s' requested progress of document '%s'", c.Locals("current_user_name").(string), documentId))
 
 	// Find document
-	//docData, found := app.LegacyDb.GetUser(c.Locals("current_user_name").(string)).Documents[documentId]
 	docData, found, err := app.Db.FindDocumentById(c.Locals("current_user_id").(string), documentId)
 	if err != nil {
 		return err

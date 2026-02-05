@@ -14,7 +14,6 @@ import (
 	"net/http"
 	"strings"
 
-	"git.obth.eu/atjontv/kosync/internal/legacy"
 	"git.obth.eu/atjontv/kosync/internal/webui"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
@@ -29,9 +28,8 @@ import (
 const Version = "2026.05.0"
 
 type Kosync struct {
-	LegacyDb *legacy.LegacyDb
-	Config   *Config
-	Db       *Database
+	Config *Config
+	Db     *Database
 }
 
 func (app *Kosync) PrintDebug(marker, requestId, s string) {
@@ -67,32 +65,12 @@ func Run() {
 	}
 
 	koapp := Kosync{
-		LegacyDb: legacy.New(legacy.LegacyConfig{}),
-		Config:   config,
-		Db:       db,
+		Config: config,
+		Db:     db,
 	}
 	defer func(koapp *Kosync) {
 		_ = koapp.Db.Close()
-		if koapp.LegacyDb != nil {
-			_ = koapp.LegacyDb.PersistDatabase()
-		}
 	}(&koapp)
-
-	if koapp.LegacyDb != nil && koapp.LegacyDb.CheckMigrationToSqlite() {
-		err := MigrateData(koapp.LegacyDb, koapp.Db)
-		if err != nil {
-			panic(err)
-		}
-
-		// persist schema version 99
-		err = koapp.LegacyDb.PersistDatabase()
-		if err != nil {
-			panic(err)
-		}
-
-		// apply the migrated config
-		koapp.Config = NewConfig(nil)
-	}
 
 	app := fiber.New(fiber.Config{
 		AppName:                 fmt.Sprintf("KOsync v%s", Version),
@@ -127,7 +105,6 @@ func Run() {
 				pwHash := fmt.Sprintf("%x", md5.Sum([]byte(pass)))
 
 				userData, found, _ := koapp.Db.FindUserByUsername(user)
-				//userData, found := koapp.LegacyDb.Db.Users[user]
 				if !found || userData == nil {
 					return false
 				}

@@ -6,29 +6,6 @@
 
 package legacy
 
-type Database struct {
-	Schema int                 `json:"schema"`
-	Config ConfigData          `json:"config"`
-	Users  map[string]UserData `json:"users"`
-}
-
-type ConfigData struct {
-	ListenAddress       string `json:"listen_address"`
-	DisableRegistration bool   `json:"disable_registration"`
-	DebugLog            bool   `json:"enable_debug_log"`
-	StoreHistory        bool   `json:"store_history"`
-	BackupEncodingType  string `json:"backup_encoding_type"`
-	BackupOnStartup     bool   `json:"backup_on_startup"`
-	WebUi               bool   `json:"enable_webui"`
-}
-
-type UserData struct {
-	Username  string                 `json:"username"`
-	Password  string                 `json:"password"`
-	Documents map[string]FileData    `json:"documents"`
-	History   map[string]HistoryData `json:"history"`
-}
-
 type ProgressData struct {
 	Progress   string  `json:"progress"`
 	Percentage float32 `json:"percentage"`
@@ -46,8 +23,4 @@ type FileData struct {
 	DocumentId string `json:"document"`
 	Timestamp  int64  `json:"timestamp"`
 	PrettyName string `json:"pretty_name"` // User given name of Document, set via WebUI
-}
-
-type HistoryData struct {
-	DocumentHistory []FileData `json:"document_history"`
 }
