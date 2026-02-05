@@ -11,7 +11,7 @@ import (
 	"encoding/json"
 
 	"git.obth.eu/atjontv/kosync/internal/legacy"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type UiDocumentData struct {
@@ -20,7 +20,7 @@ type UiDocumentData struct {
 	History []legacy.FileData `json:"history"`
 }
 
-func (app *Kosync) ApiGetDocumentsAll(c *fiber.Ctx) error {
+func (app *Kosync) ApiGetDocumentsAll(c fiber.Ctx) error {
 	user, found, err := app.Db.FindUserByUsername(c.Locals("current_user_name").(string))
 	if err != nil {
 		return err
@@ -52,14 +52,14 @@ func (app *Kosync) ApiGetDocumentsAll(c *fiber.Ctx) error {
 	return c.JSON(result)
 }
 
-func (app *Kosync) ApiPutDocument(c *fiber.Ctx) error {
+func (app *Kosync) ApiPutDocument(c fiber.Ctx) error {
 	user, _, err := app.Db.FindUserByUsername(c.Locals("current_user_name").(string))
 	if err != nil {
 		return err
 	}
 
 	var document UiDocumentData
-	if err := c.BodyParser(&document); err != nil {
+	if err := c.Bind().Body(&document); err != nil {
 		return err
 	}
 
@@ -71,7 +71,7 @@ func (app *Kosync) ApiPutDocument(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
-func (app *Kosync) ApiAuthBasic(c *fiber.Ctx) error {
+func (app *Kosync) ApiAuthBasic(c fiber.Ctx) error {
 	user, _, err := app.Db.FindUserByUsername(c.Locals("current_user_name").(string))
 	if err != nil {
 		return err
@@ -82,5 +82,5 @@ func (app *Kosync) ApiAuthBasic(c *fiber.Ctx) error {
 	}
 	bytes, _ := json.Marshal(UserData{user.Username, user.Password})
 	userObj := base64.StdEncoding.EncodeToString(bytes)
-	return c.Redirect("/web?user="+userObj, fiber.StatusTemporaryRedirect)
+	return c.Redirect().Status(fiber.StatusTemporaryRedirect).To("/web?user=" + userObj)
 }

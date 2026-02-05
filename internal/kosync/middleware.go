@@ -10,7 +10,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/requestid"
 )
 
 func (app *Kosync) NewAuthMiddleware() fiber.Handler {
@@ -22,7 +23,7 @@ func (app *Kosync) NewAuthMiddleware() fiber.Handler {
 	}
 
 	// Return new handler
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		doHandle := false
 		for _, url := range enableUrl {
 			if strings.HasPrefix(c.Path(), url) {
@@ -34,8 +35,12 @@ func (app *Kosync) NewAuthMiddleware() fiber.Handler {
 		}
 
 		// get the headers
-		username := c.Get("x-auth-user")
-		password := c.Get("x-auth-key")
+		username := c.Get("x-auth-user", "")
+		password := c.Get("x-auth-key", "")
+
+		if username == "" || password == "" {
+			return fiber.ErrUnauthorized
+		}
 
 		// try to find the user
 		user, found, err := app.Db.FindUserByUsername(username)
@@ -43,19 +48,19 @@ func (app *Kosync) NewAuthMiddleware() fiber.Handler {
 			return err
 		}
 		if !found {
-			app.PrintDebug("Auth", c.Locals("requestid").(string), fmt.Sprintf("Unauthorized request from unknown '%s'", username))
+			app.PrintDebug("Auth", requestid.FromContext(c), fmt.Sprintf("Unauthorized request from unknown '%s'", username))
 			return fiber.ErrUnauthorized
 		}
 
 		// verify the passwords match (both are md5 hashed)
 		if user.Password != password {
-			app.PrintDebug("Auth", c.Locals("requestid").(string), fmt.Sprintf("Unauthorized request from user '%s'", username))
+			app.PrintDebug("Auth", requestid.FromContext(c), fmt.Sprintf("Unauthorized request from user '%s'", username))
 			return fiber.ErrUnauthorized
 		}
 
 		c.Locals("current_user_id", user.Id)
 		c.Locals("current_user_name", user.Username)
-		app.PrintDebug("Auth", c.Locals("requestid").(string), fmt.Sprintf("Authorized user '%s'", username))
+		app.PrintDebug("Auth", requestid.FromContext(c), fmt.Sprintf("Authorized user '%s'", username))
 		return c.Next()
 	}
 }

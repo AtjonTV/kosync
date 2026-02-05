@@ -1,6 +1,9 @@
 package webui
 
-import "embed"
+import (
+	"embed"
+	"io/fs"
+)
 
 //go:generate bun install --cwd ../../webui
 //go:generate bun --cwd ../../webui build-only --base /web --emptyOutDir --outDir ../internal/webui/public
@@ -9,3 +12,11 @@ import "embed"
 
 //go:embed public/*
 var WebUi embed.FS
+
+func WebUiPublic() fs.FS {
+	public, err := fs.Sub(WebUi, "public")
+	if err != nil {
+		panic(err)
+	}
+	return public
+}

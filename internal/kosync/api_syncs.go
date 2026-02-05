@@ -10,18 +10,19 @@ import (
 	"fmt"
 
 	"git.obth.eu/atjontv/kosync/internal/legacy"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/requestid"
 )
 
-func (app *Kosync) SyncsPostProgress(c *fiber.Ctx) error {
+func (app *Kosync) SyncsPostProgress(c fiber.Ctx) error {
 	// Parse payload
 	var data legacy.DocumentData
-	if err := c.BodyParser(&data); err != nil {
+	if err := c.Bind().Body(&data); err != nil {
 		return err
 	}
 	doc := DocumentDataToNew(&data, c.Locals("current_user_id").(string))
 
-	app.PrintDebug("Syncs", c.Locals("requestid").(string), fmt.Sprintf("User '%s' sent progress for document '%s'", c.Locals("current_user_name").(string), data.Document))
+	app.PrintDebug("Syncs", requestid.FromContext(c), fmt.Sprintf("User '%s' sent progress for document '%s'", c.Locals("current_user_name").(string), data.Document))
 	if err := app.Db.CreateOrUpdateDocument(&doc); err != nil {
 		return err
 	}
@@ -29,12 +30,12 @@ func (app *Kosync) SyncsPostProgress(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusOK)
 }
 
-func (app *Kosync) SyncsGetProgress(c *fiber.Ctx) error {
+func (app *Kosync) SyncsGetProgress(c fiber.Ctx) error {
 	documentId := c.Params("document", "-")
 	if documentId == "-" {
 		return fiber.ErrNotFound
 	}
-	app.PrintDebug("Syncs", c.Locals("requestid").(string), fmt.Sprintf("User '%s' requested progress of document '%s'", c.Locals("current_user_name").(string), documentId))
+	app.PrintDebug("Syncs", requestid.FromContext(c), fmt.Sprintf("User '%s' requested progress of document '%s'", c.Locals("current_user_name").(string), documentId))
 
 	// Find document
 	docData, found, err := app.Db.FindDocumentById(c.Locals("current_user_id").(string), documentId)
