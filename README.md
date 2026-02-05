@@ -46,18 +46,20 @@ Documents are uploaded by KOReader during progress push.
 The push must be triggered by hand or configured to be done automatically when switching pages.  
 Consult the KOReader documentation for the configuration options.
 
-### Database File
+### Configuration
+
+See [docs/config.md](docs/config.md)
+
+### Database
 
 See [docs/database.md](docs/database.md)
 
-### Backup Files
+### Backups
 
-Since the SQLite migration, backup and restore functions are no longer available.
-
-Backup and Restore can be done like with any other application that uses SQLite.  
+Backup and Restore can be done manually or with automation tools made for SQLite.  
 Stop KOsync and copy the database file to create a backup or replace the database to restore.
 
-In the future KOsync will provide a backup and restore feature again.
+In the future KOsync will provide a backup and restore mechanism.
 
 KOsync uses [modernc sqlite](https://pkg.go.dev/modernc.org/sqlite#Backup) which supports backup and restore natively.
 

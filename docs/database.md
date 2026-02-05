@@ -1,9 +1,9 @@
 # Database
 
-Since version `2026.05.0` KOSync uses a SQLite database for data and an environment file for configuration.
+KOsync uses a single SQLite file for all user data.  
+You will have to create backups of the database manually for now, KOsync will support automatic backups in the future.
 
-The `kosync.db` has the following Schema:
-
+## Schema
 ```sql
 CREATE TABLE IF NOT EXISTS schema_versions (
     version INTEGER PRIMARY KEY,
@@ -51,13 +51,4 @@ CREATE TABLE IF NOT EXISTS document_history (
     deleted_at INTEGER,
     PRIMARY KEY (id, owner_id, last_read_at)
 );
-```
-
-The `kosync.env` can have the following values:
-```
-LISTEN_ADDRESS=:8080
-ENABLE_DEBUG_LOG=true
-DISABLE_REGISTRATION=false
-ENABLE_WEBUI=false
-
 ```
