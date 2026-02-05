@@ -93,7 +93,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Initial Release
 
-[Unreleased]: https://git.obth.eu/atjontv/kosync/compare/v2026.04.1...main
+[Unreleased]: https://git.obth.eu/atjontv/kosync/compare/v2026.05.0...main
+[2026.05.0]: https://git.obth.eu/atjontv/kosync/compare/v2026.04.1...v2026.05.0
 [2026.04.1]: https://git.obth.eu/atjontv/kosync/compare/v2026.04.0...v2026.04.1
 [2026.04.0]: https://git.obth.eu/atjontv/kosync/compare/v2026.03.1...v2026.04.0
 [2026.03.1]: https://git.obth.eu/atjontv/kosync/compare/v2026.03.0...v2026.03.1
