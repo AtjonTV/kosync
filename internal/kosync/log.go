@@ -6,7 +6,12 @@
 
 package kosync
 
-import "github.com/gofiber/fiber/v3/log"
+import (
+	"io"
+	"os"
+
+	"github.com/gofiber/fiber/v3/log"
+)
 
 var doDebugLogging = false
 
@@ -16,6 +21,18 @@ type Klog struct {
 
 func SetDebugLogging(enabled bool) {
 	doDebugLogging = enabled
+}
+
+func SetLogOutput(writeToFile bool, filename string) {
+	if writeToFile {
+		f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+		if err != nil {
+			LogError("Failed to open log file '%s': %v", filename, err.Error())
+			LogDebug("Continuing with stdout-only")
+			return
+		}
+		log.SetOutput(io.MultiWriter(os.Stdout, f))
+	}
 }
 
 func LogDebug(fmt string, args ...interface{}) {

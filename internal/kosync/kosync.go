@@ -43,6 +43,7 @@ func Run() {
 		EnableWebUi: enableWeb != nil && *enableWeb,
 	})
 	SetDebugLogging(config.DebugLog)
+	SetLogOutput(config.WriteLogsToFile, config.LogFile)
 
 	db, err := NewDatabase(config)
 	if err != nil {

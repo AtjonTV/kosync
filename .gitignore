@@ -11,6 +11,7 @@ database.json
 # Database and Config file
 kosync.db
 kosync.env
+kosync.log
 
 # Database backups
 *.bak

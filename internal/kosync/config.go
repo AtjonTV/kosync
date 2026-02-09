@@ -33,6 +33,8 @@ type Config struct {
 	EnableTrustedProxies bool   `env:"ENABLE_TRUSTED_PROXIES" default:"false"`
 	TrustedProxies       string `env:"TRUSTED_PROXIES" default:""`
 	EnableIPValidation   bool   `env:"ENABLE_IP_VALIDATION" default:"false"` // Only useful in combination with EnableTrustedProxies
+	WriteLogsToFile      bool   `env:"WRITE_LOGS_TO_FILE" default:"false"`
+	LogFile              string `env:"LOG_FILE" default:"./kosync.log"`
 }
 
 func NewConfig(fallback *Config) *Config {
