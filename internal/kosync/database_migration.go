@@ -12,9 +12,13 @@ import (
 	"time"
 )
 
+var logDbMigrate = NewKlog("db/migrate")
+
 func (db *Database) checkAndRunMigrations() error {
+	logDbMigrate.Debug("Checking and running database migrations")
 	versionsRes, err := db.rawDb.Query("SELECT version FROM schema_versions ORDER BY version DESC LIMIT 1;")
 	if err != nil && !strings.Contains(err.Error(), "no such table: schema_versions") {
+		logDbMigrate.Error("Failed to check database schema version: %v", err.Error())
 		return err
 	}
 	defer func(versionsRes *sql.Rows) {
@@ -25,12 +29,15 @@ func (db *Database) checkAndRunMigrations() error {
 	var currentVersion int
 	if versionsRes != nil && versionsRes.Next() {
 		if err := versionsRes.Scan(&currentVersion); err != nil {
+			logDbMigrate.Error("Failed to scan database schema version: %v", err.Error())
 			return err
 		}
 	} else {
 		currentVersion = 0
 	}
+	logDbMigrate.Debug("Current database schema version: %d", currentVersion)
 	if currentVersion < SchemaVersion {
+		logDbMigrate.Debug("Running database migrations")
 		db.currentSchema = currentVersion
 
 		for ver := currentVersion + 1; ver <= SchemaVersion; ver++ {
@@ -44,9 +51,11 @@ func (db *Database) checkAndRunMigrations() error {
 }
 
 func (db *Database) migrateTo(targetVersion int) error {
+	logDbMigrate.Debug("Migrating to target %d", targetVersion)
 	var insertSchemaVersion = `INSERT INTO schema_versions (version, installed_at) VALUES (?, ?)`
 
 	if targetVersion == 100 {
+		logDbMigrate.Debug("Migrating to version 100")
 		var createSchemaVersionTable = `
             CREATE TABLE IF NOT EXISTS schema_versions (
                 version INTEGER PRIMARY KEY,
@@ -54,6 +63,7 @@ func (db *Database) migrateTo(targetVersion int) error {
             );
         `
 		if _, err := db.rawDb.Exec(createSchemaVersionTable); err != nil {
+			logDbMigrate.Error("Failed to create schema_versions table: %v", err.Error())
 			return err
 		}
 
@@ -68,6 +78,7 @@ func (db *Database) migrateTo(targetVersion int) error {
             );
         `
 		if _, err := db.rawDb.Exec(createUsersTable); err != nil {
+			logDbMigrate.Error("Failed to create users table: %v", err.Error())
 			return err
 		}
 
@@ -90,6 +101,7 @@ func (db *Database) migrateTo(targetVersion int) error {
             );
         `
 		if _, err := db.rawDb.Exec(createDocumentsTable); err != nil {
+			logDbMigrate.Error("Failed to create documents table: %v", err.Error())
 			return err
 		}
 
@@ -112,10 +124,12 @@ func (db *Database) migrateTo(targetVersion int) error {
             );
         `
 		if _, err := db.rawDb.Exec(createDocumentHistoryTable); err != nil {
+			logDbMigrate.Error("Failed to create document_history table: %v", err.Error())
 			return err
 		}
 
 		if _, err := db.rawDb.Exec(insertSchemaVersion, 100, time.Now().Unix()); err != nil {
+			logDbMigrate.Error("Failed to insert schema version: %v", err.Error())
 			return err
 		}
 	}

@@ -20,23 +20,31 @@ type UiDocumentData struct {
 	History []legacy.FileData `json:"history"`
 }
 
+var logApiWeb = NewKlog("api/webui")
+
 func (app *Kosync) ApiGetDocumentsAll(c fiber.Ctx) error {
+	logApiWeb.Debug("ApiGetDocumentsAll")
 	user, found, err := app.Db.FindUserByUsername(c.Locals("current_user_name").(string))
 	if err != nil {
+		logApiWeb.Error("Failed to find user '%s': %v", c.Locals("current_user_name").(string), err.Error())
 		return err
 	}
 	if !found {
+		logApiWeb.Error("User '%s' not found", c.Locals("current_user_name").(string))
 		return fiber.ErrNotFound
 	}
 
+	logApiWeb.Debug("User '%s' requested all documents", user.Username)
 	docs, err := app.Db.AllDocumentsOfUser(user.Id)
 	if err != nil {
+		logApiWeb.Error("Failed to get documents for user '%s': %v", user.Username, err.Error())
 		return err
 	}
 	result := make([]UiDocumentData, 0, len(docs))
 	for i := range docs {
 		history, err := app.Db.GetDocumentHistory(user.Id, docs[i].Id)
 		if err != nil {
+			logApiWeb.Error("Failed to get history for document '%s': %v", docs[i].Id, err.Error())
 			continue
 		}
 
@@ -48,32 +56,41 @@ func (app *Kosync) ApiGetDocumentsAll(c fiber.Ctx) error {
 		result = append(result, UiDocumentData{Id: docs[i].Id, FileData: FileDataFromNew(&docs[i]), History: docHistory})
 	}
 
+	logApiWeb.Debug("Returning %d documents", len(result))
 	c.Set("Access-Control-Allow-Origin", "*")
 	return c.JSON(result)
 }
 
 func (app *Kosync) ApiPutDocument(c fiber.Ctx) error {
+	logApiWeb.Debug("ApiPutDocument")
 	user, _, err := app.Db.FindUserByUsername(c.Locals("current_user_name").(string))
 	if err != nil {
+		logApiWeb.Error("Failed to find user '%s': %v", c.Locals("current_user_name").(string), err.Error())
 		return err
 	}
 
 	var document UiDocumentData
 	if err := c.Bind().Body(&document); err != nil {
+		logApiWeb.Error("Failed to parse request body: %v", err.Error())
 		return err
 	}
+	logApiWeb.Debug("User '%s' sent document '%s' update", user.Username, document.Id)
 
 	doc := FileDataToNew(&document.FileData, user.Id)
 	if err := app.Db.CreateOrUpdateDocument(&doc); err != nil {
+		logApiWeb.Error("Failed to save document: %v", err.Error())
 		return err
 	}
 
+	logApiWeb.Debug("Successfully saved document '%s'", doc.Id)
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
 func (app *Kosync) ApiAuthBasic(c fiber.Ctx) error {
+	logApiWeb.Debug("ApiAuthBasic")
 	user, _, err := app.Db.FindUserByUsername(c.Locals("current_user_name").(string))
 	if err != nil {
+		logApiWeb.Error("Failed to find user '%s': %v", c.Locals("current_user_name").(string), err.Error())
 		return err
 	}
 	type UserData struct {
@@ -82,5 +99,6 @@ func (app *Kosync) ApiAuthBasic(c fiber.Ctx) error {
 	}
 	bytes, _ := json.Marshal(UserData{user.Username, user.Password})
 	userObj := base64.StdEncoding.EncodeToString(bytes)
+	logApiWeb.Debug("Redirecting to WebUI with user '%s'", userObj)
 	return c.Redirect().Status(fiber.StatusTemporaryRedirect).To("/web?user=" + userObj)
 }

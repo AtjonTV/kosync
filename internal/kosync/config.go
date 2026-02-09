@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gofiber/fiber/v3/log"
 	"github.com/joho/godotenv"
 )
 
@@ -49,7 +48,7 @@ func NewConfig(fallback *Config) *Config {
 	}
 
 	if conf.DebugLog {
-		log.Debugf("Loaded Config: %+v\n", conf)
+		LogDebugUnchecked("Loaded Config: %+v\n", conf)
 	}
 
 	return &conf

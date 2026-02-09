@@ -7,19 +7,19 @@
 package kosync
 
 import (
-	"fmt"
-
 	"github.com/gofiber/fiber/v3"
-	"github.com/gofiber/fiber/v3/middleware/requestid"
 )
 
+var logApiUser = NewKlog("api/users")
+
 func (app *Kosync) UsersAuth(c fiber.Ctx) error {
-	app.PrintDebug("Users", requestid.FromContext(c), fmt.Sprintf("Login of user '%s'", c.Locals("current_user_name").(string)))
+	logApiUser.Debug("User auth check was successful")
 	return c.SendStatus(fiber.StatusOK)
 }
 
 func (app *Kosync) UsersCreate(c fiber.Ctx) error {
 	if app.Config.DisableRegistration {
+		logApiUser.Debug("User registration is disabled, could not create new user.")
 		return fiber.ErrPaymentRequired // KORSS also returns 402
 	}
 
@@ -29,13 +29,16 @@ func (app *Kosync) UsersCreate(c fiber.Ctx) error {
 	}
 
 	if err := c.Bind().Body(&data); err != nil {
+		LogError("Failed to parse request body: %v", err.Error())
 		return err
 	}
 
-	app.PrintDebug("Users", requestid.FromContext(c), fmt.Sprintf("Signup of new user '%s'", data.Username))
+	logApiUser.Debug("Trying to process new user signup: '%s'", data.Username)
 	if _, err := app.Db.CreateUser(data.Username, data.Password); err != nil {
+		LogError("Failed to create new user: %v", err.Error())
 		return err
 	}
 
+	logApiUser.Debug("Successfully created new user: '%s'", data.Username)
 	return c.SendStatus(fiber.StatusCreated)
 }

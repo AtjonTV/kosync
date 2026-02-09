@@ -6,6 +6,8 @@
 
 package kosync
 
+import "fmt"
+
 type User struct {
 	Id       string
 	Username string
@@ -34,4 +36,8 @@ type DocumentHistory struct {
 	Progress           float32 // percentage
 	LastReadOnDevice   string  // device
 	LastReadOnDeviceId string  // device_id
+}
+
+func (d *Document) ProgressAsString() string {
+	return fmt.Sprintf("%.2f%%", d.Progress*100)
 }

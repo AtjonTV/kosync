@@ -31,21 +31,6 @@ type Kosync struct {
 	Db     *Database
 }
 
-func (app *Kosync) PrintDebug(marker, requestId, s string) {
-	// Only print debugs when enabled
-	if app.Config.DebugLog {
-		log.Debugf("RequestId=%s, Module=%s: %s\n", requestId, marker, s)
-	}
-}
-
-func (app *Kosync) Print(marker, requestId, s string) {
-	log.Infof("RequestId=%s, Module=%s: %s\n", requestId, marker, s)
-}
-
-func (app *Kosync) PrintError(marker, requestId, s string) {
-	log.Errorf("RequestId=%s, Module=%s: %s\n", requestId, marker, s)
-}
-
 func Run() {
 	log.Infof("KOsync Server v%s by Thomas Obernosterer (https://obth.eu)", Version)
 	log.Info("Copyright 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later.")
@@ -57,6 +42,7 @@ func Run() {
 	config := NewConfig(&Config{
 		EnableWebUi: enableWeb != nil && *enableWeb,
 	})
+	SetDebugLogging(config.DebugLog)
 
 	db, err := NewDatabase(config)
 	if err != nil {
@@ -102,6 +88,8 @@ func Run() {
 	app.Use(koapp.NewAuthMiddleware())
 
 	if koapp.Config.EnableWebUi {
+		LogDebug("Starting KOsync with WebUI.")
+		authLog := NewKlog("api/auth")
 		app.Use("/api/auth.basic", basicauth.New(basicauth.Config{
 			Realm: "KOsync",
 			Authorizer: func(user string, pass string, ctx fiber.Ctx) bool {
@@ -112,13 +100,17 @@ func Run() {
 
 				userData, found, _ := koapp.Db.FindUserByUsername(user)
 				if !found || userData == nil {
+					authLog.Debug("Could not find user '%s'", user)
 					return false
 				}
 
 				ok := userData.Password == pwHash
 				if ok {
+					authLog.Debug("Successful login for user '%s'", user)
 					ctx.Locals("current_user_id", userData.Id)
 					ctx.Locals("current_user_mame", userData.Username)
+				} else {
+					authLog.Debug("Failed login for user '%s'", user)
 				}
 
 				return ok
@@ -133,6 +125,7 @@ func Run() {
 			return c.Redirect().To("/web")
 		})
 	} else {
+		LogDebug("Starting KOsync without WebUI.")
 		app.Get("/", func(c fiber.Ctx) error {
 			return c.SendString("WebUI is not enabled. If you want to use the web interface, restart KOsync with the --webui flag.")
 		})

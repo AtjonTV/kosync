@@ -7,11 +7,9 @@
 package kosync
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/gofiber/fiber/v3"
-	"github.com/gofiber/fiber/v3/middleware/requestid"
 )
 
 func (app *Kosync) NewAuthMiddleware() fiber.Handler {
@@ -22,6 +20,7 @@ func (app *Kosync) NewAuthMiddleware() fiber.Handler {
 		"/api/documents.update",
 	}
 
+	log := NewKlog("auth")
 	// Return new handler
 	return func(c fiber.Ctx) error {
 		doHandle := false
@@ -31,6 +30,7 @@ func (app *Kosync) NewAuthMiddleware() fiber.Handler {
 			}
 		}
 		if !doHandle {
+			log.Debug("Skipping auth check for route '%s'", c.Path())
 			return c.Next()
 		}
 
@@ -39,28 +39,30 @@ func (app *Kosync) NewAuthMiddleware() fiber.Handler {
 		password := c.Get("x-auth-key", "")
 
 		if username == "" || password == "" {
+			log.Error("Username or Password missing from request headers: username='%s', password='%s'", username, password)
 			return fiber.ErrUnauthorized
 		}
 
 		// try to find the user
 		user, found, err := app.Db.FindUserByUsername(username)
 		if err != nil {
+			log.Error("Failed to find user '%s': %v", username, err.Error())
 			return err
 		}
 		if !found {
-			app.PrintDebug("Auth", requestid.FromContext(c), fmt.Sprintf("Unauthorized request from unknown '%s'", username))
+			log.Error("Could not find user '%s'", username)
 			return fiber.ErrUnauthorized
 		}
 
 		// verify the passwords match (both are md5 hashed)
 		if user.Password != password {
-			app.PrintDebug("Auth", requestid.FromContext(c), fmt.Sprintf("Unauthorized request from user '%s'", username))
+			log.Error("Passwords do not match for user '%s'", username)
 			return fiber.ErrUnauthorized
 		}
 
 		c.Locals("current_user_id", user.Id)
 		c.Locals("current_user_name", user.Username)
-		app.PrintDebug("Auth", requestid.FromContext(c), fmt.Sprintf("Authorized user '%s'", username))
+		log.Debug("Successful login for user '%s'", username)
 		return c.Next()
 	}
 }
