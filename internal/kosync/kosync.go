@@ -23,7 +23,7 @@ import (
 )
 
 // Version NOTE: Must be the same as "sonar.projectVersion" in ../../sonar-project.properties
-const Version = "2026.05.0"
+const Version = "2026.05.1-dev.1"
 
 type Kosync struct {
 	Config *Config
