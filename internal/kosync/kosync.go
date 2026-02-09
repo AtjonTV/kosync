@@ -15,7 +15,6 @@ import (
 
 	"git.obth.eu/atjontv/kosync/internal/webui"
 	"github.com/gofiber/fiber/v3"
-	"github.com/gofiber/fiber/v3/log"
 	"github.com/gofiber/fiber/v3/middleware/basicauth"
 	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/gofiber/fiber/v3/middleware/logger"
@@ -32,10 +31,6 @@ type Kosync struct {
 }
 
 func Run() {
-	log.Infof("KOsync Server v%s by Thomas Obernosterer (https://obth.eu)", Version)
-	log.Info("Copyright 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later.")
-	log.Info("Obtain the Source Code at https://git.obth.eu/atjontv/kosync")
-
 	enableWeb := flag.Bool("webui", false, "Enable the web interface at /web")
 	flag.Parse()
 
@@ -43,7 +38,11 @@ func Run() {
 		EnableWebUi: enableWeb != nil && *enableWeb,
 	})
 	SetDebugLogging(config.DebugLog)
-	SetLogOutput(config.WriteLogsToFile, config.LogFile)
+	logStream := SetLogOutput(config.WriteLogsToFile, config.LogFile)
+
+	LogInfo("KOsync Server v%s by Thomas Obernosterer (https://obth.eu)", Version)
+	LogInfo("Copyright 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later.")
+	LogInfo("Obtain the Source Code at https://git.obth.eu/atjontv/kosync")
 
 	db, err := NewDatabase(config)
 	if err != nil {
@@ -82,6 +81,7 @@ func Run() {
 				return output.Write([]byte(requestid.FromContext(c)))
 			},
 		},
+		Stream: logStream,
 	}))
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: []string{"*"},

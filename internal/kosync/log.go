@@ -10,6 +10,8 @@ import (
 	"io"
 	"os"
 
+	golog "log"
+
 	"github.com/gofiber/fiber/v3/log"
 )
 
@@ -23,16 +25,20 @@ func SetDebugLogging(enabled bool) {
 	doDebugLogging = enabled
 }
 
-func SetLogOutput(writeToFile bool, filename string) {
+func SetLogOutput(writeToFile bool, filename string) io.Writer {
 	if writeToFile {
 		f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 		if err != nil {
 			LogError("Failed to open log file '%s': %v", filename, err.Error())
 			LogDebug("Continuing with stdout-only")
-			return
+			return os.Stdout
 		}
-		log.SetOutput(io.MultiWriter(os.Stdout, f))
+		stream := io.MultiWriter(os.Stdout, f)
+		log.SetOutput(stream)
+		golog.SetOutput(stream)
+		return stream
 	}
+	return os.Stdout
 }
 
 func LogDebug(fmt string, args ...interface{}) {
