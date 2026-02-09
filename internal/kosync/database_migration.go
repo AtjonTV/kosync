@@ -120,5 +120,6 @@ func (db *Database) migrateTo(targetVersion int) error {
 		}
 	}
 
+	db.currentSchema = targetVersion
 	return nil
 }
