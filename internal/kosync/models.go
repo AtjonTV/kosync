@@ -23,13 +23,13 @@ type Document struct {
 	Progress           float32 // percentage
 	LastReadOnDevice   string  // device
 	LastReadOnDeviceId string  // device_id
-	LastReadAt         int64   // timestamp
+	LastReadAt         float64 // timestamp
 }
 
 type DocumentHistory struct {
 	Id         string // document
 	OwnerId    string
-	LastReadAt int64 // timestamp
+	LastReadAt float64 // timestamp
 
 	Title              string
 	CurrentLocation    string  // progress

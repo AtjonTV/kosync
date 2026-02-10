@@ -58,7 +58,7 @@ const onEditComplete = async (event: any) => {
         <Column field="device" header="Device" :sortable="true"></Column>
         <Column field="timestamp" header="Last read" :sortable="true">
           <template #body="slotProps">
-            {{ new Date(slotProps.data.timestamp*1000).toISOString() }}
+            {{ new Date(slotProps.data.timestamp/10).toISOString() }}
           </template>
         </Column>
 
@@ -75,7 +75,7 @@ const onEditComplete = async (event: any) => {
                 <Column field="device" header="Device" :sortable="true"></Column>
                 <Column field="timestamp" header="When" :sortable="true">
                   <template #body="slotProps">
-                    {{ new Date(slotProps.data.timestamp*1000).toISOString() }}
+                    {{ new Date(slotProps.data.timestamp/10).toISOString() }}
                   </template>
                 </Column>
               </DataTable>

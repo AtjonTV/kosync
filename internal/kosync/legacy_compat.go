@@ -34,7 +34,7 @@ func DocumentDataToNew(f *legacy.DocumentData, ownerId string) Document {
 		Progress:           f.Percentage,
 		LastReadOnDevice:   f.Device,
 		LastReadOnDeviceId: f.DeviceId,
-		LastReadAt:         time.Now().Unix(),
+		LastReadAt:         float64(time.Now().UnixMicro() / 100.0),
 	}
 }
 

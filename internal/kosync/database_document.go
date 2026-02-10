@@ -9,7 +9,6 @@ package kosync
 import (
 	"database/sql"
 	"errors"
-	"time"
 )
 
 var logDbDoc = NewKlog("db/document")
@@ -174,7 +173,7 @@ func (db *Database) CreateOrUpdateDocument(doc *Document) error {
 	}
 	var updateDocument = `
         INSERT INTO documents (id, owner_id, title, current_location, progress, last_read_on_device, last_read_on_device_id, last_read_at, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
         ON CONFLICT (id, owner_id) DO
             UPDATE SET
                        title = if(length(?), ?, title),
@@ -182,10 +181,9 @@ func (db *Database) CreateOrUpdateDocument(doc *Document) error {
                        progress = ?,
                        last_read_on_device = ?,
                        last_read_on_device_id = ?,
-                       last_read_at = ?,
-                       updated_at = ?;
+                       last_read_at = if(? = unixepoch(), unixepoch('subsec'), ?),
+                       updated_at = unixepoch();
     `
-	now := time.Now().Unix()
 	_, err = t.Exec(
 		updateDocument,
 		doc.Id,
@@ -196,7 +194,6 @@ func (db *Database) CreateOrUpdateDocument(doc *Document) error {
 		doc.LastReadOnDevice,
 		doc.LastReadOnDeviceId,
 		doc.LastReadAt,
-		now,
 		doc.Title,
 		doc.Title,
 		doc.CurrentLocation,
@@ -204,7 +201,7 @@ func (db *Database) CreateOrUpdateDocument(doc *Document) error {
 		doc.LastReadOnDevice,
 		doc.LastReadOnDeviceId,
 		doc.LastReadAt,
-		now,
+		doc.LastReadAt,
 	)
 	if err != nil {
 		logDbDoc.Error("Failed to update document: %v", err.Error())
@@ -223,9 +220,12 @@ func (db *Database) CreateOrUpdateDocument(doc *Document) error {
 func (db *Database) prepareHistoryCreationInTransaction(tx *sql.Tx, doc *Document) error {
 	logDbDoc.Debug("prepareHistoryCreationInTransaction(Tx, document={Id: '%s'})", doc.Id)
 	_, found, err := db.FindDocumentById(doc.OwnerId, doc.Id)
-	if !found || err != nil {
+	if err != nil {
 		logDbDoc.Error("Failed to find document '%s' of user '%s': %v", doc.Id, doc.OwnerId, err.Error())
 		return err
+	}
+	if !found {
+		return nil
 	}
 
 	var copyToHistory = `
@@ -239,12 +239,11 @@ func (db *Database) prepareHistoryCreationInTransaction(tx *sql.Tx, doc *Documen
             progress,
             last_read_on_device,
             last_read_on_device_id,
-            ? as created_at
+            unixepoch() as created_at
         FROM documents
         WHERE id = ? AND owner_id = ?;
     `
-	now := time.Now().Unix()
-	_, err = tx.Exec(copyToHistory, now, doc.Id, doc.OwnerId)
+	_, err = tx.Exec(copyToHistory, doc.Id, doc.OwnerId)
 	if err != nil {
 		logDbDoc.Error("Failed to copy document to history: %v", err.Error())
 	}

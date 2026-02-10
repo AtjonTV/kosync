@@ -12,8 +12,6 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const SchemaVersion = 100
-
 type Database struct {
 	rawDb         *sql.DB
 	currentSchema int

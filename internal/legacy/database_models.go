@@ -20,7 +20,7 @@ type DocumentData struct {
 
 type FileData struct {
 	ProgressData
-	DocumentId string `json:"document"`
-	Timestamp  int64  `json:"timestamp"`
-	PrettyName string `json:"pretty_name"` // User given name of Document, set via WebUI
+	DocumentId string  `json:"document"`
+	Timestamp  float64 `json:"timestamp"`
+	PrettyName string  `json:"pretty_name"` // User given name of Document, set via WebUI
 }
