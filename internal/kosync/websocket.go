@@ -22,15 +22,15 @@ type WsMessage struct {
 }
 
 type WsRpc struct {
-	Method    string        `json:"method"`
-	Arguments []interface{} `json:"arguments"`
+	Method    string                 `json:"method"`
+	Arguments map[string]interface{} `json:"arguments"`
 }
 
 func WsRpcFromMap(m map[string]interface{}) WsRpc {
-	var arguments []interface{} = nil
+	var arguments map[string]interface{} = nil
 	args, f := m["arguments"]
 	if f {
-		arguments = args.([]interface{})
+		arguments = args.(map[string]interface{})
 	}
 	return WsRpc{
 		Method:    m["method"].(string),

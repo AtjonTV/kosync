@@ -36,11 +36,13 @@ There are two supported types:
 - rpc: Remote function calling
 - pubsub: Async message broadcasting
 
+Unless `(optional)` is specified, all properties are required.
+
 ### RPC
 
 To call a remote function, the `type` must be `rpc` and the `payload` must be an object with the following properties:
 - method: Name of the method to call
-- arguments: List of arguments (positional)
+- arguments: (optional) Object with properties
 
 The server will respond with a message of type `rpc` and a `payload` with the following properties:
 - for_rpc: Name of RPC Method
