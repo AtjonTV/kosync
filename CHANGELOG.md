@@ -13,6 +13,7 @@ Do **NOT** update from before `2026.05.0` to this version (`Unreleased`), otherw
 - Extensive Debug Logging
 - Write to Logfile and Logfile path settings
 - Experimental WebSocket API with RPC and PubSub
+- WebUI updates automatically upon progress sync (PubSub)
 
 ### Changed
 - Migrated to Fiber v3
@@ -24,7 +25,7 @@ Do **NOT** update from before `2026.05.0` to this version (`Unreleased`), otherw
 - **BREAKING**: Migration from `database.json` to `kosync.db`
 
 ### Fixed
-- Unique constraint dead-lock between documents and document_history when two pushes occurred within one second
+- Unique constraint dead-lock between documents and document_history with multiple causes
 
 ### Security
 
