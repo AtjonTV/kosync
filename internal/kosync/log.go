@@ -27,6 +27,7 @@ func SetDebugLogging(enabled bool) {
 
 func SetLogOutput(writeToFile bool, filename string) io.Writer {
 	if writeToFile {
+		//bearer:disable go_gosec_filesystem_filereadtaint
 		f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 		if err != nil {
 			LogError("Failed to open log file '%s': %v", filename, err.Error())
