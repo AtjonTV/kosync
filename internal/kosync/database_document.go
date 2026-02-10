@@ -110,7 +110,7 @@ func (db *Database) GetDocumentHistory(ownerId, documentId string) ([]Document, 
 	logDbDoc.Debug("GetDocumentHistory(ownerId='%s', documentId='%s')", ownerId, documentId)
 	var findDocumentHistory = `
         SELECT
-            id,
+            document_id,
             owner_id,
             title,
             current_location,
@@ -119,7 +119,7 @@ func (db *Database) GetDocumentHistory(ownerId, documentId string) ([]Document, 
             last_read_on_device_id,
             last_read_at
         FROM document_history
-        WHERE id = ? and owner_id = ?;
+        WHERE document_id = ? and owner_id = ?;
     `
 	rows, err := db.rawDb.Query(findDocumentHistory, documentId, ownerId)
 	if err != nil {
@@ -173,7 +173,7 @@ func (db *Database) CreateOrUpdateDocument(doc *Document) error {
 	}
 	var updateDocument = `
         INSERT INTO documents (id, owner_id, title, current_location, progress, last_read_on_device, last_read_on_device_id, last_read_at, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, (unixepoch('subsec')*1000))
         ON CONFLICT (id, owner_id) DO
             UPDATE SET
                        title = if(length(?), ?, title),
@@ -181,8 +181,8 @@ func (db *Database) CreateOrUpdateDocument(doc *Document) error {
                        progress = ?,
                        last_read_on_device = ?,
                        last_read_on_device_id = ?,
-                       last_read_at = if(? = unixepoch(), unixepoch('subsec'), ?),
-                       updated_at = unixepoch();
+                       last_read_at = if(? = unixepoch(), unixepoch('subsec')*1000, ?),
+                       updated_at = (unixepoch('subsec')*1000);
     `
 	_, err = t.Exec(
 		updateDocument,
@@ -200,6 +200,8 @@ func (db *Database) CreateOrUpdateDocument(doc *Document) error {
 		doc.Progress,
 		doc.LastReadOnDevice,
 		doc.LastReadOnDeviceId,
+		doc.LastReadAt,
+		doc.LastReadAt,
 		doc.LastReadAt,
 		doc.LastReadAt,
 	)
@@ -229,7 +231,7 @@ func (db *Database) prepareHistoryCreationInTransaction(tx *sql.Tx, doc *Documen
 	}
 
 	var copyToHistory = `
-        INSERT INTO document_history (id, owner_id, last_read_at, title, current_location, progress, last_read_on_device, last_read_on_device_id, created_at)
+        INSERT INTO document_history (document_id, owner_id, last_read_at, title, current_location, progress, last_read_on_device, last_read_on_device_id, created_at)
         SELECT
             id,
             owner_id,
@@ -239,7 +241,7 @@ func (db *Database) prepareHistoryCreationInTransaction(tx *sql.Tx, doc *Documen
             progress,
             last_read_on_device,
             last_read_on_device_id,
-            unixepoch() as created_at
+            (unixepoch('subsec')*1000) as created_at
         FROM documents
         WHERE id = ? AND owner_id = ?;
     `

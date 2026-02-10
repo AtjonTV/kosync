@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const SchemaVersion = 101
+const SchemaVersion = 102
 
 var logDbMigrate = NewKlog("db/migrate")
 
@@ -123,55 +123,59 @@ func (db *Database) migrateTo(targetVersion int) error {
 		}
 	}
 
-	// Convert last_read_at to float
+	// Convert last_read_at to sub-second precision
 	if targetVersion == 101 {
 		logDbMigrate.Debug("Migrating to version 101")
-		var migrateLastReadAtToFloat = `
-			ALTER TABLE documents RENAME COLUMN last_read_at TO last_read_at_old;
-			ALTER TABLE documents ADD COLUMN last_read_at FLOAT NOT NULL DEFAULT 0;
-			UPDATE documents SET last_read_at = (last_read_at_old * 10000) WHERE true;
-			ALTER TABLE documents DROP COLUMN last_read_at_old;
+		var changeReadTimestampToSubSeconds = `
+			UPDATE documents SET last_read_at = (last_read_at * 10000) WHERE true;
+			UPDATE document_history SET last_read_at = (last_read_at * 10000) WHERE true;
 		`
-		_, err := db.rawDb.Exec(migrateLastReadAtToFloat)
+		_, err := db.rawDb.Exec(changeReadTimestampToSubSeconds)
 		if err != nil {
-			logDbMigrate.Error("Failed to migrate last_read_at to float: %v", err.Error())
+			logDbMigrate.Error("Failed to update last_read_at: %v", err.Error())
 			return err
 		}
 
-		var rebuildDocumentHistory = `
-			CREATE TABLE IF NOT EXISTS document_history_old AS SELECT * FROM document_history;
-			DROP TABLE document_history;
+		if _, err := db.rawDb.Exec(insertSchemaVersion, 101, time.Now().Unix()); err != nil {
+			logDbMigrate.Error("Failed to insert schema version: %v", err.Error())
+			return err
+		}
+	}
 
-            CREATE TABLE IF NOT EXISTS document_history (
-                id TEXT NOT NULL,
+	if targetVersion == 102 {
+		logDbMigrate.Debug("Migrating to version 102")
+		var changeHistoryPrimaryToCreatedAt = `
+			CREATE TABLE document_history_old AS SELECT * FROM document_history;
+
+			DROP TABLE document_history;
+            CREATE TABLE document_history (
+                document_id TEXT NOT NULL,
                 owner_id TEXT NOT NULL,
-                last_read_at FLOAT NOT NULL,
 
                 title TEXT,
                 current_location TEXT,
                 progress FLOAT,
                 last_read_on_device TEXT,
                 last_read_on_device_id TEXT,
+                last_read_at INTEGER,
 
-                created_at INTEGER NOT NULL,
+                created_at INTEGER,
                 updated_at INTEGER,
-                deleted_at INTEGER,
-                PRIMARY KEY (id, owner_id, last_read_at)
+                deleted_at INTEGER
             );
 
-			INSERT INTO document_history (id, owner_id, last_read_at, title, current_location, progress, last_read_on_device, last_read_on_device_id, created_at, updated_at, deleted_at)
-			SELECT id, owner_id, (last_read_at * 10000), title, current_location, progress, last_read_on_device, last_read_on_device_id, created_at, unixepoch(), deleted_at
-			FROM document_history_old;
+			INSERT INTO document_history (document_id, owner_id, title, current_location, progress, last_read_on_device, last_read_on_device_id, last_read_at, created_at, updated_at, deleted_at)
+			SELECT id as document_id, owner_id, title, current_location, progress, last_read_on_device, last_read_on_device_id, last_read_at, created_at, updated_at, deleted_at  FROM document_history_old;
 
 			DROP TABLE document_history_old;
 		`
-		_, err = db.rawDb.Exec(rebuildDocumentHistory)
+		_, err := db.rawDb.Exec(changeHistoryPrimaryToCreatedAt)
 		if err != nil {
-			logDbMigrate.Error("Failed to rebuild document_history: %v", err.Error())
+			logDbMigrate.Error("Failed to update document_history primary key: %v", err.Error())
 			return err
 		}
 
-		if _, err := db.rawDb.Exec(insertSchemaVersion, 101, time.Now().Unix()); err != nil {
+		if _, err := db.rawDb.Exec(insertSchemaVersion, 102, time.Now().Unix()); err != nil {
 			logDbMigrate.Error("Failed to insert schema version: %v", err.Error())
 			return err
 		}

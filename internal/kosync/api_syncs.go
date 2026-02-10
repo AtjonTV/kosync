@@ -29,13 +29,13 @@ func (app *Kosync) SyncsPostProgress(c fiber.Ctx) error {
 		return err
 	}
 	if app.Config.ExperimentalWebSocketApi {
-		go func() {
-			d, f, e := app.Db.FindDocumentById(c.Locals(CtxContextUserId).(string), doc.Id)
+		go func(userId string) {
+			d, f, e := app.Db.FindDocumentById(userId, doc.Id)
 			if e != nil || !f {
 				return
 			}
-			_ = app.PubSubAnnounce(c.Locals(CtxContextUserId).(string), "user.documents", UiDocumentData{Id: doc.Id, FileData: FileDataFromNew(d)})
-		}()
+			_ = app.PubSubAnnounce(userId, "user.documents", UiDocumentData{Id: doc.Id, FileData: FileDataFromNew(d)})
+		}(doc.OwnerId)
 	}
 
 	logApiSyncs.Debug("Successfully saved document '%s' progress with '%s'", doc.Id, doc.ProgressAsString())
