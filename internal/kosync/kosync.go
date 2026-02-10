@@ -151,6 +151,7 @@ func Run() {
 	app.Get("/api/documents.all", koapp.ApiGetDocumentsAll)
 	app.Put("/api/documents.update", koapp.ApiPutDocument)
 	app.Get("/api/auth.basic", koapp.ApiAuthBasic)
+	app.Get("/api/auth.ws", koapp.ApiAuthWebSocket)
 
 	if koapp.Config.ExperimentalWebSocketApi {
 		app.Get("/api/ws", koapp.HandleOpenWebsocket)

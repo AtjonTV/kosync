@@ -9,6 +9,15 @@ import (
 )
 import "github.com/gofiber/contrib/v3/websocket"
 
+func (app *Kosync) ApiAuthWebSocket(c fiber.Ctx) error {
+	userId := c.Locals(CtxContextUserId).(string)
+	token, err := app.Crypt.CreateToken(userId)
+	if err != nil {
+		return err
+	}
+	return c.Status(fiber.StatusOK).SendString(token)
+}
+
 func (app *Kosync) HandleOpenWebsocket(c fiber.Ctx) error {
 	LogDebug("HandleOpenWebsocket")
 	if websocket.IsWebSocketUpgrade(c) {
@@ -21,7 +30,13 @@ func (app *Kosync) HandleOpenWebsocket(c fiber.Ctx) error {
 
 func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 	LogDebug("HandleWebsocket")
-	userId := c.Locals(CtxContextUserId).(string)
+
+	token := c.Params("id")
+	valid, userId := app.Crypt.VerifyToken(token)
+	if !valid {
+		return
+	}
+
 	requestId := utils.UUIDv4()
 	currClose := c.CloseHandler()
 	c.SetCloseHandler(func(code int, text string) error {
