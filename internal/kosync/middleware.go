@@ -18,6 +18,7 @@ func (app *Kosync) NewAuthMiddleware() fiber.Handler {
 		"/syncs",
 		"/api/documents.all",
 		"/api/documents.update",
+		"/api/ws",
 	}
 
 	log := NewKlog("auth")

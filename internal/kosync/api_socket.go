@@ -1,0 +1,153 @@
+package kosync
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/utils/v2"
+)
+import "github.com/gofiber/contrib/v3/websocket"
+
+func (app *Kosync) HandleOpenWebsocket(c fiber.Ctx) error {
+	LogDebug("HandleOpenWebsocket")
+	if websocket.IsWebSocketUpgrade(c) {
+		return c.Redirect().To(strings.Replace(c.BaseURL(), "http:", "ws:", 1) + "/api/ws/" + c.Locals(CtxContextUserId).(string))
+	}
+	c.Set(fiber.HeaderConnection, fiber.HeaderUpgrade)
+	c.Set(fiber.HeaderUpgrade, "websocket")
+	return c.Redirect().Status(fiber.StatusSeeOther).To(strings.Replace(c.BaseURL(), "http:", "ws:", 1) + "/api/ws/" + c.Locals(CtxContextUserId).(string))
+}
+
+func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
+	LogDebug("HandleWebsocket")
+	userId := c.Locals(CtxContextUserId).(string)
+	requestId := utils.UUIDv4()
+	currClose := c.CloseHandler()
+	c.SetCloseHandler(func(code int, text string) error {
+		LogDebug("Websocket connection closed: %d %s", code, text)
+		delete((*app.WsSubs)[userId], requestId)
+		return currClose(code, text)
+	})
+	defer func() {
+		LogDebug("Websocket connection ended")
+		_, f := (*app.WsSubs)[userId][requestId]
+		if f {
+			LogDebug("Removing subscription for user '%s' and request '%s'", userId, requestId)
+			delete((*app.WsSubs)[userId], requestId)
+		}
+	}()
+
+	err := c.WriteJSON(WsMessage{
+		Type: "rpc",
+		Payload: WsInfo{
+			ServerName:    "KOsync",
+			ServerVersion: Version,
+			Message:       "KOsync WebSocket API. Hello!",
+		},
+	})
+	if err != nil {
+		LogDebug("Failed to send WebSocket welcome message: %v", err.Error())
+		return
+	}
+
+	// rpcMethod tries to handle the RPC function; returns true if it was handled
+	rpcMethod := func(msg *WsRpc, method string, fun func() error) bool {
+		if msg.Method == method {
+			err := fun()
+			if err != nil {
+				LogDebug("Failed to execute RPC method '%s': %v", method, err.Error())
+				err2 := c.WriteJSON(newWsError(method, err.Error()))
+				if err2 != nil {
+					LogDebug("Failed to send WebSocket error message: %v", err.Error())
+				}
+			}
+			return true
+		} else {
+			LogDebug("RPC method '%s' does not match handler '%s'", msg.Method, method)
+			return false
+		}
+	}
+
+	var msg WsMessage
+	for {
+		if err := c.ReadJSON(&msg); err != nil {
+			LogError("Failed to read WebSocket message: %v", err.Error())
+			continue
+		}
+
+		if msg.Type == "rpc" {
+			var rpc = WsRpcFromMap(msg.Payload.(map[string]interface{}))
+			LogDebug("Received RPC: %s", rpc.Method)
+			var handled = false
+
+			handled = rpcMethod(&rpc, "documents.all", func() (e error) {
+				result, e := app.apiGetUserDocuments(c.Locals(CtxContextUserName).(string))
+				if e != nil {
+					return
+				}
+				e = c.WriteJSON(newWsResult(rpc.Method, *result))
+				if e != nil {
+					return
+				}
+				return
+			})
+			if handled {
+				continue
+			}
+
+			handled = rpcMethod(&rpc, "disconnect", func() (e error) {
+				e = c.WriteJSON(newWsResult(rpc.Method, "goodbye."))
+				if e != nil {
+					return
+				}
+				e = c.Close()
+				return
+			})
+			if handled {
+				continue
+			}
+
+			LogDebug("Unknown RPC method: '%s': %+v", rpc.Method, rpc)
+			err := c.WriteJSON(newWsError(rpc.Method, fmt.Sprintf("Unknown RPC method: '%s'", rpc.Method)))
+			if err != nil {
+				LogDebug("Failed to send WebSocket error message: %v", err.Error())
+				return
+			}
+		} else if msg.Type == "pubsub" {
+			var rpc = WsPubsubFromMap(msg.Payload.(map[string]interface{}))
+			LogDebug("Received PubSub: %s", rpc.Topic)
+
+			known, found := (*app.WsSubs)[userId]
+			if !found {
+				(*app.WsSubs)[userId] = make(map[string]*Wsub)
+				known = (*app.WsSubs)[userId]
+			}
+			known[requestId] = &Wsub{
+				Topic:  rpc.Topic,
+				Socket: c,
+			}
+
+			err := c.WriteJSON(newPsResult(rpc.Topic, "subscribed"))
+			if err != nil {
+				LogDebug("Failed to send WebSocket result: %v", err.Error())
+				return
+			}
+		}
+	}
+}
+
+func (app *Kosync) PubSubAnnounce(userId, topic string, data interface{}) error {
+	LogDebug("PubSubAnnounce(userId='%s', topic='%s', data=%+v)", userId, topic, data)
+	known, found := (*app.WsSubs)[userId]
+	if !found {
+		return nil
+	}
+	for _, sub := range known {
+		if sub.Topic == topic {
+			_ = sub.Socket.WriteJSON(newPsResult(topic, data))
+			continue
+		}
+	}
+	return nil
+}

@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"git.obth.eu/atjontv/kosync/internal/webui"
+	"github.com/gofiber/contrib/v3/websocket"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/basicauth"
 	"github.com/gofiber/fiber/v3/middleware/cors"
@@ -33,6 +34,7 @@ const (
 type Kosync struct {
 	Config *Config
 	Db     *Database
+	WsSubs *WsSub
 }
 
 func Run() {
@@ -57,6 +59,7 @@ func Run() {
 	koapp := Kosync{
 		Config: config,
 		Db:     db,
+		WsSubs: &WsSub{},
 	}
 	defer func(koapp *Kosync) {
 		_ = koapp.Db.Close()
@@ -146,6 +149,13 @@ func Run() {
 	app.Get("/api/documents.all", koapp.ApiGetDocumentsAll)
 	app.Put("/api/documents.update", koapp.ApiPutDocument)
 	app.Get("/api/auth.basic", koapp.ApiAuthBasic)
+
+	if koapp.Config.ExperimentalWebSocketApi {
+		app.Get("/api/ws", koapp.HandleOpenWebsocket)
+		app.Get("/api/ws/:id", websocket.New(koapp.HandleWebsocket, websocket.Config{
+			Subprotocols: []string{"kosync.rpc", "kosync.pubsub"},
+		}))
+	}
 
 	if err := app.Listen(koapp.Config.ListenAddress); err != nil {
 		panic(err)
