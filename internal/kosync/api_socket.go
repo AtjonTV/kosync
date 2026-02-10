@@ -143,7 +143,7 @@ func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 				return
 			})
 			if handled {
-				continue
+				return
 			}
 
 			LogDebug("Unknown RPC method: '%s': %+v", rpc.Method, rpc)
