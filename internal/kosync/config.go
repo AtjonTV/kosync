@@ -12,18 +12,6 @@ import (
 
 const ConfigFileName = "./kosync.env"
 
-// ConfigFieldListenAddress TODO: Remove when 'legacy' is removed
-const ConfigFieldListenAddress = "LISTEN_ADDRESS"
-
-// ConfigFieldDebugLog TODO: Remove when 'legacy' is removed
-const ConfigFieldDebugLog = "DEBUG_LOG"
-
-// ConfigFieldDisableRegistration TODO: Remove when 'legacy' is removed
-const ConfigFieldDisableRegistration = "DISABLE_REGISTRATION"
-
-// ConfigFieldEnableWebUi TODO: Remove when 'legacy' is removed
-const ConfigFieldEnableWebUi = "ENABLE_WEBUI"
-
 type Config struct {
 	DatabaseFile         string `env:"DATABASE_FILE" default:"./kosync.db"`
 	ListenAddress        string `env:"LISTEN_ADDRESS" default:":8080"`
