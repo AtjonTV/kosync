@@ -6,15 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+If you are running any version of KOsync before `2026.05.0`, you **MUST** update to `2026.05.0` first!  
+Do **NOT** update from before `2026.05.0` to this version (`Unreleased`), otherwise you will have an empty database.
+
 ### Added
+- Extensive Debug Logging
+- Write to Logfile and Logfile path settings
+- Experimental WebSocket API with RPC and PubSub
 
 ### Changed
+- Migrated to Fiber v3
+- `last_read_at` is now a float for sub-seconds
 
 ### Deprecated
 
 ### Removed
+- **BREAKING**: Migration from `database.json` to `kosync.db`
 
 ### Fixed
+- Unique constraint dead-lock between documents and document_history when two pushes occurred within one second
 
 ### Security
 
