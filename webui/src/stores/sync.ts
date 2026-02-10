@@ -41,10 +41,15 @@ export const useSyncStore = defineStore('sync', () => {
       if (msg.type === "pubsub" && msg.payload.for_topic === "user.documents") {
         const doc = msg.payload.data as SyncDoc;
         for (const docIndex in sync.value.documents) {
-          if (sync.value.documents[docIndex].id === doc.id) {
-            doc.history = sync.value.documents[docIndex].history;
-            doc.history.push(sync.value.documents[docIndex] as SyncDocData);
-            sync.value.documents[docIndex] = doc;
+          const orig = sync.value.documents[docIndex];
+          if (orig.id === doc.id) {
+            sync.value.documents[docIndex] = {
+              ...doc,
+              history: [
+                ...orig.history, // take full previous history
+                {...orig, history: null} // add original doc with history
+              ]
+            };
           }
         }
       }
