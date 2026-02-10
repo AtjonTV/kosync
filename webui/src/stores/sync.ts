@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import type {SyncDoc} from "@/models/document.ts";
-import {fetchApi} from "@/api.ts";
+import type {SyncDoc, SyncDocData} from "@/models/document.ts";
+import {fetchApi, openSocket} from "@/api.ts";
 
 export const useSyncStore = defineStore('sync', () => {
   const syncStateEncoded = sessionStorage.getItem('syncState')
@@ -27,10 +27,34 @@ export const useSyncStore = defineStore('sync', () => {
     sessionStorage.setItem('syncState', btoa(JSON.stringify(sync.value)))
   }
 
+  async function doPubSubSync() {
+    openSocket((ws) => {
+      console.log("Connected to websocket, sending subscribe");
+      ws.send(JSON.stringify({
+        type: "pubsub",
+        payload: {
+          topic: "user.documents"
+        }
+      }))
+    }, (ws, message) => {
+      const msg = JSON.parse(message);
+      if (msg.type === "pubsub" && msg.payload.for_topic === "user.documents") {
+        const doc = msg.payload.data as SyncDoc;
+        for (const docIndex in sync.value.documents) {
+          if (sync.value.documents[docIndex].id === doc.id) {
+            doc.history = sync.value.documents[docIndex].history;
+            doc.history.push(sync.value.documents[docIndex] as SyncDocData);
+            sync.value.documents[docIndex] = doc;
+          }
+        }
+      }
+    });
+  }
+
   function clear() {
     sessionStorage.removeItem('syncState')
     sync.value = {lastSync: -1, documents: []}
   }
 
-  return { sync, doSync, clear }
+  return { sync, doSync, doPubSubSync, clear }
 })

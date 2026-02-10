@@ -8,6 +8,7 @@ const {customTitle} = defineProps<{customTitle?: string}>()
 
 const syncStore = useSyncStore();
 syncStore.doSync();
+syncStore.doPubSubSync();
 
 const expandedRows = ref({});
 

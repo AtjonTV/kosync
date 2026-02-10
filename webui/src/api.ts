@@ -40,3 +40,10 @@ export async function fetchUrl<T>(route: string, options: RequestInit): Promise<
     return {data: await response.text() as T, error: null}
   }
 }
+
+export async function openSocket(onConnected: (ws: WebSocket) => void, onMessage: (ws: WebSocket, message: string) => void) {
+  const token = await fetchApi("/api/auth.ws", {method: "GET"});
+  const ws = new WebSocket(`${BASE_URL}/api/ws/${token.data}`, ["kosync.rpc", "kosync.pubsub"]);
+  ws.onopen = (event) => onConnected(ws);
+  ws.onmessage = (event) => onMessage(ws, event.data);
+}
