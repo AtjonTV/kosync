@@ -42,6 +42,17 @@ func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 	token := c.Params("id")
 	valid, userId := app.Crypt.VerifyToken(token)
 	if !valid {
+		err := c.WriteJSON(WsMessage{
+			Type: "rpc",
+			Payload: WsResult{
+				ForRpc: "connect",
+				ErrMsg: "Your access token is invalid. Make sure it is supplied like this: /api/ws/{token}",
+			},
+		})
+		if err != nil {
+			LogDebug("Failed to send WebSocket auth failure message: %v", err.Error())
+			return
+		}
 		return
 	}
 
