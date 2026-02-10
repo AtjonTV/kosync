@@ -25,6 +25,11 @@ import (
 // Version NOTE: Must be the same as "sonar.projectVersion" in ../../sonar-project.properties
 const Version = "2026.05.1-dev.1"
 
+const (
+	CtxContextUserName = "current_user_name"
+	CtxContextUserId   = "current_user_id"
+)
+
 type Kosync struct {
 	Config *Config
 	Db     *Database
@@ -108,8 +113,8 @@ func Run() {
 				ok := userData.Password == pwHash
 				if ok {
 					authLog.Debug("Successful login for user '%s'", user)
-					ctx.Locals("current_user_id", userData.Id)
-					ctx.Locals("current_user_mame", userData.Username)
+					ctx.Locals(CtxContextUserId, userData.Id)
+					ctx.Locals(CtxContextUserName, userData.Username)
 				} else {
 					authLog.Debug("Failed login for user '%s'", user)
 				}

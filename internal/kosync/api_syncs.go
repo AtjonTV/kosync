@@ -21,9 +21,9 @@ func (app *Kosync) SyncsPostProgress(c fiber.Ctx) error {
 		logApiSyncs.Error("Failed to parse request body: %v", err.Error())
 		return err
 	}
-	doc := DocumentDataToNew(&data, c.Locals("current_user_id").(string))
+	doc := DocumentDataToNew(&data, c.Locals(CtxContextUserId).(string))
 
-	logApiSyncs.Debug("User '%s' sent document '%s' progress", c.Locals("current_user_name").(string), doc.Id)
+	logApiSyncs.Debug("User '%s' sent document '%s' progress", c.Locals(CtxContextUserName).(string), doc.Id)
 	if err := app.Db.CreateOrUpdateDocument(&doc); err != nil {
 		logApiSyncs.Error("Failed to save document progress: %v", err.Error())
 		return err
@@ -40,10 +40,10 @@ func (app *Kosync) SyncsGetProgress(c fiber.Ctx) error {
 		logApiSyncs.Error("No document id provided")
 		return fiber.ErrNotFound
 	}
-	logApiSyncs.Debug("User '%s' requested progress of document '%s'", c.Locals("current_user_name").(string), documentId)
+	logApiSyncs.Debug("User '%s' requested progress of document '%s'", c.Locals(CtxContextUserName).(string), documentId)
 
 	// Find document
-	docData, found, err := app.Db.FindDocumentById(c.Locals("current_user_id").(string), documentId)
+	docData, found, err := app.Db.FindDocumentById(c.Locals(CtxContextUserId).(string), documentId)
 	if err != nil {
 		logApiSyncs.Error("Failed to find document '%s': %v", documentId, err.Error())
 		return err

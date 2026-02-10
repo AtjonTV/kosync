@@ -24,7 +24,7 @@ var logApiWeb = NewKlog("api/webui")
 
 func (app *Kosync) ApiGetDocumentsAll(c fiber.Ctx) error {
 	logApiWeb.Debug("ApiGetDocumentsAll")
-	user, found, err := app.Db.FindUserByUsername(c.Locals("current_user_name").(string))
+	result, err := app.apiGetUserDocuments(c.Locals(CtxContextUserName).(string))
 	if err != nil {
 		logApiWeb.Error("Failed to find user '%s': %v", c.Locals("current_user_name").(string), err.Error())
 		return err
@@ -63,9 +63,9 @@ func (app *Kosync) ApiGetDocumentsAll(c fiber.Ctx) error {
 
 func (app *Kosync) ApiPutDocument(c fiber.Ctx) error {
 	logApiWeb.Debug("ApiPutDocument")
-	user, _, err := app.Db.FindUserByUsername(c.Locals("current_user_name").(string))
+	user, _, err := app.Db.FindUserByUsername(c.Locals(CtxContextUserName).(string))
 	if err != nil {
-		logApiWeb.Error("Failed to find user '%s': %v", c.Locals("current_user_name").(string), err.Error())
+		logApiWeb.Error("Failed to find user '%s': %v", c.Locals(CtxContextUserName).(string), err.Error())
 		return err
 	}
 
@@ -88,9 +88,9 @@ func (app *Kosync) ApiPutDocument(c fiber.Ctx) error {
 
 func (app *Kosync) ApiAuthBasic(c fiber.Ctx) error {
 	logApiWeb.Debug("ApiAuthBasic")
-	user, _, err := app.Db.FindUserByUsername(c.Locals("current_user_name").(string))
+	user, _, err := app.Db.FindUserByUsername(c.Locals(CtxContextUserName).(string))
 	if err != nil {
-		logApiWeb.Error("Failed to find user '%s': %v", c.Locals("current_user_name").(string), err.Error())
+		logApiWeb.Error("Failed to find user '%s': %v", c.Locals(CtxContextUserName).(string), err.Error())
 		return err
 	}
 	type UserData struct {

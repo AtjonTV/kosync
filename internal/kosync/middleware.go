@@ -60,8 +60,8 @@ func (app *Kosync) NewAuthMiddleware() fiber.Handler {
 			return fiber.ErrUnauthorized
 		}
 
-		c.Locals("current_user_id", user.Id)
-		c.Locals("current_user_name", user.Username)
+		c.Locals(CtxContextUserId, user.Id)
+		c.Locals(CtxContextUserName, user.Username)
 		log.Debug("Successful login for user '%s'", username)
 		return c.Next()
 	}
