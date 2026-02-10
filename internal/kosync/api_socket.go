@@ -60,7 +60,11 @@ func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 	currClose := c.CloseHandler()
 	c.SetCloseHandler(func(code int, text string) error {
 		LogDebug("Websocket connection closed: %d %s", code, text)
-		delete((*app.WsSubs)[userId], requestId)
+		_, f := (*app.WsSubs)[userId][requestId]
+		if f {
+			LogDebug("Removing subscription for user '%s' and request '%s'", userId, requestId)
+			delete((*app.WsSubs)[userId], requestId)
+		}
 		return currClose(code, text)
 	})
 	defer func() {
