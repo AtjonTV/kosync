@@ -55,6 +55,18 @@ func (app *Kosync) ApiPutDocument(c fiber.Ctx) error {
 		return err
 	}
 
+	if app.Config.ExperimentalWebSocketApi {
+		go func(userId, docId string) {
+			updatedDoc, _, e := app.Db.FindDocumentById(userId, docId)
+			if e != nil {
+				return
+			}
+			go func() {
+				_ = app.PubSubAnnounce(userId, "user.documents", UiDocumentData{Id: docId, FileData: FileDataFromNew(updatedDoc)})
+			}()
+		}(c.Locals(CtxContextUserId).(string), doc.Id)
+	}
+
 	logApiWeb.Debug("Successfully saved document '%s'", doc.Id)
 	return c.SendStatus(fiber.StatusNoContent)
 }
