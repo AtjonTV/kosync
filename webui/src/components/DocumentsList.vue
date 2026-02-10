@@ -27,7 +27,7 @@ const onEditComplete = async (event: any) => {
         event.preventDefault();
     }
 
-    await syncStore.doSync(true);
+    // await syncStore.doSync(true);
 }
 </script>
 
