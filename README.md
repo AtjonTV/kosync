@@ -80,7 +80,8 @@ c.Raw(func(driverConn any) error {
 
 ### API Specification
 
-See [docs/api.md](docs/api.md)
+See [docs/api.md](docs/api.md) for REST-like.  
+See [docs/websocket.md](docs/websocket.md) for RPC/PubSub-like.
 
 ### WebUI
 
