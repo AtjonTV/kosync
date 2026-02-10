@@ -20,12 +20,20 @@ func (app *Kosync) ApiAuthWebSocket(c fiber.Ctx) error {
 
 func (app *Kosync) HandleOpenWebsocket(c fiber.Ctx) error {
 	LogDebug("HandleOpenWebsocket")
+	redirUrl := strings.Replace(c.BaseURL(), "http:", "ws:", 1) + "/api/ws/"
+	if c.Locals(CtxContextUserId) != nil {
+		token, err := app.Crypt.CreateToken(c.Locals(CtxContextUserId).(string))
+		if err != nil {
+			return err
+		}
+		redirUrl = redirUrl + token
+	}
 	if websocket.IsWebSocketUpgrade(c) {
-		return c.Redirect().To(strings.Replace(c.BaseURL(), "http:", "ws:", 1) + "/api/ws/" + c.Locals(CtxContextUserId).(string))
+		return c.Redirect().To(redirUrl)
 	}
 	c.Set(fiber.HeaderConnection, fiber.HeaderUpgrade)
 	c.Set(fiber.HeaderUpgrade, "websocket")
-	return c.Redirect().Status(fiber.StatusSeeOther).To(strings.Replace(c.BaseURL(), "http:", "ws:", 1) + "/api/ws/" + c.Locals(CtxContextUserId).(string))
+	return c.Redirect().Status(fiber.StatusSeeOther).To(redirUrl)
 }
 
 func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
