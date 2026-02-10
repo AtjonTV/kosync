@@ -52,6 +52,9 @@ export const useSyncStore = defineStore('sync', () => {
             };
           }
         }
+        // Persist updated state
+        // Note: Do not set lastSync, so that the next page-refresh causes a full sync
+        sessionStorage.setItem('syncState', btoa(JSON.stringify(sync.value)))
       }
     });
   }
