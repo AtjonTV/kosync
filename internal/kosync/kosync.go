@@ -35,6 +35,7 @@ type Kosync struct {
 	Config *Config
 	Db     *Database
 	WsSubs *WsSub
+	Crypt  *CryptState
 }
 
 func Run() {
@@ -60,6 +61,7 @@ func Run() {
 		Config: config,
 		Db:     db,
 		WsSubs: &WsSub{},
+		Crypt:  NewCryptState(),
 	}
 	defer func(koapp *Kosync) {
 		_ = koapp.Db.Close()
