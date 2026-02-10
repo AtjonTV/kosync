@@ -134,6 +134,36 @@ func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 				continue
 			}
 
+			handled = rpcMethod(&rpc, "documents.update", func() (e error) {
+				rpcDoc, found := rpc.Arguments["document"]
+				if !found {
+					return fmt.Errorf("RPC call is missing the argument 'document'")
+				}
+				castDoc := FileDataFromMap(rpcDoc.(map[string]interface{}))
+				doc := FileDataToNew(&castDoc, userId)
+				e = app.Db.CreateOrUpdateDocument(&doc)
+				if e != nil {
+					return
+				}
+
+				updatedDoc, _, e := app.Db.FindDocumentById(userId, doc.Id)
+				if e != nil {
+					return
+				}
+				uiDoc := UiDocumentData{Id: doc.Id, FileData: FileDataFromNew(updatedDoc)}
+
+				e = c.WriteJSON(newWsResult(rpc.Method, uiDoc))
+
+				go func() {
+					_ = app.PubSubAnnounce(userId, "user.documents", uiDoc)
+				}()
+
+				return
+			})
+			if handled {
+				continue
+			}
+
 			handled = rpcMethod(&rpc, "disconnect", func() (e error) {
 				e = c.WriteJSON(newWsResult(rpc.Method, "goodbye."))
 				if e != nil {

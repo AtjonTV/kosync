@@ -50,3 +50,16 @@ func FileDataToNew(f *legacy.FileData, ownerId string) Document {
 		LastReadAt:         f.Timestamp,
 	}
 }
+
+func FileDataFromMap(m map[string]interface{}) legacy.FileData {
+	return legacy.FileData{
+		ProgressData: legacy.ProgressData{
+			Progress:   m["progress"].(string),
+			Percentage: float32(m["percentage"].(float64)),
+			Device:     m["device"].(string),
+			DeviceId:   m["device_id"].(string),
+		},
+		DocumentId: m["document"].(string),
+		PrettyName: m["pretty_name"].(string),
+	}
+}
