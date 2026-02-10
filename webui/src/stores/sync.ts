@@ -1,11 +1,11 @@
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import type {SyncDoc} from "@/models/document.ts";
 import {fetchApi} from "@/api.ts";
 
 export const useSyncStore = defineStore('sync', () => {
   const syncStateEncoded = sessionStorage.getItem('syncState')
-  const syncState = syncStateEncoded !== null ? JSON.parse(atob(syncStateEncoded)) : null
+  const syncState = syncStateEncoded === null ? null : JSON.parse(atob(syncStateEncoded))
 
   const sync = ref(syncState ?? {
     lastSync: -1,
@@ -16,7 +16,7 @@ export const useSyncStore = defineStore('sync', () => {
     const now = Date.now();
     if (!forceRefresh && (now - sync.value.lastSync < 10_000)) return;
 
-    const {data: documents, error} = await fetchApi<SyncDoc[]>("/api/documents.all", {
+    const {data: documents} = await fetchApi<SyncDoc[]>("/api/documents.all", {
       method: "GET"
     });
 
