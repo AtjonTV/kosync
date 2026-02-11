@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import type {SyncDoc, SyncDocData} from "@/models/document.ts";
+import type {SyncDoc} from "@/models/document.ts";
 import {fetchApi, openSocket} from "@/api.ts";
 
 export const useSyncStore = defineStore('sync', () => {

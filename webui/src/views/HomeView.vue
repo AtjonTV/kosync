@@ -17,7 +17,7 @@ const doLogin = async (token: string) => {
       return;
   }
   isLoggedIn.value = await userStore.isLoggedIn();
-  window.history.replaceState({}, document.title, document.location.pathname);
+  history.replaceState({}, document.title, document.location.pathname);
   await syncStore.doSync();
 }
 

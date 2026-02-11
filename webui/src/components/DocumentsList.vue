@@ -31,8 +31,6 @@ const onEditComplete = async (event: any) => {
     } else {
         event.preventDefault();
     }
-
-    // await syncStore.doSync(true);
 }
 </script>
 
@@ -95,7 +93,3 @@ const onEditComplete = async (event: any) => {
     </div>
   </div>
 </template>
-
-<style scoped>
-
-</style>
