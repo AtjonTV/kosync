@@ -30,11 +30,27 @@ func NewDatabase(config *Config) (*Database, error) {
 		rawDb:         rawDb,
 		currentSchema: 0,
 	}
-	if err := db.checkAndRunMigrations(); err != nil {
+	if err := db.checkAndRunMigrations(config); err != nil {
 		log.Error("Failed to open SQLite database: %v", err.Error())
 		return nil, err
 	}
 
+	return db, nil
+}
+
+func NewDatabaseWithoutMigrate(config *Config) (*Database, error) {
+	log := NewKlog("database")
+	log.Debug("Trying to open SQLite database at '%s'", config.DatabaseFile)
+	rawDb, err := sql.Open("sqlite", config.DatabaseFile)
+	if err != nil {
+		log.Error("Failed to open SQLite database: %v", err.Error())
+		return nil, err
+	}
+
+	db := &Database{
+		rawDb:         rawDb,
+		currentSchema: 0,
+	}
 	return db, nil
 }
 

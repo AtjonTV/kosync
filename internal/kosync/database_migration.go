@@ -16,7 +16,7 @@ const SchemaVersion = 102
 
 var logDbMigrate = NewKlog("db/migrate")
 
-func (db *Database) checkAndRunMigrations() error {
+func (db *Database) checkAndRunMigrations(config *Config) error {
 	logDbMigrate.Debug("Checking and running database migrations")
 	currentVersion, err := db.getCurrentSchemaVersion()
 	if err != nil {
@@ -25,6 +25,12 @@ func (db *Database) checkAndRunMigrations() error {
 
 	logDbMigrate.Debug("Current database schema version: %d", currentVersion)
 	if currentVersion < SchemaVersion {
+		logDbMigrate.Debug("Creating backup of database before migrations")
+		err := BackupDatabase(config, db.rawDb)
+		if err != nil {
+			logDbMigrate.Error("Failed to backup database: %v", err.Error())
+			return err
+		}
 		logDbMigrate.Debug("Running database migrations")
 		db.currentSchema = currentVersion
 

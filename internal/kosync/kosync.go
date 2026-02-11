@@ -11,6 +11,7 @@ import (
 	"crypto/md5"
 	"flag"
 	"fmt"
+	"os"
 	"strings"
 
 	"git.obth.eu/atjontv/kosync/internal/webui"
@@ -40,6 +41,7 @@ type Kosync struct {
 
 func Run() {
 	enableWeb := flag.Bool("webui", false, "Enable the web interface at /web")
+	restoreDatabase := flag.String("restore", "", "Restore the database from the given backup file")
 	flag.Parse()
 
 	config := NewConfig(&Config{
@@ -48,9 +50,28 @@ func Run() {
 	SetDebugLogging(config.DebugLog)
 	logStream := SetLogOutput(config.LogToFile, config.LogFile)
 
+	if restoreDatabase != nil && *restoreDatabase != "" {
+		restoreLog := NewKlog("db/restore")
+		restoreLog.Info("Restoring database from backup file '%s'", *restoreDatabase)
+		db, err := NewDatabaseWithoutMigrate(config)
+		if err != nil {
+			restoreLog.Error("Failed to open database for restoring: %v", err.Error())
+			os.Exit(1)
+		}
+		err = RestoreDatabase(db.rawDb, *restoreDatabase)
+		if err != nil {
+			restoreLog.Error("Failed to restore database: %v", err.Error())
+			os.Exit(1)
+		}
+		_ = db.Close()
+		restoreLog.Info("Successfully restored database from backup file '%s'", *restoreDatabase)
+	}
+
+	LogInfo("")
 	LogInfo("KOsync Server v%s by Thomas Obernosterer (https://obth.eu)", Version)
 	LogInfo("Copyright 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later.")
 	LogInfo("Obtain the Source Code at https://git.obth.eu/atjontv/kosync")
+	LogInfo("")
 
 	db, err := NewDatabase(config)
 	if err != nil {

@@ -56,27 +56,7 @@ See [docs/database.md](docs/database.md)
 
 ### Backups
 
-Backup and Restore can be done manually or with automation tools made for SQLite.  
-Stop KOsync and copy the database file to create a backup or replace the database to restore.
-
-In the future KOsync will provide a backup and restore mechanism.
-
-KOsync uses [modernc sqlite](https://pkg.go.dev/modernc.org/sqlite#Backup) which supports backup and restore natively.
-
-(Code Example of the API for later reference)
-```go
-type SQLiteBackuper interface {
-    NewBackup(string) (*sqlite.Backup, error)
-    NewRestore(string) (*sqlite.Backup, error)
-}
-
-c, _ := db.Conn(context.Background())
-c.Raw(func(driverConn any) error {
-    bak, err := driverConn.(SQLiteBackuper).NewBackup("pathToBackupTo.db")
-    bakCon, err := bak.Commit()
-    err = bak.Finish()
-})
-```
+See [docs/backups.md](docs/backups.md)
 
 ### API Specification
 
