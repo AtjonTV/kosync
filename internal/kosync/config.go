@@ -31,6 +31,7 @@ type Config struct {
 	LogFile                  string `env:"LOG_FILE" default:"./kosync.log"`
 	ExperimentalWebSocketApi bool   `env:"EXPERIMENTAL_WEBSOCKET_API" default:"false"`
 	PrintTemporaryCryptKeys  bool   `env:"PRINT_TEMPORARY_CRYPT_KEYS" default:"false"`
+	CryptoKeysSeed       string `env:"CRYPTO_KEYS_SEED" default:""`
 }
 
 func NewConfig(fallback *Config) *Config {

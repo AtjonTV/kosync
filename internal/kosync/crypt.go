@@ -8,7 +8,6 @@ package kosync
 
 import (
 	"crypto/ed25519"
-	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
@@ -22,20 +21,29 @@ type CryptState struct {
 	tempPrivateKey *ed25519.PrivateKey
 }
 
-func NewCryptState() *CryptState {
+func NewCryptState(staticBase string) *CryptState {
 	c := CryptState{}
-	_ = c.GenerateKeys()
+	if len(staticBase) > 0 {
+		_ = c.GenerateKeys(&staticBase)
+	} else {
+		_ = c.GenerateKeys(nil)
+	}
 	return &c
 }
 
-func (c *CryptState) GenerateKeys() error {
-	if c.tempPrivateKey == nil || c.tempPublicKey == nil {
-		pub, priv, err := ed25519.GenerateKey(rand.Reader)
+func (c *CryptState) GenerateKeys(fromStatic *string) error {
+	if fromStatic != nil {
+		pri := ed25519.NewKeyFromSeed([]byte(*fromStatic))
+		pub := pri.Public().(ed25519.PublicKey)
+		c.tempPublicKey = &pub
+		c.tempPrivateKey = &pri
+	} else {
+		pub, pri, err := ed25519.GenerateKey(nil)
 		if err != nil {
 			return err
 		}
 		c.tempPublicKey = &pub
-		c.tempPrivateKey = &priv
+		c.tempPrivateKey = &pri
 	}
 	return nil
 }
