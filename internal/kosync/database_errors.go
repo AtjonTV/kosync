@@ -8,4 +8,4 @@ package kosync
 
 import "errors"
 
-var ErrUserAlreadyExists = errors.New("db: user already exists")
+var ErrUserAlreadyExists = errors.New("user already exists")
