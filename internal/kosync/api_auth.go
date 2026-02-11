@@ -9,8 +9,10 @@ package kosync
 import "github.com/gofiber/fiber/v3"
 
 func (app *Kosync) ApiAuthForToken(c fiber.Ctx) error {
+	logApiWeb.Debug("ApiAuthForToken")
 	userId := c.Locals(CtxContextUserId).(string)
-	token, err := app.Crypt.CreateToken(userId)
+	userName := c.Locals(CtxContextUserName).(string)
+	token, err := app.Crypt.CreateToken(userId, userName)
 	if err != nil {
 		return err
 	}
@@ -19,7 +21,9 @@ func (app *Kosync) ApiAuthForToken(c fiber.Ctx) error {
 
 func (app *Kosync) ApiAuthBasic(c fiber.Ctx) error {
 	logApiWeb.Debug("ApiAuthBasic")
-	token, err := app.Crypt.CreateToken(c.Locals(CtxContextUserId).(string))
+	userId := c.Locals(CtxContextUserId).(string)
+	userName := c.Locals(CtxContextUserName).(string)
+	token, err := app.Crypt.CreateToken(userId, userName)
 	if err != nil {
 		return err
 	}

@@ -18,8 +18,8 @@ import "github.com/gofiber/contrib/v3/websocket"
 func (app *Kosync) HandleOpenWebsocket(c fiber.Ctx) error {
 	LogDebug("HandleOpenWebsocket")
 	redirUrl := strings.Replace(c.BaseURL(), "http:", "ws:", 1) + "/api/ws/"
-	if c.Locals(CtxContextUserId) != nil {
-		token, err := app.Crypt.CreateToken(c.Locals(CtxContextUserId).(string))
+	if c.Locals(CtxContextUserId) != nil && c.Locals(CtxContextUserName) != nil {
+		token, err := app.Crypt.CreateToken(c.Locals(CtxContextUserId).(string), c.Locals(CtxContextUserName).(string))
 		if err != nil {
 			return err
 		}

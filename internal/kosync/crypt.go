@@ -37,10 +37,11 @@ func (c *CryptState) GenerateKeys() error {
 	return nil
 }
 
-func (c *CryptState) CreateToken(userId string) (token string, err error) {
+func (c *CryptState) CreateToken(userId, userName string) (token string, err error) {
 	return jwt.NewWithClaims(jwt.SigningMethodEdDSA, jwt.MapClaims{
-		"sub": userId,
-		"exp": time.Now().Add(time.Hour * 6).Unix(),
+		"sub":      userId,
+		"username": userName,
+		"exp":      time.Now().Add(time.Hour * 6).Unix(),
 	}).SignedString(*c.tempPrivateKey)
 }
 
