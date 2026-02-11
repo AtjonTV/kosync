@@ -108,7 +108,7 @@ func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 	for {
 		if err := c.ReadJSON(&msg); err != nil {
 			LogError("Failed to read WebSocket message: %v", err.Error())
-			if strings.Contains(err.Error(), "EOF") {
+			if strings.Contains(err.Error(), "EOF") || strings.Contains(err.Error(), "going away") {
 				return
 			}
 			continue
