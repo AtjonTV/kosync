@@ -26,7 +26,7 @@ func BackupDatabase(cfg *Config, db *sql.DB) error {
 	err := c.Raw(func(driverConn any) error {
 		now := time.Now().UTC()
 		dbFileName := strings.Replace(filepath.Base(cfg.DatabaseFile), ".db", "", 1)
-		newFileName := fmt.Sprintf("%s_%s-%s.bak", dbFileName, now.Format("20060102"), now.Format("150405"))
+		newFileName := fmt.Sprintf("%s_%s-%s.db", dbFileName, now.Format("20060102"), now.Format("150405"))
 		bak, err := driverConn.(SQLiteBackup).NewBackup(filepath.Join(filepath.Dir(cfg.DatabaseFile), newFileName))
 		if err != nil {
 			return err

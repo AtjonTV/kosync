@@ -21,6 +21,8 @@ Do **NOT** update from before `2026.05.0` to this version (`Unreleased`), otherw
   - `ENABLE_WEBSOCKET_API`: Enable WebSocket API for WebUI (RPC/PubSub)
   - `PRINT_CRYPTO_KEYS`: Print JWT Keys in PEM format at startup
   - `CRYPTO_KEYS_SEED`: 32-Character Seed for JWT Keys (will be random if unset or empty)
+- Automatic backups before applying migrations
+- `--restore` Argument to restore the database (see doc/backup.md for details)
 
 ### Changed
 - Migrated to Fiber v3
