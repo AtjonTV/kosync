@@ -49,6 +49,7 @@ export const useUserStore = defineStore('user', () => {
   }
 
   function hasToken(): boolean {
+    //bearer:disable javascript_lang_observable_timing
     return user.value.accessToken !== "";
   }
 

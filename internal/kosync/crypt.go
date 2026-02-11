@@ -50,7 +50,7 @@ func (c *CryptState) GenerateKeys(fromStatic *string) error {
 
 func (c *CryptState) KeysAsPem() (pub, pri string, err error) {
 	if c.tempPublicKey == nil || c.tempPrivateKey == nil {
-		err = errors.New("No crypt keys available. Call GenerateKeys() first.")
+		err = errors.New("no crypt keys available. Call GenerateKeys() first")
 		return
 	}
 

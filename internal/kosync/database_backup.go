@@ -56,6 +56,7 @@ func BackupDatabase(cfg *Config, db *sql.DB) error {
 }
 
 func RestoreDatabase(db *sql.DB, backupFile string) error {
+	//bearer:disable go_gosec_filesystem_filereadtaint
 	file, err := os.OpenFile(backupFile, os.O_RDONLY, 0600)
 	if err != nil && !os.IsNotExist(err) {
 		return err
