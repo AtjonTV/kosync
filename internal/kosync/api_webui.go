@@ -7,9 +7,6 @@
 package kosync
 
 import (
-	"encoding/base64"
-	"encoding/json"
-
 	"git.obth.eu/atjontv/kosync/internal/legacy"
 	"github.com/gofiber/fiber/v3"
 )
@@ -73,19 +70,12 @@ func (app *Kosync) ApiPutDocument(c fiber.Ctx) error {
 
 func (app *Kosync) ApiAuthBasic(c fiber.Ctx) error {
 	logApiWeb.Debug("ApiAuthBasic")
-	user, _, err := app.Db.FindUserByUsername(c.Locals(CtxContextUserName).(string))
+	token, err := app.Crypt.CreateToken(c.Locals(CtxContextUserId).(string))
 	if err != nil {
-		logApiWeb.Error("Failed to find user '%s': %v", c.Locals(CtxContextUserName).(string), err.Error())
 		return err
 	}
-	type UserData struct {
-		Username string `json:"username"`
-		Key      string `json:"key"`
-	}
-	bytes, _ := json.Marshal(UserData{user.Username, user.Password})
-	userObj := base64.StdEncoding.EncodeToString(bytes)
-	logApiWeb.Debug("Redirecting to WebUI with user '%s'", userObj)
-	return c.Redirect().Status(fiber.StatusTemporaryRedirect).To("/web?user=" + userObj)
+	logApiWeb.Debug("Redirecting to WebUI with token '%s'", token)
+	return c.Redirect().Status(fiber.StatusTemporaryRedirect).To("/web?token=" + token)
 }
 
 func (app *Kosync) apiGetUserDocuments(username string) (*[]UiDocumentData, error) {

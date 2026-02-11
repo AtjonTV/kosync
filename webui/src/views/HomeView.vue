@@ -6,9 +6,8 @@ import {useSyncStore} from "@/stores/sync.ts";
 const userStore = useUserStore();
 const syncStore = useSyncStore();
 
-const doLogin = async (userData: string) => {
-    const usrObj = JSON.parse(atob(userData));
-    const loginSuccess = await userStore.login(usrObj.username, usrObj.key);
+const doLogin = async (token: string) => {
+    const loginSuccess = await userStore.login(token);
     if (!loginSuccess) {
         alert("Failed to login, please check your credentials and try again.");
         return;
@@ -20,7 +19,7 @@ const doLogin = async (userData: string) => {
 const uriParams = document.location.search;
 if (uriParams) {
     const params = new URLSearchParams(uriParams);
-    if (params.get("user") !== null) doLogin(params.get("user")!);
+    if (params.get("token") !== null) doLogin(params.get("token")!);
 }
 
 const doLoginRedir = () => {
