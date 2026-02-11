@@ -65,14 +65,14 @@ type WsInfo struct {
 
 func newWsResult(typ string, result interface{}) WsMessage {
 	return WsMessage{
-		Type:    typ,
+		Type:    "rpc",
 		Payload: WsResult{ForRpc: typ, Result: result},
 	}
 }
 
 func newWsError(typ, message string) WsMessage {
 	return WsMessage{
-		Type:    typ,
+		Type:    "rpc",
 		Payload: WsResult{ForRpc: typ, ErrMsg: message},
 	}
 }
