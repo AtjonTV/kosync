@@ -14,10 +14,21 @@ Do **NOT** update from before `2026.05.0` to this version (`Unreleased`), otherw
 - Write to Logfile and Logfile path settings
 - Experimental WebSocket API with RPC and PubSub
 - WebUI updates automatically upon progress sync (PubSub)
+- JSON Web Tokens for `Authorization: Bearer`
+- New Environment Variables:
+  - `LOG_TO_FILE`: Enable writing logs to a file.
+  - `LOG_FILE`: Path to the log file (defaults to `./kosync.log`)
+  - `ENABLE_WEBSOCKET_API`: Enable WebSocket API for WebUI (RPC/PubSub)
+  - `PRINT_CRYPTO_KEYS`: Print JWT Keys in PEM format at startup
+  - `CRYPTO_KEYS_SEED`: 32-Character Seed for JWT Keys (will be random if unset or empty)
 
 ### Changed
 - Migrated to Fiber v3
 - `last_read_at` is now a float for sub-seconds
+- WebUI uses JWT instead of username+password_hash
+- WebUI login is time-bound. JWT's expire after 6 hours AND after KOsync restart (unless a CRYPTO_KEYS_SEED is set)
+- **BREAKING**: Environment Variables have been renamed:
+  - `ENABLE_IP_VALIDATION` -> `PROXY_IP_VALIDATION`
 
 ### Deprecated
 

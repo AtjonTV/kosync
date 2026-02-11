@@ -46,7 +46,7 @@ func Run() {
 		EnableWebUi: enableWeb != nil && *enableWeb,
 	})
 	SetDebugLogging(config.DebugLog)
-	logStream := SetLogOutput(config.WriteLogsToFile, config.LogFile)
+	logStream := SetLogOutput(config.LogToFile, config.LogFile)
 
 	LogInfo("KOsync Server v%s by Thomas Obernosterer (https://obth.eu)", Version)
 	LogInfo("Copyright 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later.")
@@ -67,7 +67,7 @@ func Run() {
 		_ = koapp.Db.Close()
 	}(&koapp)
 
-	if koapp.Config.PrintTemporaryCryptKeys {
+	if koapp.Config.PrintCryptoKeys {
 		pub, pri, err := koapp.Crypt.KeysAsPem()
 		if err != nil {
 			LogError("Could not dump temporary crypt keys: %v", err.Error())
@@ -84,7 +84,7 @@ func Run() {
 			Proxies: strings.Split(config.TrustedProxies, ","),
 		},
 		ProxyHeader:        fiber.HeaderXForwardedFor,
-		EnableIPValidation: config.EnableIPValidation,
+		EnableIPValidation: config.ProxyIpValidation,
 	})
 	defer func(app *fiber.App) {
 		err := app.Shutdown()
@@ -162,7 +162,7 @@ func Run() {
 	app.Get("/api/auth.basic", koapp.ApiAuthBasic)
 	app.Get("/api/auth.jwt", koapp.ApiAuthForToken)
 
-	if koapp.Config.ExperimentalWebSocketApi {
+	if koapp.Config.EnableWebSocketApi {
 		app.Get("/api/ws", koapp.HandleOpenWebsocket)
 		app.Get("/api/ws/:id", websocket.New(koapp.HandleWebsocket, websocket.Config{
 			Subprotocols: []string{"kosync.rpc", "kosync.pubsub"},

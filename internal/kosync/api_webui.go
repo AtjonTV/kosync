@@ -52,7 +52,7 @@ func (app *Kosync) ApiPutDocument(c fiber.Ctx) error {
 		return err
 	}
 
-	if app.Config.ExperimentalWebSocketApi {
+	if app.Config.EnableWebSocketApi {
 		go func(userId, docId string) {
 			updatedDoc, _, e := app.Db.FindDocumentById(userId, docId)
 			if e != nil {

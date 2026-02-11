@@ -19,18 +19,18 @@ import (
 const ConfigFileName = "./kosync.env"
 
 type Config struct {
-	DatabaseFile             string `env:"DATABASE_FILE" default:"./kosync.db"`
-	ListenAddress            string `env:"LISTEN_ADDRESS" default:":8080"`
-	DebugLog                 bool   `env:"DEBUG_LOG" default:"false"`
-	DisableRegistration      bool   `env:"DISABLE_REGISTRATION" default:"false"`
-	EnableWebUi              bool   `env:"ENABLE_WEBUI" default:"false"`
-	EnableTrustedProxies     bool   `env:"ENABLE_TRUSTED_PROXIES" default:"false"`
-	TrustedProxies           string `env:"TRUSTED_PROXIES" default:""`
-	EnableIPValidation       bool   `env:"ENABLE_IP_VALIDATION" default:"false"` // Only useful in combination with EnableTrustedProxies
-	WriteLogsToFile          bool   `env:"WRITE_LOGS_TO_FILE" default:"false"`
-	LogFile                  string `env:"LOG_FILE" default:"./kosync.log"`
-	ExperimentalWebSocketApi bool   `env:"EXPERIMENTAL_WEBSOCKET_API" default:"false"`
-	PrintTemporaryCryptKeys  bool   `env:"PRINT_TEMPORARY_CRYPT_KEYS" default:"false"`
+	DatabaseFile         string `env:"DATABASE_FILE" default:"./kosync.db"`
+	ListenAddress        string `env:"LISTEN_ADDRESS" default:":8080"`
+	DebugLog             bool   `env:"DEBUG_LOG" default:"false"`
+	DisableRegistration  bool   `env:"DISABLE_REGISTRATION" default:"false"`
+	EnableWebUi          bool   `env:"ENABLE_WEBUI" default:"false"`
+	EnableTrustedProxies bool   `env:"ENABLE_TRUSTED_PROXIES" default:"false"`
+	TrustedProxies       string `env:"TRUSTED_PROXIES" default:""`
+	ProxyIpValidation    bool   `env:"PROXY_IP_VALIDATION" default:"false"` // Only useful in combination with EnableTrustedProxies
+	LogToFile            bool   `env:"LOG_TO_FILE" default:"false"`
+	LogFile              string `env:"LOG_FILE" default:"./kosync.log"`
+	EnableWebSocketApi   bool   `env:"ENABLE_WEBSOCKET_API" default:"false"`
+	PrintCryptoKeys      bool   `env:"PRINT_CRYPTO_KEYS" default:"false"`
 	CryptoKeysSeed       string `env:"CRYPTO_KEYS_SEED" default:""`
 }
 
