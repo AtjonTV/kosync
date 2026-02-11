@@ -56,8 +56,8 @@ export const useUserStore = defineStore('user', () => {
   function getUsername(): string|null {
     if (!hasToken()) return null;
     const parts = user.value.accessToken.split('.');
-    if (parts.length < 2) return null;
-    const claims = JSON.parse(atob(parts[1]!!));
+    if (parts.length < 2 || !parts[1]) return null;
+    const claims = JSON.parse(atob(parts[1]));
     return claims.username ?? null;
   }
 
