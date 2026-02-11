@@ -44,27 +44,53 @@ func (app *Kosync) NewAuthMiddleware() fiber.Handler {
 			log.Debug("Skipping auth check for route '%s'", c.Path())
 			return c.Next()
 		}
+		var (
+			userIdentifier string
+			user           *User
+			found          bool
+			err            error
+			userPassword   *string
+		)
 
-		// get the headers
-		username := c.Get("x-auth-user", "")
-		password := c.Get("x-auth-key", "")
+		authHeader := c.Get("Authorization", "")
+		tokenType := "Bearer"
+		if strings.Contains(authHeader, tokenType) && len(authHeader) > len(tokenType) {
+			rawToken, _ := strings.CutPrefix(authHeader, tokenType)
+			token := strings.TrimSpace(rawToken)
 
-		if username == "" || password == "" {
-			if allowFail {
+			valid, userIdentifier := app.Crypt.VerifyToken(token)
+			if valid {
+				user, found, err = app.Db.FindUserById(userIdentifier)
+			} else if allowFail {
 				return c.Next()
+			} else {
+				log.Error("Invalid token '%s'", token)
+				return fiber.ErrUnauthorized
 			}
-			log.Error("Username or Password missing from request headers: username='%s', password='%s'", username, password)
-			return fiber.ErrUnauthorized
+		} else {
+			// get the headers
+			userIdentifier := c.Get("x-auth-user", "")
+			password := c.Get("x-auth-key", "")
+
+			if userIdentifier == "" || password == "" {
+				if allowFail {
+					return c.Next()
+				}
+				log.Error("Username or Password missing from request headers: username='%s', password='%s'", userIdentifier, password)
+				return fiber.ErrUnauthorized
+			}
+			userPassword = &password
+
+			// try to find the user
+			user, found, err = app.Db.FindUserByUsername(userIdentifier)
 		}
 
-		// try to find the user
-		user, found, err := app.Db.FindUserByUsername(username)
 		if err != nil {
 			if allowFail {
 				return c.Next()
 			}
 
-			log.Error("Failed to find user '%s': %v", username, err.Error())
+			log.Error("Failed to find user '%s': %v", userIdentifier, err.Error())
 			return err
 		}
 		if !found {
@@ -72,23 +98,25 @@ func (app *Kosync) NewAuthMiddleware() fiber.Handler {
 				return c.Next()
 			}
 
-			log.Error("Could not find user '%s'", username)
+			log.Error("Could not find user '%s'", userIdentifier)
 			return fiber.ErrUnauthorized
 		}
 
-		// verify the passwords match (both are md5 hashed)
-		if user.Password != password {
-			if allowFail {
-				return c.Next()
-			}
+		if userPassword != nil {
+			// verify the passwords match (both are md5 hashed)
+			if user.Password != *userPassword {
+				if allowFail {
+					return c.Next()
+				}
 
-			log.Error("Passwords do not match for user '%s'", username)
-			return fiber.ErrUnauthorized
+				log.Error("Passwords do not match for user '%s'", user.Username)
+				return fiber.ErrUnauthorized
+			}
 		}
 
 		c.Locals(CtxContextUserId, user.Id)
 		c.Locals(CtxContextUserName, user.Username)
-		log.Debug("Successful login for user '%s'", username)
+		log.Debug("Successful login for user '%s'", user.Username)
 		return c.Next()
 	}
 }
