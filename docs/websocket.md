@@ -53,6 +53,7 @@ The server will respond with a message of type `rpc` and a `payload` with the fo
 
 These are the currently known RPC methods:
 - `documents.all`: Get all documents of the current user. Returns the same list as `/api/documents.all`.
+- `documents.update`: Update a document. Argument `document` must given. Returns the updated document.
 - `disconnect`: Disconnect the WebSocket connection. Returns `goodbye.` on success.
 
 ### PubSub
