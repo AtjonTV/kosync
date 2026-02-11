@@ -10,6 +10,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -55,12 +56,25 @@ func BackupDatabase(cfg *Config, db *sql.DB) error {
 }
 
 func RestoreDatabase(db *sql.DB, backupFile string) error {
+	file, err := os.OpenFile(backupFile, os.O_RDONLY, 0600)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	if os.IsNotExist(err) {
+		LogError("Restore file does not exist: %s", backupFile)
+		return ErrRestoreSourceDoesNotExist
+	}
+	err = file.Close()
+	if err != nil {
+		return err
+	}
+
 	type SQLiteBackup interface {
 		NewRestore(string) (*sqlite.Backup, error)
 	}
 
 	c, _ := db.Conn(context.Background())
-	err := c.Raw(func(driverConn any) error {
+	err = c.Raw(func(driverConn any) error {
 		bak, err := driverConn.(SQLiteBackup).NewRestore(backupFile)
 		if err != nil {
 			return err

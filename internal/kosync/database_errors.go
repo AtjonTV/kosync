@@ -9,3 +9,4 @@ package kosync
 import "errors"
 
 var ErrUserAlreadyExists = errors.New("user already exists")
+var ErrRestoreSourceDoesNotExist = errors.New("file to restore from does not exist")
