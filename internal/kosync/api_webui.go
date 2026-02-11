@@ -7,15 +7,8 @@
 package kosync
 
 import (
-	"git.obth.eu/atjontv/kosync/internal/legacy"
 	"github.com/gofiber/fiber/v3"
 )
-
-type UiDocumentData struct {
-	Id string `json:"id"`
-	legacy.FileData
-	History []legacy.FileData `json:"history"`
-}
 
 var logApiWeb = NewKlog("api/webui")
 
@@ -39,15 +32,14 @@ func (app *Kosync) ApiPutDocument(c fiber.Ctx) error {
 		return err
 	}
 
-	var document UiDocumentData
+	var document Document
 	if err := c.Bind().Body(&document); err != nil {
 		logApiWeb.Error("Failed to parse request body: %v", err.Error())
 		return err
 	}
 	logApiWeb.Debug("User '%s' sent document '%s' update", user.Username, document.Id)
 
-	doc := FileDataToNew(&document.FileData, user.Id)
-	if err := app.Db.CreateOrUpdateDocument(&doc); err != nil {
+	if err := app.Db.CreateOrUpdateDocument(&document); err != nil {
 		logApiWeb.Error("Failed to save document: %v", err.Error())
 		return err
 	}
@@ -59,16 +51,16 @@ func (app *Kosync) ApiPutDocument(c fiber.Ctx) error {
 				return
 			}
 			go func() {
-				_ = app.PubSubAnnounce(userId, "user.documents", UiDocumentData{Id: docId, FileData: FileDataFromNew(updatedDoc)})
+				_ = app.PubSubAnnounce(userId, "user.documents", updatedDoc)
 			}()
-		}(c.Locals(CtxContextUserId).(string), doc.Id)
+		}(c.Locals(CtxContextUserId).(string), document.Id)
 	}
 
-	logApiWeb.Debug("Successfully saved document '%s'", doc.Id)
+	logApiWeb.Debug("Successfully saved document '%s'", document.Id)
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
-func (app *Kosync) apiGetUserDocuments(username string) (*[]UiDocumentData, error) {
+func (app *Kosync) apiGetUserDocuments(username string) (*[]DocumentWithHistory, error) {
 	user, found, err := app.Db.FindUserByUsername(username)
 	if err != nil {
 		logApiWeb.Error("Failed to find user '%s': %v", username, err.Error())
@@ -80,25 +72,5 @@ func (app *Kosync) apiGetUserDocuments(username string) (*[]UiDocumentData, erro
 	}
 
 	logApiWeb.Debug("User '%s' requested all documents", user.Username)
-	docs, err := app.Db.AllDocumentsOfUser(user.Id)
-	if err != nil {
-		logApiWeb.Error("Failed to get documents for user '%s': %v", user.Username, err.Error())
-		return nil, err
-	}
-	result := make([]UiDocumentData, 0, len(docs))
-	for i := range docs {
-		history, err := app.Db.GetDocumentHistory(user.Id, docs[i].Id)
-		if err != nil {
-			logApiWeb.Error("Failed to get history for document '%s': %v", docs[i].Id, err.Error())
-			continue
-		}
-
-		docHistory := make([]legacy.FileData, 0, len(history))
-		for j := range history {
-			docHistory = append(docHistory, FileDataFromNew(&history[j]))
-		}
-
-		result = append(result, UiDocumentData{Id: docs[i].Id, FileData: FileDataFromNew(&docs[i]), History: docHistory})
-	}
-	return &result, nil
+	return app.Db.AllDocumentsOfUserWithHistory(user.Id)
 }

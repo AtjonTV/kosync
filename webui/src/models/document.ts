@@ -1,15 +1,15 @@
 
-export interface SyncDoc extends SyncDocData {
-    id: string;
-    pretty_name: string;
-    history: SyncDocData[];
+export interface DocumentWithHistory extends Document {
+    history: Document[];
 }
 
-export interface SyncDocData {
-  document: string;
-  progress: string;
-  percentage: number;
-  device: string;
-  device_id: string;
-  timestamp: number;
+export interface Document {
+  id: string;
+  owner_id: string;
+  title: string;
+  current_location: string;
+  progress: number;
+  last_read_on_device: string;
+  last_read_on_device_id: string;
+  last_read_at: number;
 }

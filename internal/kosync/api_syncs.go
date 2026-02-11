@@ -7,7 +7,6 @@
 package kosync
 
 import (
-	"git.obth.eu/atjontv/kosync/internal/legacy"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -16,12 +15,12 @@ var logApiSyncs = NewKlog("api/syncs")
 func (app *Kosync) SyncsPostProgress(c fiber.Ctx) error {
 	logApiSyncs.Debug("SyncsPostProgress")
 	// Parse payload
-	var data legacy.DocumentData
+	var data KoProgress
 	if err := c.Bind().Body(&data); err != nil {
 		logApiSyncs.Error("Failed to parse request body: %v", err.Error())
 		return err
 	}
-	doc := DocumentDataToNew(&data, c.Locals(CtxContextUserId).(string))
+	doc := KoProgressToDocument(&data, c.Locals(CtxContextUserId).(string))
 
 	logApiSyncs.Debug("User '%s' sent document '%s' progress", c.Locals(CtxContextUserName).(string), doc.Id)
 	if err := app.Db.CreateOrUpdateDocument(&doc); err != nil {
@@ -30,11 +29,11 @@ func (app *Kosync) SyncsPostProgress(c fiber.Ctx) error {
 	}
 	if app.Config.EnableWebSocketApi {
 		go func(userId string) {
-			d, f, e := app.Db.FindDocumentById(userId, doc.Id)
-			if e != nil || !f {
+			updatedDoc, found, err := app.Db.FindDocumentById(userId, doc.Id)
+			if err != nil || !found {
 				return
 			}
-			_ = app.PubSubAnnounce(userId, "user.documents", UiDocumentData{Id: doc.Id, FileData: FileDataFromNew(d)})
+			_ = app.PubSubAnnounce(userId, "user.documents", updatedDoc)
 		}(doc.OwnerId)
 	}
 
@@ -63,5 +62,5 @@ func (app *Kosync) SyncsGetProgress(c fiber.Ctx) error {
 	}
 
 	logApiSyncs.Debug("Sending document state")
-	return c.JSON(FileDataFromNew(docData))
+	return c.JSON(DocumentToKoProgressWithTime(docData))
 }

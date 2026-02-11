@@ -1,22 +1,27 @@
-import { ref } from 'vue'
+import {type Ref, ref} from 'vue'
 import { defineStore } from 'pinia'
-import type {SyncDoc} from "@/models/document.ts";
+import type {DocumentWithHistory} from "@/models/document.ts";
 import {fetchApi, openSocket} from "@/api.ts";
+
+export type SyncState = {
+  lastSync: number,
+  documents: DocumentWithHistory[],
+}
 
 export const useSyncStore = defineStore('sync', () => {
   const syncStateEncoded = sessionStorage.getItem('syncState')
   const syncState = syncStateEncoded === null ? null : JSON.parse(atob(syncStateEncoded))
 
-  const sync = ref(syncState ?? {
+  const sync: Ref<SyncState> = ref(syncState ?? {
     lastSync: -1,
-    documents: [] as SyncDoc[],
+    documents: [] as DocumentWithHistory[],
   })
 
   async function doSync(forceRefresh = false) {
     const now = Date.now();
     if (!forceRefresh && (now - sync.value.lastSync < 10_000)) return;
 
-    const {data: documents, error} = await fetchApi<SyncDoc[]>("/api/documents.all", {
+    const {data: documents, error} = await fetchApi<DocumentWithHistory[]>("/api/documents.all", {
       method: "GET"
     });
 
@@ -43,15 +48,15 @@ export const useSyncStore = defineStore('sync', () => {
     }, (ws, message) => {
       const msg = JSON.parse(message);
       if (msg.type === "pubsub" && msg.payload.for_topic === "user.documents") {
-        const doc = msg.payload.data as SyncDoc;
+        const doc = msg.payload.data as DocumentWithHistory;
         for (const docIndex in sync.value.documents) {
           const orig = sync.value.documents[docIndex];
-          if (orig.id === doc.id) {
+          if (orig && orig.id === doc.id) {
             sync.value.documents[docIndex] = {
               ...doc,
               history: [
                 ...orig.history, // take full previous history
-                {...orig, history: null} // add original doc with history
+                ({...orig, history: null} as any) // add original doc with history
               ]
             };
           }

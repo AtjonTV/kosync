@@ -139,8 +139,9 @@ func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 				if !found {
 					return fmt.Errorf("RPC call is missing the argument 'document'")
 				}
-				castDoc := FileDataFromMap(rpcDoc.(map[string]interface{}))
-				doc := FileDataToNew(&castDoc, userId)
+
+				doc := DocumentFromMap(rpcDoc.(map[string]interface{}))
+
 				e = app.Db.CreateOrUpdateDocument(&doc)
 				if e != nil {
 					return
@@ -150,12 +151,11 @@ func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 				if e != nil {
 					return
 				}
-				uiDoc := UiDocumentData{Id: doc.Id, FileData: FileDataFromNew(updatedDoc)}
 
-				e = c.WriteJSON(newWsResult(rpc.Method, uiDoc))
+				e = c.WriteJSON(newWsResult(rpc.Method, updatedDoc))
 
 				go func() {
-					_ = app.PubSubAnnounce(userId, "user.documents", uiDoc)
+					_ = app.PubSubAnnounce(userId, "user.documents", updatedDoc)
 				}()
 
 				return

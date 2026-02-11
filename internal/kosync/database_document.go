@@ -251,3 +251,27 @@ func (db *Database) prepareHistoryCreationInTransaction(tx *sql.Tx, doc *Documen
 	}
 	return err
 }
+
+func (db *Database) AllDocumentsOfUserWithHistory(ownerId string) (*[]DocumentWithHistory, error) {
+	docs, err := db.AllDocumentsOfUser(ownerId)
+	if err != nil {
+		logApiWeb.Error("Failed to get documents for user '%s': %v", ownerId, err.Error())
+		return nil, err
+	}
+	result := make([]DocumentWithHistory, 0, len(docs))
+	for i := range docs {
+		history, err := db.GetDocumentHistory(ownerId, docs[i].Id)
+		if err != nil {
+			logApiWeb.Error("Failed to get history for document '%s': %v", docs[i].Id, err.Error())
+			continue
+		}
+
+		docHistory := make([]DocumentHistory, 0, len(history))
+		for j := range history {
+			docHistory = append(docHistory, history[j])
+		}
+
+		result = append(result, DocumentWithHistory{Document: docs[i], History: docHistory})
+	}
+	return &result, nil
+}
