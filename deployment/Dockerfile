@@ -35,6 +35,8 @@ COPY --from=builder /out/kosync /app/kosync
 # The application listens on 8080 by default
 EXPOSE 8080
 
+USER 1000:1000
+
 VOLUME /data
 WORKDIR /data
 

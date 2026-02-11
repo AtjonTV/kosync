@@ -31,6 +31,7 @@ Do **NOT** update from before `2026.05.0` to this version (`Unreleased`), otherw
 - WebUI login is time-bound. JWT's expire after 6 hours AND after KOsync restart (unless a CRYPTO_KEYS_SEED is set)
 - **BREAKING**: Environment Variables have been renamed:
   - `ENABLE_IP_VALIDATION` -> `PROXY_IP_VALIDATION`
+- **BREAKING**: The docker image no uses `1000:1000` as user instead of `root:root`
 
 ### Deprecated
 
