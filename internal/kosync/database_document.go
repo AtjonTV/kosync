@@ -266,12 +266,7 @@ func (db *Database) AllDocumentsOfUserWithHistory(ownerId string) (*[]DocumentWi
 			continue
 		}
 
-		docHistory := make([]DocumentHistory, 0, len(history))
-		for j := range history {
-			docHistory = append(docHistory, history[j])
-		}
-
-		result = append(result, DocumentWithHistory{Document: docs[i], History: docHistory})
+		result = append(result, DocumentWithHistory{Document: docs[i], History: history})
 	}
 	return &result, nil
 }
