@@ -2,13 +2,13 @@
 
 KOsync has a WebSocket API that can be used for RPC and PubSub.
 
-The WebSocket API is currently experimental and `EXPERIMENTAL_WEBSOCKET_API` has to be set to `true` in order to use it.
+The WebSocket API is currently experimental and `ENABLE_WEBSOCKET_API` has to be set to `true` in order to use it.
 
 ## Example communication
 
 ```json5
 // Server hello
-< {"type": "connected", "payload": "Welcome. KOsync WebSocket API"}
+< {"type": "rpc", "payload": {"server_name": "KOsync", "server_version": "2026.05.1-dev.5", "message":"KOsync WebSocket API. Hello!"}}
 
 // Client subscribe to user "documents"
 > {"type": "pubsub", "payload": {"topic": "user.documents"}}
