@@ -10,10 +10,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gofiber/contrib/v3/websocket"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/utils/v2"
 )
-import "github.com/gofiber/contrib/v3/websocket"
 
 func (app *Kosync) HandleOpenWebsocket(c fiber.Ctx) error {
 	LogDebug("HandleOpenWebsocket")
