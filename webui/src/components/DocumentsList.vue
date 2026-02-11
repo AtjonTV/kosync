@@ -3,12 +3,17 @@
 import {useSyncStore} from "@/stores/sync.ts";
 import {ref} from "vue";
 import {fetchApi} from "@/api.ts";
+import {useUserStore} from "@/stores/user.ts";
 
 const {customTitle} = defineProps<{customTitle?: string}>()
 
+const userStore = useUserStore();
+
 const syncStore = useSyncStore();
-syncStore.doSync();
-syncStore.doPubSubSync();
+if (await userStore.isLoggedIn()) {
+  syncStore.doSync();
+  syncStore.doPubSubSync();
+}
 
 const expandedRows = ref({});
 

@@ -3,9 +3,9 @@ import {useUserStore} from "@/stores/user.ts";
 // NOTE: Only set this to a KOsync Server when using vite dev
 const BASE_URL = "";
 
-export async function fetchApi<T>(route: string, options: RequestInit): Promise<{data: T | null, error: string | Response | null}> {
+export async function fetchApi<T>(route: string, options: RequestInit = {}): Promise<{data: T | null, error: string | Response | null}> {
     const userStore = useUserStore();
-    if (!userStore.isLoggedIn()) {
+    if (!userStore.hasToken()) {
         return {data: null, error: "Not logged in"}
     }
 
@@ -16,7 +16,7 @@ export async function fetchApi<T>(route: string, options: RequestInit): Promise<
         headers: {...options.headers, "Authorization": `Bearer ${userStore.user.accessToken}`}
       }
     );
-    if (!response.ok) return Promise.reject({data: null, error: response.statusText});
+    if (!response.ok) return {data: null, error: response.statusText};
 
     if (response.headers.get('content-type')?.startsWith('application/json')) {
         const data = await response.json() as T;
@@ -31,7 +31,7 @@ export async function fetchUrl<T>(route: string, options: RequestInit): Promise<
     `${BASE_URL}${route}`,
     options
   );
-  if (!response.ok) return Promise.reject({data: null, error: response});
+  if (!response.ok) return {data: null, error: response};
 
   if (response.headers.get('content-type')?.startsWith('application/json')) {
     const data = await response.json() as T;

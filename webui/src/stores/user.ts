@@ -1,8 +1,10 @@
 import {type Ref, ref} from 'vue'
 import { defineStore } from 'pinia'
+import {fetchApi} from "@/api.ts";
 
 export type UserState = {
-  accessToken: string
+  accessToken: string,
+  lastCheck: number,
 }
 
 export const useUserStore = defineStore('user', () => {
@@ -19,19 +21,44 @@ export const useUserStore = defineStore('user', () => {
   })
 
   async function login(token: string): Promise<boolean> {
-    user.value = {accessToken: token}
+    user.value = {accessToken: token, lastCheck: 0}
     localStorage.setItem('userState', btoa(JSON.stringify(user.value)))
     return true;
   }
 
   function logout() {
     localStorage.removeItem('userState')
-    user.value = {accessToken: ""}
+    user.value = {accessToken: "", lastCheck: 0}
   }
 
-  function isLoggedIn(): boolean {
-      return user.value.accessToken !== "";
+  async function isLoggedIn(): Promise<boolean> {
+    if (!hasToken()) return false;
+    if (Date.now() - user.value.lastCheck < 60_000) return true;
+
+    const {data, error} = await fetchApi<string>("/users/auth");
+    if (error && error === "Unauthorized") {
+      logout();
+      return false;
+    } else if (error) {
+      return false;
+    } else {
+      user.value.lastCheck = Date.now();
+      localStorage.setItem('userState', btoa(JSON.stringify(user.value)))
+      return data !== null && data === "OK";
+    }
   }
 
-  return { user, login, logout, isLoggedIn }
+  function hasToken(): boolean {
+    return user.value.accessToken !== "";
+  }
+
+  function getUsername(): string|null {
+    if (!hasToken()) return null;
+    const parts = user.value.accessToken.split('.');
+    if (parts.length < 2) return null;
+    const claims = JSON.parse(atob(parts[1]!!));
+    return claims.username ?? null;
+  }
+
+  return { user, login, logout, isLoggedIn, hasToken, getUsername }
 })

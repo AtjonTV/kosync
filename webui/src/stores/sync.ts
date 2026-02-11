@@ -16,9 +16,13 @@ export const useSyncStore = defineStore('sync', () => {
     const now = Date.now();
     if (!forceRefresh && (now - sync.value.lastSync < 10_000)) return;
 
-    const {data: documents} = await fetchApi<SyncDoc[]>("/api/documents.all", {
+    const {data: documents, error} = await fetchApi<SyncDoc[]>("/api/documents.all", {
       method: "GET"
     });
+
+    if (error && error === "Unauthorized") {
+      throw error;
+    }
 
     if (documents !== null) {
       sync.value = {lastSync: now, documents};

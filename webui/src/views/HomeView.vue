@@ -2,18 +2,23 @@
 import DocumentsList from "@/components/DocumentsList.vue";
 import {useUserStore} from "@/stores/user.ts";
 import {useSyncStore} from "@/stores/sync.ts";
+import {ref} from "vue";
 
 const userStore = useUserStore();
 const syncStore = useSyncStore();
 
+const isLoggedIn = ref(false);
+isLoggedIn.value = await userStore.isLoggedIn();
+
 const doLogin = async (token: string) => {
-    const loginSuccess = await userStore.login(token);
-    if (!loginSuccess) {
-        alert("Failed to login, please check your credentials and try again.");
-        return;
-    }
-    document.location.search = "";
-    await syncStore.doSync();
+  const loginSuccess = await userStore.login(token);
+  if (!loginSuccess) {
+      alert("Failed to login, please check your credentials and try again.");
+      return;
+  }
+  isLoggedIn.value = await userStore.isLoggedIn();
+  window.history.replaceState({}, document.title, document.location.pathname);
+  await syncStore.doSync();
 }
 
 const uriParams = document.location.search;
@@ -29,16 +34,17 @@ const doLoginRedir = () => {
 const doLogout = async () => {
   userStore.logout();
   syncStore.clear();
+  isLoggedIn.value = false;
 }
 </script>
 
 <template>
   <main class="m-4 flex flex-col gap-8">
     <div class="flex gap-2 justify-end">
-      <Button v-if="!userStore.isLoggedIn()" @click="doLoginRedir">Login</Button>
-      <Button v-if="userStore.isLoggedIn()" variant="secondary" disabled>Logged in as '{{userStore.user.username}}'</Button>
-      <Button v-if="userStore.isLoggedIn()" @click="doLogout">Logout</Button>
+      <Button v-if="!isLoggedIn" @click="doLoginRedir">Login</Button>
+      <Button v-if="isLoggedIn" variant="secondary" disabled>Logged in as '{{userStore.getUsername()}}'</Button>
+      <Button v-if="isLoggedIn" @click="doLogout">Logout</Button>
     </div>
-    <DocumentsList v-if="userStore.isLoggedIn()" customTitle="My documents" />
+    <DocumentsList v-if="isLoggedIn" customTitle="My documents" />
   </main>
 </template>
