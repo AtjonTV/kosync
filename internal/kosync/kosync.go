@@ -67,6 +67,15 @@ func Run() {
 		_ = koapp.Db.Close()
 	}(&koapp)
 
+	if koapp.Config.PrintTemporaryCryptKeys {
+		pub, pri, err := koapp.Crypt.KeysAsPem()
+		if err != nil {
+			LogError("Could not dump temporary crypt keys: %v", err.Error())
+		} else {
+			LogInfo("Temporary Crypt Keys:\n%s\n%s", pub, pri)
+		}
+	}
+
 	app := fiber.New(fiber.Config{
 		AppName:      fmt.Sprintf("KOsync v%s", Version),
 		ServerHeader: "KOsync (https://git.obth.eu/atjontv/kosync)",

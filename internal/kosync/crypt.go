@@ -9,6 +9,9 @@ package kosync
 import (
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/x509"
+	"encoding/pem"
+	"errors"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -35,6 +38,33 @@ func (c *CryptState) GenerateKeys() error {
 		c.tempPrivateKey = &priv
 	}
 	return nil
+}
+
+func (c *CryptState) KeysAsPem() (pub, pri string, err error) {
+	if c.tempPublicKey == nil || c.tempPrivateKey == nil {
+		err = errors.New("No crypt keys available. Call GenerateKeys() first.")
+		return
+	}
+
+	pubX509, err := x509.MarshalPKIXPublicKey(*c.tempPublicKey)
+	if err != nil {
+		return
+	}
+	pubPem := pem.EncodeToMemory(&pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: pubX509,
+	})
+
+	priX509, err := x509.MarshalPKCS8PrivateKey(*c.tempPrivateKey)
+	if err != nil {
+		return
+	}
+	priPem := pem.EncodeToMemory(&pem.Block{
+		Type:  "PRIVATE KEY",
+		Bytes: priX509,
+	})
+
+	return string(pubPem), string(priPem), nil
 }
 
 func (c *CryptState) CreateToken(userId, userName string) (token string, err error) {

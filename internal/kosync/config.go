@@ -30,6 +30,7 @@ type Config struct {
 	WriteLogsToFile          bool   `env:"WRITE_LOGS_TO_FILE" default:"false"`
 	LogFile                  string `env:"LOG_FILE" default:"./kosync.log"`
 	ExperimentalWebSocketApi bool   `env:"EXPERIMENTAL_WEBSOCKET_API" default:"false"`
+	PrintTemporaryCryptKeys  bool   `env:"PRINT_TEMPORARY_CRYPT_KEYS" default:"false"`
 }
 
 func NewConfig(fallback *Config) *Config {
