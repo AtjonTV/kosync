@@ -84,6 +84,6 @@ To get a WebSocket URI with user credentials, send a request to `/api/ws` with t
 
 This will return a full `wss://` (or `ws://`) URI that can be directly shoved into a WebSocket library.  
 
-Alternatively, you can send the same request to `/api/auth.ws` to get a JWT in the response body that can be used in the `Authorization` header for any API endpoint.
+Alternatively, you can send the same request to `/api/auth.jwt` to get a JWT in the response body that can be used in the `Authorization` header for any API endpoint.
 
 With an existing JWT, construct the URI `wss://kosync.host.internal/api/ws/{token}` to connect to the WebSocket API.

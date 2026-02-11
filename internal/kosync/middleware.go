@@ -19,7 +19,7 @@ func (app *Kosync) NewAuthMiddleware() fiber.Handler {
 		"/syncs",
 		"/api/documents.all",
 		"/api/documents.update",
-		"/api/auth.ws",
+		"/api/auth.jwt",
 		"/api/ws",
 	}
 	allowFailUrl := []string{

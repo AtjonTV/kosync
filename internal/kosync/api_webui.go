@@ -68,16 +68,6 @@ func (app *Kosync) ApiPutDocument(c fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
-func (app *Kosync) ApiAuthBasic(c fiber.Ctx) error {
-	logApiWeb.Debug("ApiAuthBasic")
-	token, err := app.Crypt.CreateToken(c.Locals(CtxContextUserId).(string))
-	if err != nil {
-		return err
-	}
-	logApiWeb.Debug("Redirecting to WebUI with token '%s'", token)
-	return c.Redirect().Status(fiber.StatusTemporaryRedirect).To("/web?token=" + token)
-}
-
 func (app *Kosync) apiGetUserDocuments(username string) (*[]UiDocumentData, error) {
 	user, found, err := app.Db.FindUserByUsername(username)
 	if err != nil {

@@ -1,3 +1,9 @@
+//
+// File:        internal/kosync/api_socket.go
+// Project:     https://git.obth.eu/atjontv/kosync
+// Copyright:   © 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
+//
+
 package kosync
 
 import (
@@ -8,15 +14,6 @@ import (
 	"github.com/gofiber/utils/v2"
 )
 import "github.com/gofiber/contrib/v3/websocket"
-
-func (app *Kosync) ApiAuthWebSocket(c fiber.Ctx) error {
-	userId := c.Locals(CtxContextUserId).(string)
-	token, err := app.Crypt.CreateToken(userId)
-	if err != nil {
-		return err
-	}
-	return c.Status(fiber.StatusOK).SendString(token)
-}
 
 func (app *Kosync) HandleOpenWebsocket(c fiber.Ctx) error {
 	LogDebug("HandleOpenWebsocket")
