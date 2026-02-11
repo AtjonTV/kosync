@@ -73,3 +73,17 @@ The `data` of these announces depend on the topic.
 
 These are the currently known topics:
 - `user.documents`: Get announces when a single document of the current user changes.
+
+## Authentication
+
+The WebSocket API is protected by a JWT.
+
+To get a WebSocket URI with user credentials, send a request to `/api/ws` with the following headers:
+- `x-auth-user`: Username of the user to authenticate
+- `x-auth-key`: Password hash of the user (must be MD5 because that is what KOReader uses)
+
+This will return a full `wss://` (or `ws://`) URI that can be directly shoved into a WebSocket library.  
+
+Alternatively, you can send the same request to `/api/auth.ws` to get a JWT in the response body that can be used in the `Authorization` header for any API endpoint.
+
+With an existing JWT, construct the URI `wss://kosync.host.internal/api/ws/{token}` to connect to the WebSocket API.
