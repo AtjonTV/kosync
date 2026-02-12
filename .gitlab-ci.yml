@@ -1,4 +1,4 @@
-image: golang:1.25.6-alpine3.23
+image: golang:1.25.7-alpine3.23
 
 stages:
   - validate
@@ -38,7 +38,7 @@ compile:
   stage: build
   before_script:
     - echo -e "https://lsus.obth.eu/alpine/v3.23/main\nhttps://lsus.obth.eu/alpine/v3.23/community" > /etc/apk/repositories
-    - apk add --cache=no nodejs npm && npm install -g bun@1.3.5
+    - apk add --cache=no nodejs npm && npm install -g bun@1.3.9
   script:
     - go generate kosync.go
     - go build -tags netgo -o kosync.exe kosync.go
