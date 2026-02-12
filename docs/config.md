@@ -17,6 +17,7 @@ Here is a list of configuration variables currently supported:
 - `PROXY_IP_VALIDATION`: Enable IP validation for trusted proxies. Default `false`
 - `PRINT_CRYPTO_KEYS`: Print crypto keys used for JWT to stdout. Default `false`
 - `CRYPTO_KEYS_SEED`: Seed for the crypto keys. Must be 32 Characters log. Default `""` (random)
+- `JWT_DURATION`: Duration of the JWT validity in seconds. Default `21600` (6 hours)
 
 ¹: Requires a KOsync executable with the WebUI compiled in. See the [build](./build.md) documentation.
 
@@ -32,6 +33,8 @@ DISABLE_REGISTRATION=false
 # Enable the web UI so users can view their progress
 ENABLE_WEBUI=true
 ENABLE_WEBSOCKET_API=true
+# Stay logged in for 24 hours
+JWT_DURATION=86400
 
 # Write logs to file
 LOG_TO_FILE=true

@@ -83,7 +83,10 @@ func Run() {
 		Config: config,
 		Db:     db,
 		WsSubs: &wsSubs,
-		Crypt:  NewCryptState(config.CryptoKeysSeed),
+		Crypt: NewCryptState(CryptConfig{
+			StaticKeySeed:      config.CryptoKeysSeed,
+			JwtDurationSeconds: config.JwtDuration,
+		}),
 	}
 	defer func(koapp *Kosync) {
 		_ = koapp.Db.Close()

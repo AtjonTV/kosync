@@ -37,6 +37,7 @@ type Config struct {
 
 	PrintCryptoKeys bool   `env:"PRINT_CRYPTO_KEYS" default:"false"`
 	CryptoKeysSeed  string `env:"CRYPTO_KEYS_SEED" default:""`
+	JwtDuration     int    `env:"JWT_DURATION" default:"21600"`
 }
 
 func NewConfig(fallback *Config) *Config {
@@ -71,6 +72,14 @@ func GetEnvBool(key string, fallback bool) bool {
 		return fallback
 	} else {
 		return s
+	}
+}
+
+func GetEnvInt(key string, fallback int) int {
+	if i, err := strconv.Atoi(GetEnv(key, strconv.Itoa(fallback))); err != nil {
+		return fallback
+	} else {
+		return i
 	}
 }
 
@@ -111,6 +120,14 @@ func loadConfigFromEnvironment(conf *Config) {
 				// Set if possible
 				field.SetString(GetEnv(alias, fieldDefault))
 				continue
+			} else if field.Kind() == reflect.Int {
+				fieldDefault := 0
+				// Try to get a default
+				if def, ok := fieldType.Tag.Lookup("default"); ok {
+					fieldDefault, _ = strconv.Atoi(def)
+				}
+				// Set if possible
+				field.SetInt(int64(GetEnvInt(alias, fieldDefault)))
 			} else {
 				panic(fmt.Sprintf("Config: Unsupported type '%s' of field '%s'.", fieldType.Type.Name(), fieldType.Name))
 			}

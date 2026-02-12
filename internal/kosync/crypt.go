@@ -19,12 +19,20 @@ import (
 type CryptState struct {
 	tempPublicKey  *ed25519.PublicKey
 	tempPrivateKey *ed25519.PrivateKey
+	config         *CryptConfig
 }
 
-func NewCryptState(staticBase string) *CryptState {
-	c := CryptState{}
-	if len(staticBase) > 0 {
-		_ = c.GenerateKeys(&staticBase)
+type CryptConfig struct {
+	StaticKeySeed      string
+	JwtDurationSeconds int
+}
+
+func NewCryptState(conf CryptConfig) *CryptState {
+	c := CryptState{
+		config: &conf,
+	}
+	if len(conf.StaticKeySeed) > 0 {
+		_ = c.GenerateKeys(&conf.StaticKeySeed)
 	} else {
 		_ = c.GenerateKeys(nil)
 	}
@@ -79,7 +87,7 @@ func (c *CryptState) CreateToken(userId, userName string) (token string, err err
 	return jwt.NewWithClaims(jwt.SigningMethodEdDSA, jwt.MapClaims{
 		"sub":      userId,
 		"username": userName,
-		"exp":      time.Now().Add(time.Hour * 6).Unix(),
+		"exp":      time.Now().Add(time.Duration(c.config.JwtDurationSeconds) * time.Second).Unix(),
 	}).SignedString(*c.tempPrivateKey)
 }
 
