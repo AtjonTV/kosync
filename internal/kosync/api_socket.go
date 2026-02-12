@@ -58,14 +58,14 @@ func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 	currClose := c.CloseHandler()
 	c.SetCloseHandler(func(code int, text string) error {
 		LogDebug("Websocket connection closed: %d %s", code, text)
-		slices.DeleteFunc(*app.WsSubs, func(s *WsSub) bool {
+		*app.WsSubs = slices.DeleteFunc(*app.WsSubs, func(s *WsSub) bool {
 			return s.RequestId == requestId
 		})
 		return currClose(code, text)
 	})
 	defer func() {
 		LogDebug("Websocket connection ended")
-		slices.DeleteFunc(*app.WsSubs, func(s *WsSub) bool {
+		*app.WsSubs = slices.DeleteFunc(*app.WsSubs, func(s *WsSub) bool {
 			return s.RequestId == requestId
 		})
 	}()
