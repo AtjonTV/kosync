@@ -33,11 +33,13 @@ func (db *Database) checkAndRunMigrations(config *Config) error {
 
 	db.currentSchema = currentVersion
 	if currentVersion < newestVersion {
-		logDbMigrate.Debug("Creating backup of database before applying migrations")
-		err := BackupDatabase(config, db.rawDb)
-		if err != nil {
-			logDbMigrate.Error("Failed to backup database: %v", err.Error())
-			return err
+		if currentVersion > 0 { // no need to backup an empty database, so we skip == 0
+			logDbMigrate.Debug("Creating backup of database before applying migrations")
+			err := BackupDatabase(config, db.rawDb)
+			if err != nil {
+				logDbMigrate.Error("Failed to backup database: %v", err.Error())
+				return err
+			}
 		}
 		logDbMigrate.Debug("Running database migrations")
 
@@ -46,6 +48,10 @@ func (db *Database) checkAndRunMigrations(config *Config) error {
 				return err
 			}
 		}
+
+		logDbMigrate.Debug("All migrations applied")
+	} else {
+		logDbMigrate.Debug("No migrations to apply")
 	}
 
 	return nil
@@ -86,6 +92,8 @@ func (db *Database) getCurrentSchemaVersion() (vers int, err error) {
 	if err != nil && !strings.Contains(err.Error(), "no such table: schema_versions") {
 		logDbMigrate.Error("Failed to check database schema version: %v", err.Error())
 		return
+	} else if err != nil {
+		return 0, nil
 	}
 	defer func(versionsRes *sql.Rows) {
 		if versionsRes != nil {
