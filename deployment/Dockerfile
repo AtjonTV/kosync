@@ -27,7 +27,7 @@ RUN go build -tags netgo -ldflags='-s -w -extldflags "-static"' -o /out/kosync k
 FROM alpine:3.23.3
 
 # Install CA certs for HTTPS outbound, if needed
-RUN apk add --no-cache ca-certificates && update-ca-certificates
+RUN apk add --cache=no ca-certificates && update-ca-certificates
 
 # Copy the binary
 COPY --from=builder /out/kosync /app/kosync
