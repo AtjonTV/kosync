@@ -2,6 +2,7 @@ image: golang:1.25.7-alpine3.23
 
 stages:
   - validate
+  - test
   - build
   - analyze
 
@@ -33,6 +34,14 @@ staticcheck:
     - go install honnef.co/go/tools/cmd/staticcheck@2025.1.1
   script:
     - staticcheck ./...
+
+tests:
+  stage: test
+  before_script:
+    - go mod vendor
+  script:
+    - go test -coverprofile=cover.profile ./... && go tool cover -func cover.profile
+  coverage: '/total:\s+\(statements\)\s+\d+.\d+%/'
 
 compile:
   stage: build

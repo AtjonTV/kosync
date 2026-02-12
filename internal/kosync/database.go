@@ -57,3 +57,7 @@ func NewDatabaseWithoutMigrate(config *Config) (*Database, error) {
 func (db *Database) Close() error {
 	return db.rawDb.Close()
 }
+
+func (db *Database) SchemaVersion() int {
+	return db.currentSchema
+}

@@ -41,3 +41,14 @@ func DocumentFromMap(m map[string]interface{}) Document {
 	DecodeStructFromMap(m, doc, "json")
 	return doc
 }
+
+func (d *Document) Equals(b *Document) bool {
+	return d.Id == b.Id &&
+		d.OwnerId == b.OwnerId &&
+		d.Title == b.Title &&
+		d.CurrentLocation == b.CurrentLocation &&
+		d.Progress == b.Progress &&
+		d.LastReadOnDevice == b.LastReadOnDevice &&
+		d.LastReadOnDeviceId == b.LastReadOnDeviceId &&
+		d.LastReadAt == b.LastReadAt
+}
