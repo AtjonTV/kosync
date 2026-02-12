@@ -37,9 +37,13 @@ func TestMigration_ReadMigration(t *testing.T) {
 
 	if migs == nil {
 		t.Errorf("Did not find at least one migration, cant test if they can be read")
+		return
 	}
 
 	mig, err := (*migs)[0].ReadMigration()
+	if err != nil {
+		t.Errorf("Failed to read migration '%s': %v", (*migs)[0].Path, err.Error())
+	}
 
 	if len(mig) < 1 {
 		t.Errorf("Read 0 bytes from migration '%s'", (*migs)[0].Path)
