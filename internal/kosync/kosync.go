@@ -35,7 +35,7 @@ const (
 type Kosync struct {
 	Config *Config
 	Db     *Database
-	WsSubs *WsSub
+	WsSubs *[]*WsSub
 	Crypt  *CryptState
 }
 
@@ -78,10 +78,11 @@ func Run() {
 		panic(err)
 	}
 
+	wsSubs := make([]*WsSub, 0)
 	koapp := Kosync{
 		Config: config,
 		Db:     db,
-		WsSubs: &WsSub{},
+		WsSubs: &wsSubs,
 		Crypt:  NewCryptState(config.CryptoKeysSeed),
 	}
 	defer func(koapp *Kosync) {

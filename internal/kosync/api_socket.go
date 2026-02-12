@@ -8,6 +8,7 @@ package kosync
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/gofiber/contrib/v3/websocket"
@@ -57,20 +58,16 @@ func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 	currClose := c.CloseHandler()
 	c.SetCloseHandler(func(code int, text string) error {
 		LogDebug("Websocket connection closed: %d %s", code, text)
-		_, f := (*app.WsSubs)[userId][requestId]
-		if f {
-			LogDebug("Removing subscription for user '%s' and request '%s'", userId, requestId)
-			delete((*app.WsSubs)[userId], requestId)
-		}
+		slices.DeleteFunc(*app.WsSubs, func(s *WsSub) bool {
+			return s.RequestId == requestId
+		})
 		return currClose(code, text)
 	})
 	defer func() {
 		LogDebug("Websocket connection ended")
-		_, f := (*app.WsSubs)[userId][requestId]
-		if f {
-			LogDebug("Removing subscription for user '%s' and request '%s'", userId, requestId)
-			delete((*app.WsSubs)[userId], requestId)
-		}
+		slices.DeleteFunc(*app.WsSubs, func(s *WsSub) bool {
+			return s.RequestId == requestId
+		})
 	}()
 
 	err := c.WriteJSON(WsMessage{
@@ -186,14 +183,16 @@ func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 			var rpc = WsPubsubFromMap(msg.Payload.(map[string]interface{}))
 			LogDebug("Received PubSub: %s", rpc.Topic)
 
-			known, found := (*app.WsSubs)[userId]
-			if !found {
-				(*app.WsSubs)[userId] = make(map[string]*Wsub)
-				known = (*app.WsSubs)[userId]
-			}
-			known[requestId] = &Wsub{
-				Topic:  rpc.Topic,
-				Socket: c,
+			alreadyInSubs := slices.ContainsFunc(*app.WsSubs, func(s *WsSub) bool {
+				return s.RequestId == requestId && s.Topic == rpc.Topic
+			})
+			if !alreadyInSubs {
+				*app.WsSubs = append(*app.WsSubs, &WsSub{
+					UserId:    userId,
+					RequestId: requestId,
+					Topic:     rpc.Topic,
+					Socket:    c,
+				})
 			}
 
 			err := c.WriteJSON(newPsResult(rpc.Topic, "subscribed"))
@@ -207,14 +206,13 @@ func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 
 func (app *Kosync) PubSubAnnounce(userId, topic string, data interface{}) error {
 	LogDebug("PubSubAnnounce(userId='%s', topic='%s', data=%+v)", userId, topic, data)
-	known, found := (*app.WsSubs)[userId]
-	if !found {
-		return nil
-	}
-	for _, sub := range known {
-		if sub.Topic == topic {
-			_ = sub.Socket.WriteJSON(newPsResult(topic, data))
-			continue
+	for sub := range slices.Values(*app.WsSubs) {
+		if sub.UserId == userId && sub.Topic == topic {
+			err := sub.Socket.WriteJSON(newPsResult(topic, data))
+			if err != nil {
+				LogDebug("Failed to send PubSub message: %v", err.Error())
+				continue
+			}
 		}
 	}
 	return nil

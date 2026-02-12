@@ -8,12 +8,11 @@ package kosync
 
 import "github.com/gofiber/contrib/v3/websocket"
 
-type WsTopicSub = map[string]*Wsub
-type WsSub = map[string]WsTopicSub
-
-type Wsub struct {
-	Topic  string
-	Socket *websocket.Conn
+type WsSub struct {
+	UserId    string
+	RequestId string
+	Topic     string
+	Socket    *websocket.Conn
 }
 
 type WsMessage struct {
