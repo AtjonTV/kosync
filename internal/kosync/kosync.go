@@ -25,7 +25,7 @@ import (
 )
 
 // Version NOTE: Must be the same as "sonar.projectVersion" in ../../sonar-project.properties
-const Version = "2026.05.1-dev.6"
+const Version = "2026.05.1-dev.7"
 
 const (
 	CtxContextUserName = "current_user_name"
