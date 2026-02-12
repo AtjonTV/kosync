@@ -88,6 +88,10 @@ func loadConfigFromEnvironment(conf *Config) {
 			if alias == "" {
 				continue
 			}
+			if !field.CanSet() {
+				println("Cannot set bool value for field: " + fieldType.Name)
+				continue
+			}
 
 			if field.Kind() == reflect.Bool {
 				fieldDefault := false
@@ -96,11 +100,7 @@ func loadConfigFromEnvironment(conf *Config) {
 					fieldDefault, _ = strconv.ParseBool(strings.ToLower(def))
 				}
 				// Set if possible
-				if field.CanSet() {
-					field.SetBool(GetEnvBool(alias, fieldDefault))
-				} else {
-					println("Cannot set bool value for field: " + fieldType.Name)
-				}
+				field.SetBool(GetEnvBool(alias, fieldDefault))
 				continue
 			} else if field.Kind() == reflect.String {
 				fieldDefault := ""
@@ -109,11 +109,7 @@ func loadConfigFromEnvironment(conf *Config) {
 					fieldDefault = def
 				}
 				// Set if possible
-				if field.CanSet() {
-					field.SetString(GetEnv(alias, fieldDefault))
-				} else {
-					println("Cannot set string value for field: " + fieldType.Name)
-				}
+				field.SetString(GetEnv(alias, fieldDefault))
 				continue
 			} else {
 				panic(fmt.Sprintf("Config: Unsupported type '%s' of field '%s'.", fieldType.Type.Name(), fieldType.Name))
