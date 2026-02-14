@@ -8,6 +8,7 @@ package migrations
 
 import (
 	"embed"
+	"io/fs"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -25,38 +26,43 @@ type Migration struct {
 
 func LoadMigrations() (migrations *[]Migration, newest int, err error) {
 	sqlDir := "sql"
-	dir, err := migrationsFs.ReadDir(sqlDir)
+
+	migrations = new([]Migration)
+	err = fs.WalkDir(migrationsFs, sqlDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if d.IsDir() {
+			return nil
+		}
+
+		fileName := filepath.Base(path)
+		nameParts := strings.Split(fileName, "-")
+		if len(nameParts) != 2 {
+			return nil
+		}
+
+		var parsedInt int64
+		parsedInt, err = strconv.ParseInt(nameParts[0], 10, 0)
+		if err != nil {
+			return err
+		}
+		version := int(parsedInt)
+		if version > newest {
+			newest = version
+		}
+
+		newMig := Migration{
+			Version: version,
+			Title:   strings.ReplaceAll(strings.ReplaceAll(nameParts[1], ".sql", ""), "_", " "),
+			Path:    path,
+		}
+		*migrations = append(*migrations, newMig)
+		return nil
+	})
 	if err != nil {
 		return
-	}
-
-	tmpMig := make([]Migration, 0)
-	migrations = &tmpMig
-	for i := range dir {
-		ent := dir[i]
-		if ent.Type().IsRegular() {
-			name := ent.Name()
-			nameParts := strings.Split(name, "-")
-			if len(nameParts) != 2 {
-				continue
-			}
-			var parsedInt int64
-			parsedInt, err = strconv.ParseInt(nameParts[0], 10, 0)
-			if err != nil {
-				return
-			}
-			version := int(parsedInt)
-			if version > newest {
-				newest = version
-			}
-
-			newMig := Migration{
-				Version: version,
-				Title:   strings.ReplaceAll(strings.ReplaceAll(nameParts[1], ".sql", ""), "_", " "),
-				Path:    filepath.Join(sqlDir, ent.Name()),
-			}
-			*migrations = append(*migrations, newMig)
-		}
 	}
 
 	slices.SortFunc(*migrations, func(a, b Migration) int {
