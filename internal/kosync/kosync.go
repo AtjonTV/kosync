@@ -78,11 +78,10 @@ func Run() {
 		panic(err)
 	}
 
-	wsSubs := make([]*WsSub, 0)
 	koapp := Kosync{
 		Config: config,
 		Db:     db,
-		WsSubs: &wsSubs,
+		WsSubs: new([]*WsSub),
 		Crypt: NewCryptState(CryptConfig{
 			StaticKeySeed:      config.CryptoKeysSeed,
 			JwtDurationSeconds: config.JwtDuration,
