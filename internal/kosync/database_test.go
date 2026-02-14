@@ -18,29 +18,61 @@ import (
 	"git.obth.eu/atjontv/kosync/internal/kosync/migrations"
 )
 
-func newMemDb(t *testing.T) *kosync.Database {
+func newMemDb(t *testing.T, doMigrate bool) *kosync.Database {
 	conf := kosync.Config{
 		DatabaseFile: filepath.Join(os.TempDir(), "kotest.db"),
 	}
-	db, err := kosync.NewDatabase(&conf)
+	_ = os.Remove(conf.DatabaseFile)
+	if doMigrate {
+		db, err := kosync.NewDatabase(&conf)
+		if err != nil {
+			t.Fatalf("Could not create test database for testing: %v", err)
+		}
+		return db
+	}
+
+	db, err := kosync.NewDatabaseWithoutMigrate(&conf)
 	if err != nil {
-		t.Errorf("Could not create in-memory database for testing: %v", err)
+		t.Fatalf("Could not create test database for testing: %v", err)
 	}
 	return db
 }
 
 func TestMigrationsApplied(t *testing.T) {
-	_, i, _ := migrations.LoadMigrations()
+	migs, i, _ := migrations.LoadMigrations()
 
-	db := newMemDb(t)
+	{
+		db := newMemDb(t, true)
 
-	if db.SchemaVersion() != i {
-		t.FailNow()
+		if db.SchemaVersion() != i {
+			t.Fatalf("Migrations failed. Expected version %d, got %d.", i, db.SchemaVersion())
+		}
+	}
+
+	{
+		db := newMemDb(t, false)
+		err := db.MigrateToTargetVersion(migs, (*migs)[0].Version)
+		if err != nil {
+			t.Fatalf("Failed to migrate database: %v", err)
+		}
+
+		if db.SchemaVersion() != (*migs)[0].Version {
+			t.Fatalf("Migrations failed. Expected version %d, got %d.", (*migs)[0].Version, db.SchemaVersion())
+		}
+
+		err = db.MigrateToTargetVersion(migs, i)
+		if err != nil {
+			t.Fatalf("Failed to migrate database: %v", err)
+		}
+
+		if db.SchemaVersion() != i {
+			t.Fatalf("Migrations failed. Expected version %d, got %d.", i, db.SchemaVersion())
+		}
 	}
 }
 
 func TestCreateDocument(t *testing.T) {
-	db := newMemDb(t)
+	db := newMemDb(t, true)
 
 	doc := kosync.Document{
 		Id:                 "1",
@@ -60,7 +92,7 @@ func TestCreateDocument(t *testing.T) {
 }
 
 func TestUpdateDocument(t *testing.T) {
-	db := newMemDb(t)
+	db := newMemDb(t, true)
 
 	doc := kosync.Document{
 		Id:                 "1",
