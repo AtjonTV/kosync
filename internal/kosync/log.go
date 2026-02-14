@@ -25,21 +25,21 @@ func SetDebugLogging(enabled bool) {
 	doDebugLogging = enabled
 }
 
-func SetLogOutput(writeToFile bool, filename string) io.Writer {
+func SetLogOutput(writeToFile bool, filename string) (io.Writer, *os.File) {
 	if writeToFile {
 		//bearer:disable go_gosec_filesystem_filereadtaint
 		f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 		if err != nil {
 			LogError("Failed to open log file '%s': %v", filename, err.Error())
 			LogDebug("Continuing with stdout-only")
-			return os.Stdout
+			return os.Stdout, nil
 		}
 		stream := io.MultiWriter(os.Stdout, f)
 		log.SetOutput(stream)
 		golog.SetOutput(stream)
-		return stream
+		return stream, f
 	}
-	return os.Stdout
+	return os.Stdout, nil
 }
 
 func LogDebug(fmt string, args ...interface{}) {

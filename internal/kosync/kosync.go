@@ -48,7 +48,12 @@ func Run() {
 		EnableWebUi: enableWeb != nil && *enableWeb,
 	})
 	SetDebugLogging(config.DebugLog)
-	logStream := SetLogOutput(config.LogToFile, config.LogFile)
+	logStream, logFile := SetLogOutput(config.LogToFile, config.LogFile)
+	defer func() {
+		if logFile != nil {
+			_ = logFile.Close()
+		}
+	}()
 
 	if restoreDatabase != nil && *restoreDatabase != "" {
 		restoreLog := NewKlog("db/restore")
