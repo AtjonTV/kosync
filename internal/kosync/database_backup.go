@@ -23,8 +23,15 @@ func BackupDatabase(cfg *Config, db *sql.DB) error {
 		NewBackup(string) (*sqlite.Backup, error)
 	}
 
-	c, _ := db.Conn(context.Background())
-	err := c.Raw(func(driverConn any) error {
+	c, err := db.Conn(context.Background())
+	if err != nil {
+		return err
+	}
+	defer func(c *sql.Conn) {
+		_ = c.Close()
+	}(c)
+
+	err = c.Raw(func(driverConn any) error {
 		now := time.Now().UTC()
 		dbFileName := strings.Replace(filepath.Base(cfg.DatabaseFile), ".db", "", 1)
 		newFileName := fmt.Sprintf("%s_%s-%s.db", dbFileName, now.Format("20060102"), now.Format("150405"))
@@ -74,7 +81,14 @@ func RestoreDatabase(db *sql.DB, backupFile string) error {
 		NewRestore(string) (*sqlite.Backup, error)
 	}
 
-	c, _ := db.Conn(context.Background())
+	c, err := db.Conn(context.Background())
+	if err != nil {
+		return err
+	}
+	defer func(c *sql.Conn) {
+		_ = c.Close()
+	}(c)
+
 	err = c.Raw(func(driverConn any) error {
 		bak, err := driverConn.(SQLiteBackup).NewRestore(backupFile)
 		if err != nil {
