@@ -221,13 +221,13 @@ func (db *Database) prepareHistoryCreationInTransaction(tx *sql.Tx, doc *Documen
 	return err
 }
 
-func (db *Database) AllDocumentsOfUserWithHistory(ownerId string) (*[]DocumentWithHistory, error) {
+func (db *Database) AllDocumentsOfUserWithHistory(ownerId string) (result *[]DocumentWithHistory, err error) {
 	docs, err := db.AllDocumentsOfUser(ownerId)
 	if err != nil {
 		logApiWeb.Error("Failed to get documents for user '%s': %v", ownerId, err.Error())
 		return nil, err
 	}
-	result := make([]DocumentWithHistory, 0, len(docs))
+	result = new([]DocumentWithHistory)
 	for i := range docs {
 		history, err := db.GetDocumentHistory(ownerId, docs[i].Id)
 		if err != nil {
@@ -235,9 +235,9 @@ func (db *Database) AllDocumentsOfUserWithHistory(ownerId string) (*[]DocumentWi
 			continue
 		}
 
-		result = append(result, DocumentWithHistory{Document: docs[i], History: history})
+		*result = append(*result, DocumentWithHistory{Document: docs[i], History: history})
 	}
-	return &result, nil
+	return
 }
 
 func scanDocumentsFromRows(rows *sql.Rows) (docs *[]Document, err error) {
