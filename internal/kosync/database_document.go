@@ -37,25 +37,21 @@ func (db *Database) FindDocumentById(ownerId, documentId string) (*Document, boo
 		_ = rows.Close()
 	}(rows)
 
-	if !rows.Next() {
-		logDbDoc.Debug("No document found")
-		return nil, false, nil
+	docs, err := scanDocumentsFromRows(rows)
+	if err != nil {
+		return nil, false, err
 	}
 
-	var doc Document
-	err = rows.Scan(
-		&doc.Id,
-		&doc.OwnerId,
-		&doc.Title,
-		&doc.CurrentLocation,
-		&doc.Progress,
-		&doc.LastReadOnDevice,
-		&doc.LastReadOnDeviceId,
-		&doc.LastReadAt,
-	)
+	if len(*docs) == 0 {
+		logDbDoc.Debug("No document found")
+		return nil, false, nil
+	} else if len(*docs) > 1 {
+		logDbDoc.Error("Found more than one document when only one was expected")
+		return nil, false, ErrFoundMoreThanOneResultWhenOnlyOneExpected
+	}
 
 	logDbDoc.Debug("Found document")
-	return &doc, true, err
+	return &(*docs)[0], true, err
 }
 
 func (db *Database) AllDocumentsOfUser(ownerId string) ([]Document, error) {
@@ -82,28 +78,14 @@ func (db *Database) AllDocumentsOfUser(ownerId string) ([]Document, error) {
 		_ = rows.Close()
 	}(rows)
 
-	var docs []Document
-	for rows.Next() {
-		var doc Document
-		err = rows.Scan(
-			&doc.Id,
-			&doc.OwnerId,
-			&doc.Title,
-			&doc.CurrentLocation,
-			&doc.Progress,
-			&doc.LastReadOnDevice,
-			&doc.LastReadOnDeviceId,
-			&doc.LastReadAt,
-		)
-		if err != nil {
-			logDbDoc.Error("Failed to scan document: %v", err.Error())
-			return nil, err
-		}
-		docs = append(docs, doc)
+	docs, err := scanDocumentsFromRows(rows)
+	if err != nil {
+		logDbDoc.Error("Failed to scan document: %v", err.Error())
+		return nil, err
 	}
 
-	logDbDoc.Debug("Found %d documents", len(docs))
-	return docs, nil
+	logDbDoc.Debug("Found %d documents", len(*docs))
+	return *docs, nil
 }
 
 func (db *Database) GetDocumentHistory(ownerId, documentId string) ([]Document, error) {
@@ -130,27 +112,14 @@ func (db *Database) GetDocumentHistory(ownerId, documentId string) ([]Document, 
 		_ = rows.Close()
 	}(rows)
 
-	var docs []Document
-	for rows.Next() {
-		var doc Document
-		err = rows.Scan(
-			&doc.Id,
-			&doc.OwnerId,
-			&doc.Title,
-			&doc.CurrentLocation,
-			&doc.Progress,
-			&doc.LastReadOnDevice,
-			&doc.LastReadOnDeviceId,
-			&doc.LastReadAt,
-		)
-		if err != nil {
-			logDbDoc.Error("Failed to scan document: %v", err.Error())
-			return nil, err
-		}
-		docs = append(docs, doc)
+	docs, err := scanDocumentsFromRows(rows)
+	if err != nil {
+		logDbDoc.Error("Failed to scan document: %v", err.Error())
+		return nil, err
 	}
-	logDbDoc.Debug("Found %d history entries", len(docs))
-	return docs, nil
+
+	logDbDoc.Debug("Found %d history entries", len(*docs))
+	return *docs, nil
 }
 
 func (db *Database) CreateOrUpdateDocument(doc *Document) error {
@@ -269,4 +238,26 @@ func (db *Database) AllDocumentsOfUserWithHistory(ownerId string) (*[]DocumentWi
 		result = append(result, DocumentWithHistory{Document: docs[i], History: history})
 	}
 	return &result, nil
+}
+
+func scanDocumentsFromRows(rows *sql.Rows) (docs *[]Document, err error) {
+	docs = new([]Document)
+	for rows.Next() {
+		var doc Document
+		err = rows.Scan(
+			&doc.Id,
+			&doc.OwnerId,
+			&doc.Title,
+			&doc.CurrentLocation,
+			&doc.Progress,
+			&doc.LastReadOnDevice,
+			&doc.LastReadOnDeviceId,
+			&doc.LastReadAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		*docs = append(*docs, doc)
+	}
+	return docs, nil
 }
