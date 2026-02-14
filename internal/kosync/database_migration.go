@@ -8,6 +8,7 @@ package kosync
 
 import (
 	"database/sql"
+	"slices"
 	"strings"
 	"time"
 
@@ -43,10 +44,8 @@ func (db *Database) checkAndRunMigrations(config *Config) error {
 		}
 		logDbMigrate.Debug("Running database migrations")
 
-		for ver := currentVersion + 1; ver <= newestVersion; ver++ {
-			if err := db.migrateTo(migs, ver); err != nil {
-				return err
-			}
+		if err := db.MigrateToTargetVersion(migs, newestVersion); err != nil {
+			return err
 		}
 
 		logDbMigrate.Debug("All migrations applied")
@@ -57,31 +56,55 @@ func (db *Database) checkAndRunMigrations(config *Config) error {
 	return nil
 }
 
-func (db *Database) migrateTo(migs *[]migrations.Migration, targetVersion int) error {
+func (db *Database) MigrateToTargetVersion(dbMigrations *[]migrations.Migration, targetVersion int) error {
 	var insertSchemaVersion = `INSERT INTO schema_versions (version, installed_at) VALUES (?, ?)`
 
-	for i := range *migs {
-		if (*migs)[i].Version == targetVersion {
-			logDbMigrate.Debug("Migrating to version %d", targetVersion)
-			mig := (*migs)[i]
+	if dbMigrations == nil {
+		return ErrMigrationWithoutMigrationsNotPossible
+	}
+
+	sorted := slices.IsSortedFunc(*dbMigrations, func(a, b migrations.Migration) int {
+		return a.Compare(&b)
+	})
+	if !sorted {
+		slices.SortFunc(*dbMigrations, func(a, b migrations.Migration) int {
+			return a.Compare(&b)
+		})
+	}
+
+	hasMig := slices.ContainsFunc(*dbMigrations, func(mig migrations.Migration) bool {
+		return mig.Version == targetVersion
+	})
+	if !hasMig {
+		return ErrMigrationTargetNotAvailable
+	}
+
+	for i := range *dbMigrations {
+		mig := (*dbMigrations)[i]
+		if db.currentSchema < mig.Version && mig.Version <= targetVersion {
+			logDbMigrate.Debug("Migrating to version %d", mig.Version)
 
 			migFile, err := mig.ReadMigration()
 			if err != nil {
-				logDbMigrate.Error("Failed to read migration %d from file %s", targetVersion, mig.Path)
+				logDbMigrate.Error("Failed to read migration %d from file %s", mig.Version, mig.Path)
 			}
 
 			if _, err := db.rawDb.Exec(migFile); err != nil {
-				logDbMigrate.Error("Failed to run migration %d: %v", targetVersion, err.Error())
+				logDbMigrate.Error("Failed to run migration %d: %v", mig.Version, err.Error())
 				return err
 			}
 
-			if _, err := db.rawDb.Exec(insertSchemaVersion, targetVersion, time.Now().Unix()); err != nil {
+			if _, err := db.rawDb.Exec(insertSchemaVersion, mig.Version, time.Now().Unix()); err != nil {
 				logDbMigrate.Error("Failed to insert schema version: %v", err.Error())
 				return err
 			}
-			logDbMigrate.Debug("Successfully applied migration %d", targetVersion)
-			db.currentSchema = targetVersion
+			logDbMigrate.Debug("Successfully applied migration %d", mig.Version)
+			db.currentSchema = mig.Version
 		}
+	}
+
+	if db.currentSchema != targetVersion {
+		return ErrMigrationTargetNotReachedAfterMigrations
 	}
 
 	return nil

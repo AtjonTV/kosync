@@ -10,3 +10,6 @@ import "errors"
 
 var ErrUserAlreadyExists = errors.New("user already exists")
 var ErrRestoreSourceDoesNotExist = errors.New("file to restore from does not exist")
+var ErrMigrationWithoutMigrationsNotPossible = errors.New("migration without migrations not possible")
+var ErrMigrationTargetNotReachedAfterMigrations = errors.New("migration to target not reached after migrations")
+var ErrMigrationTargetNotAvailable = errors.New("migration target version not available")
