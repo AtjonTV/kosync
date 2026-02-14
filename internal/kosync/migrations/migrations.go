@@ -60,7 +60,7 @@ func LoadMigrations() (migrations *[]Migration, newest int, err error) {
 	}
 
 	slices.SortFunc(*migrations, func(a, b Migration) int {
-		return a.Version - b.Version
+		return a.Compare(&b)
 	})
 
 	return
@@ -72,4 +72,8 @@ func (m *Migration) ReadMigration() (string, error) {
 		return "", err
 	}
 	return string(data), nil
+}
+
+func (m *Migration) Compare(b *Migration) int {
+	return m.Version - b.Version
 }
