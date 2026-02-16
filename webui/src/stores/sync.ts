@@ -52,13 +52,16 @@ export const useSyncStore = defineStore('sync', () => {
         for (const docIndex in sync.value.documents) {
           const orig = sync.value.documents[docIndex];
           if (orig && orig.id === doc.id) {
+            const origCopy = JSON.parse(JSON.stringify(orig));
+            delete origCopy.history;
             sync.value.documents[docIndex] = {
               ...doc,
               history: [
                 ...orig.history, // take full previous history
-                ({...orig, history: null} as any) // add original doc with history
+                origCopy // add original doc to history
               ]
             };
+            break;
           }
         }
         // Persist updated state
