@@ -50,7 +50,7 @@ func (app *Kosync) ApiPutDocument(c fiber.Ctx) error {
 			if e != nil {
 				return
 			}
-				_ = app.PubSubAnnounce(userId, "user.documents", updatedDoc)
+			_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, updatedDoc)
 		}(c.Locals(CtxContextUserId).(string), document.Id)
 	}
 

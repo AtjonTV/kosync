@@ -152,7 +152,7 @@ func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 				e = c.WriteJSON(newWsResult(rpc.Method, updatedDoc))
 
 				go func() {
-					_ = app.PubSubAnnounce(userId, "user.documents", updatedDoc)
+					_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, updatedDoc)
 				}()
 
 				return
@@ -181,21 +181,31 @@ func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 			}
 		} else if msg.Type == "pubsub" {
 			var rpc = WsPubsubFromMap(msg.Payload.(map[string]interface{}))
+
+			topicId := PubSubTopicFromString(rpc.Topic)
+			if topicId == PubSubTopicUnknown {
+				LogDebug("Unknown PubSub topic: '%s'", rpc.Topic)
+				err := c.WriteJSON(newWsError("pubsub", fmt.Sprintf("Unknown PubSub topic: '%s'", rpc.Topic)))
+				if err != nil {
+					LogDebug("Failed to send WebSocket error message: %v", err.Error())
+					return
+				}
+			}
 			LogDebug("Received PubSub: %s", rpc.Topic)
 
 			alreadyInSubs := slices.ContainsFunc(*app.WsSubs, func(s *WsSub) bool {
-				return s.RequestId == requestId && s.Topic == rpc.Topic
+				return s.RequestId == requestId && s.Topic == topicId
 			})
 			if !alreadyInSubs {
 				*app.WsSubs = append(*app.WsSubs, &WsSub{
 					UserId:    userId,
 					RequestId: requestId,
-					Topic:     rpc.Topic,
+					Topic:     topicId,
 					Socket:    c,
 				})
 			}
 
-			err := c.WriteJSON(newPsResult(rpc.Topic, "subscribed"))
+			err := c.WriteJSON(newPsResult(topicId, "subscribed"))
 			if err != nil {
 				LogDebug("Failed to send WebSocket result: %v", err.Error())
 				return
@@ -204,7 +214,7 @@ func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 	}
 }
 
-func (app *Kosync) PubSubAnnounce(userId, topic string, data interface{}) error {
+func (app *Kosync) PubSubAnnounce(userId string, topic PubSubTopic, data interface{}) error {
 	LogDebug("PubSubAnnounce(userId='%s', topic='%s', data=%+v)", userId, topic, data)
 	for sub := range slices.Values(*app.WsSubs) {
 		if sub.UserId == userId && sub.Topic == topic {

@@ -6,12 +6,14 @@
 
 package kosync
 
-import "github.com/gofiber/contrib/v3/websocket"
+import (
+	"github.com/gofiber/contrib/v3/websocket"
+)
 
 type WsSub struct {
 	UserId    string
 	RequestId string
-	Topic     string
+	Topic     PubSubTopic
 	Socket    *websocket.Conn
 }
 
@@ -35,6 +37,31 @@ func WsRpcFromMap(m map[string]interface{}) WsRpc {
 		Method:    m["method"].(string),
 		Arguments: arguments,
 	}
+}
+
+type PubSubTopic int
+
+const (
+	PubSubTopicUnknown PubSubTopic = iota
+	PubSubTopicUserDocuments
+	PubSubTopicsCount
+)
+
+var PubSubTopicStrings = map[PubSubTopic]string{
+	PubSubTopicUnknown:       "",
+	PubSubTopicUserDocuments: "user.documents",
+}
+
+// comptime assert PubSubTopicStrings has same length as PubSubTopicsCount
+var _ = [1]int{}[len(PubSubTopicStrings)-int(PubSubTopicsCount)]
+
+func PubSubTopicFromString(s string) PubSubTopic {
+	for topic, str := range PubSubTopicStrings {
+		if str == s {
+			return topic
+		}
+	}
+	return PubSubTopic(0)
 }
 
 type WsPubsub struct {
@@ -76,9 +103,9 @@ func newWsError(typ, message string) WsMessage {
 	}
 }
 
-func newPsResult(topic string, result interface{}) WsMessage {
+func newPsResult(topic PubSubTopic, result interface{}) WsMessage {
 	return WsMessage{
 		Type:    "pubsub",
-		Payload: WsAnnounce{ForTopic: topic, Data: result},
+		Payload: WsAnnounce{ForTopic: PubSubTopicStrings[topic], Data: result},
 	}
 }
