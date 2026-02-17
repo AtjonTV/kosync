@@ -16,15 +16,15 @@ import (
 	"git.obth.eu/atjontv/kosync/pkg/environ"
 )
 
-func StructFromMap(data map[string]interface{}, dest interface{}, aliasName string) error {
-	return Struct(&dest, "json", func(field *reflect.StructField, alias *string) (interface{}, bool) {
-		val, found := data[aliasName]
+func StructFromMap(dest any, aliasName string, data map[string]interface{}) error {
+	return StructRaw(&dest, aliasName, func(field *reflect.StructField, alias *string) (interface{}, bool) {
+		val, found := data[*alias]
 		return val, found
 	})
 }
 
-func StructFromEnv(dest interface{}) error {
-	return Struct(&dest, "env", func(field *reflect.StructField, alias *string) (ret interface{}, has bool) {
+func StructFromEnv(dest any) error {
+	return StructRaw(&dest, "env", func(field *reflect.StructField, alias *string) (ret interface{}, has bool) {
 		var err error
 		defStr, hasDef := field.Tag.Lookup("default")
 
@@ -58,7 +58,7 @@ func StructFromEnv(dest interface{}) error {
 	})
 }
 
-func Struct(dest *interface{}, aliasTag string, valueFunc func(field *reflect.StructField, aliasName *string) (interface{}, bool)) error {
+func StructRaw(dest *interface{}, aliasTag string, valueFunc func(field *reflect.StructField, aliasName *string) (interface{}, bool)) error {
 	// Get a referential reflection of dest
 	destReflect := reflect.ValueOf(*dest)
 	// Writable instance of destReflect
