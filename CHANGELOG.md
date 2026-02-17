@@ -6,15 +6,40 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+If you are running any version of KOsync before `2026.05.0`, you **MUST** update to `2026.05.0` first!  
+Do **NOT** update from before `2026.05.0` to this version (`Unreleased`), otherwise you will have an empty database.
+
 ### Added
+- Extensive Debug Logging
+- Write to Logfile and Logfile path settings
+- Experimental WebSocket API with RPC and PubSub
+- WebUI updates automatically upon progress sync (PubSub)
+- JSON Web Tokens for `Authorization: Bearer`
+- New Environment Variables:
+  - `LOG_TO_FILE`: Enable writing logs to a file.
+  - `LOG_FILE`: Path to the log file (defaults to `./kosync.log`)
+  - `ENABLE_WEBSOCKET_API`: Enable WebSocket API for WebUI (RPC/PubSub)
+  - `PRINT_CRYPTO_KEYS`: Print JWT Keys in PEM format at startup
+  - `CRYPTO_KEYS_SEED`: 32-Character Seed for JWT Keys (will be random if unset or empty)
+- Automatic backups before applying migrations
+- `--restore` Argument to restore the database (see doc/backup.md for details)
 
 ### Changed
+- Migrated to Fiber v3
+- `last_read_at` is now a float for sub-seconds
+- WebUI uses JWT instead of username+password_hash
+- WebUI login is time-bound. JWT's expire after 6 hours AND after KOsync restart (unless a CRYPTO_KEYS_SEED is set)
+- **BREAKING**: Environment Variables have been renamed:
+  - `ENABLE_IP_VALIDATION` -> `PROXY_IP_VALIDATION`
+- **BREAKING**: The docker image no uses `1000:1000` as user instead of `root:root`
 
 ### Deprecated
 
 ### Removed
+- **BREAKING**: Migration from `database.json` to `kosync.db`
 
 ### Fixed
+- Unique constraint dead-lock between documents and document_history with multiple causes
 
 ### Security
 
@@ -93,7 +118,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Initial Release
 
-[Unreleased]: https://git.obth.eu/atjontv/kosync/compare/v2026.04.1...main
+[Unreleased]: https://git.obth.eu/atjontv/kosync/compare/v2026.05.0...main
+[2026.05.0]: https://git.obth.eu/atjontv/kosync/compare/v2026.04.1...v2026.05.0
 [2026.04.1]: https://git.obth.eu/atjontv/kosync/compare/v2026.04.0...v2026.04.1
 [2026.04.0]: https://git.obth.eu/atjontv/kosync/compare/v2026.03.1...v2026.04.0
 [2026.03.1]: https://git.obth.eu/atjontv/kosync/compare/v2026.03.0...v2026.03.1

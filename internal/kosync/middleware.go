@@ -7,10 +7,10 @@
 package kosync
 
 import (
-	"fmt"
+	"slices"
 	"strings"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 func (app *Kosync) NewAuthMiddleware() fiber.Handler {
@@ -19,43 +19,104 @@ func (app *Kosync) NewAuthMiddleware() fiber.Handler {
 		"/syncs",
 		"/api/documents.all",
 		"/api/documents.update",
+		"/api/auth.jwt",
+		"/api/ws",
+	}
+	allowFailUrl := []string{
+		"/api/ws",
 	}
 
+	log := NewKlog("auth")
 	// Return new handler
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		doHandle := false
+		allowFail := false
 		for _, url := range enableUrl {
 			if strings.HasPrefix(c.Path(), url) {
 				doHandle = true
+				if slices.Contains(allowFailUrl, url) {
+					allowFail = true
+				}
+				break
 			}
 		}
 		if !doHandle {
+			log.Debug("Skipping auth check for route '%s'", c.Path())
 			return c.Next()
 		}
+		var (
+			userIdentifier string
+			user           *User
+			found          bool
+			err            error
+			userPassword   *string
+		)
 
-		// get the headers
-		username := c.Get("x-auth-user")
-		password := c.Get("x-auth-key")
+		authHeader := c.Get("Authorization", "")
+		tokenType := "Bearer"
+		if strings.Contains(authHeader, tokenType) && len(authHeader) > len(tokenType) {
+			rawToken, _ := strings.CutPrefix(authHeader, tokenType)
+			token := strings.TrimSpace(rawToken)
 
-		// try to find the user
-		user, found, err := app.Db.FindUserByUsername(username)
+			valid, userIdentifier := app.Crypt.VerifyToken(token)
+			if valid {
+				user, found, err = app.Db.FindUserById(userIdentifier)
+			} else if allowFail {
+				return c.Next()
+			} else {
+				log.Error("Invalid token '%s'", token)
+				return fiber.ErrUnauthorized
+			}
+		} else {
+			// get the headers
+			userIdentifier := c.Get("x-auth-user", "")
+			password := c.Get("x-auth-key", "")
+
+			if userIdentifier == "" || password == "" {
+				if allowFail {
+					return c.Next()
+				}
+				log.Error("Username or Password missing from request headers: username='%s', password='%s'", userIdentifier, password)
+				return fiber.ErrUnauthorized
+			}
+			userPassword = &password
+
+			// try to find the user
+			user, found, err = app.Db.FindUserByUsername(userIdentifier)
+		}
+
 		if err != nil {
+			if allowFail {
+				return c.Next()
+			}
+
+			log.Error("Failed to find user '%s': %v", userIdentifier, err.Error())
 			return err
 		}
 		if !found {
-			app.PrintDebug("Auth", c.Locals("requestid").(string), fmt.Sprintf("Unauthorized request from unknown '%s'", username))
+			if allowFail {
+				return c.Next()
+			}
+
+			log.Error("Could not find user '%s'", userIdentifier)
 			return fiber.ErrUnauthorized
 		}
 
-		// verify the passwords match (both are md5 hashed)
-		if user.Password != password {
-			app.PrintDebug("Auth", c.Locals("requestid").(string), fmt.Sprintf("Unauthorized request from user '%s'", username))
-			return fiber.ErrUnauthorized
+		if userPassword != nil {
+			// verify the passwords match (both are md5 hashed)
+			if user.Password != *userPassword {
+				if allowFail {
+					return c.Next()
+				}
+
+				log.Error("Passwords do not match for user '%s'", user.Username)
+				return fiber.ErrUnauthorized
+			}
 		}
 
-		c.Locals("current_user_id", user.Id)
-		c.Locals("current_user_name", user.Username)
-		app.PrintDebug("Auth", c.Locals("requestid").(string), fmt.Sprintf("Authorized user '%s'", username))
+		c.Locals(CtxContextUserId, user.Id)
+		c.Locals(CtxContextUserName, user.Username)
+		log.Debug("Successful login for user '%s'", user.Username)
 		return c.Next()
 	}
 }

@@ -1,3 +1,9 @@
+//
+// File:        internal/kosync/config.go
+// Project:     https://git.obth.eu/atjontv/kosync
+// Copyright:   © 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
+//
+
 package kosync
 
 import (
@@ -7,33 +13,31 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gofiber/fiber/v2/log"
 	"github.com/joho/godotenv"
 )
 
 const ConfigFileName = "./kosync.env"
 
-// ConfigFieldListenAddress TODO: Remove when 'legacy' is removed
-const ConfigFieldListenAddress = "LISTEN_ADDRESS"
-
-// ConfigFieldDebugLog TODO: Remove when 'legacy' is removed
-const ConfigFieldDebugLog = "DEBUG_LOG"
-
-// ConfigFieldDisableRegistration TODO: Remove when 'legacy' is removed
-const ConfigFieldDisableRegistration = "DISABLE_REGISTRATION"
-
-// ConfigFieldEnableWebUi TODO: Remove when 'legacy' is removed
-const ConfigFieldEnableWebUi = "ENABLE_WEBUI"
-
 type Config struct {
-	DatabaseFile         string `env:"DATABASE_FILE" default:"./kosync.db"`
-	ListenAddress        string `env:"LISTEN_ADDRESS" default:":8080"`
-	DebugLog             bool   `env:"DEBUG_LOG" default:"false"`
-	DisableRegistration  bool   `env:"DISABLE_REGISTRATION" default:"false"`
-	EnableWebUi          bool   `env:"ENABLE_WEBUI" default:"false"`
+	DatabaseFile string `env:"DATABASE_FILE" default:"./kosync.db"`
+
+	ListenAddress       string `env:"LISTEN_ADDRESS" default:":8080"`
+	DisableRegistration bool   `env:"DISABLE_REGISTRATION" default:"false"`
+
+	LogToFile bool   `env:"LOG_TO_FILE" default:"false"`
+	LogFile   string `env:"LOG_FILE" default:"./kosync.log"`
+	DebugLog  bool   `env:"DEBUG_LOG" default:"false"`
+
+	EnableWebUi        bool `env:"ENABLE_WEBUI" default:"false"`
+	EnableWebSocketApi bool `env:"ENABLE_WEBSOCKET_API" default:"false"`
+
 	EnableTrustedProxies bool   `env:"ENABLE_TRUSTED_PROXIES" default:"false"`
 	TrustedProxies       string `env:"TRUSTED_PROXIES" default:""`
-	EnableIPValidation   bool   `env:"ENABLE_IP_VALIDATION" default:"false"` // Only useful in combination with EnableTrustedProxies
+	ProxyIpValidation    bool   `env:"PROXY_IP_VALIDATION" default:"false"` // Only useful in combination with EnableTrustedProxies
+
+	PrintCryptoKeys bool   `env:"PRINT_CRYPTO_KEYS" default:"false"`
+	CryptoKeysSeed  string `env:"CRYPTO_KEYS_SEED" default:""`
+	JwtDuration     int    `env:"JWT_DURATION" default:"21600"`
 }
 
 func NewConfig(fallback *Config) *Config {
@@ -49,7 +53,7 @@ func NewConfig(fallback *Config) *Config {
 	}
 
 	if conf.DebugLog {
-		log.Debugf("Loaded Config: %+v\n", conf)
+		LogDebugUnchecked("Loaded Config: %+v\n", conf)
 	}
 
 	return &conf
@@ -71,6 +75,14 @@ func GetEnvBool(key string, fallback bool) bool {
 	}
 }
 
+func GetEnvInt(key string, fallback int) int {
+	if i, err := strconv.Atoi(GetEnv(key, strconv.Itoa(fallback))); err != nil {
+		return fallback
+	} else {
+		return i
+	}
+}
+
 func loadConfigFromEnvironment(conf *Config) {
 	// Get a referential (pointer) reflection of conf, without "&" it would get a copy
 	confReflect := reflect.ValueOf(conf)
@@ -85,6 +97,10 @@ func loadConfigFromEnvironment(conf *Config) {
 			if alias == "" {
 				continue
 			}
+			if !field.CanSet() {
+				println("Cannot set bool value for field: " + fieldType.Name)
+				continue
+			}
 
 			if field.Kind() == reflect.Bool {
 				fieldDefault := false
@@ -93,11 +109,7 @@ func loadConfigFromEnvironment(conf *Config) {
 					fieldDefault, _ = strconv.ParseBool(strings.ToLower(def))
 				}
 				// Set if possible
-				if field.CanSet() {
-					field.SetBool(GetEnvBool(alias, fieldDefault))
-				} else {
-					println("Cannot set bool value for field: " + fieldType.Name)
-				}
+				field.SetBool(GetEnvBool(alias, fieldDefault))
 				continue
 			} else if field.Kind() == reflect.String {
 				fieldDefault := ""
@@ -106,12 +118,16 @@ func loadConfigFromEnvironment(conf *Config) {
 					fieldDefault = def
 				}
 				// Set if possible
-				if field.CanSet() {
-					field.SetString(GetEnv(alias, fieldDefault))
-				} else {
-					println("Cannot set string value for field: " + fieldType.Name)
-				}
+				field.SetString(GetEnv(alias, fieldDefault))
 				continue
+			} else if field.Kind() == reflect.Int {
+				fieldDefault := 0
+				// Try to get a default
+				if def, ok := fieldType.Tag.Lookup("default"); ok {
+					fieldDefault, _ = strconv.Atoi(def)
+				}
+				// Set if possible
+				field.SetInt(int64(GetEnvInt(alias, fieldDefault)))
 			} else {
 				panic(fmt.Sprintf("Config: Unsupported type '%s' of field '%s'.", fieldType.Type.Name(), fieldType.Name))
 			}

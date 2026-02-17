@@ -6,12 +6,18 @@ They can either be set in the environment or in a `kosync.env` file that is plac
 Here is a list of configuration variables currently supported:
 - `DATABASE_FILE`: Path to the SQLite database. Default `./kosync.db`
 - `LISTEN_ADDRESS`: Address to listen on. Default `:8080`
-- `DEBUG_LOG`: Enable debug logging. Default `false`
 - `DISABLE_REGISTRATION`: Disable user registration via KOReader. Default `false`
+- `LOG_TO_FILE`: Write logs to file. Default `false`
+- `LOG_FILE`: Path to the log file. Default `./kosync.log`
+- `DEBUG_LOG`: Enable debug logging. Default `false`
 - `ENABLE_WEBUI`: Enable the web UI if available¹. Default `false`
+- `ENABLE_WEBSOCKET_API`: Enable the experimental WebSocket API. Default `false`
 - `ENABLE_TRUSTED_PROXIES`: Enable support for trusted proxies. Default `false`
-- `TRUSTED_PROXIES`: Comma separated list of trusted proxy IPs. Default `""`
-- `ENABLE_IP_VALIDATION`: Enable IP validation. Default `false`
+- `TRUSTED_PROXIES`: Comma separated list of trusted proxies. Default `""`
+- `PROXY_IP_VALIDATION`: Enable IP validation for trusted proxies. Default `false`
+- `PRINT_CRYPTO_KEYS`: Print crypto keys used for JWT to stdout. Default `false`
+- `CRYPTO_KEYS_SEED`: Seed for the crypto keys. Must be 32 Characters log. Default `""` (random)
+- `JWT_DURATION`: Duration of the JWT validity in seconds. Default `21600` (6 hours)
 
 ¹: Requires a KOsync executable with the WebUI compiled in. See the [build](./build.md) documentation.
 
@@ -26,6 +32,12 @@ DISABLE_REGISTRATION=false
 
 # Enable the web UI so users can view their progress
 ENABLE_WEBUI=true
+ENABLE_WEBSOCKET_API=true
+# Stay logged in for 24 hours
+JWT_DURATION=86400
+
+# Write logs to file
+LOG_TO_FILE=true
 ```
 
 ### Overrides

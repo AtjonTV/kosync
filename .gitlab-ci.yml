@@ -1,7 +1,8 @@
-image: golang:1.25.6-alpine3.23
+image: golang:1.25.7-alpine3.23
 
 stages:
   - validate
+  - test
   - build
   - analyze
 
@@ -30,15 +31,23 @@ staticcheck:
   stage: validate
   allow_failure: true # Allow failure so other stages also run, but issues are still shown in the pipeline overview.
   before_script:
-    - go install honnef.co/go/tools/cmd/staticcheck@2025.1.1
+    - go install honnef.co/go/tools/cmd/staticcheck@2026.1
   script:
     - staticcheck ./...
+
+tests:
+  stage: test
+  before_script:
+    - go mod vendor
+  script:
+    - go test -coverprofile=cover.profile ./... && go tool cover -func cover.profile
+  coverage: '/total:\s+\(statements\)\s+\d+.\d+%/'
 
 compile:
   stage: build
   before_script:
     - echo -e "https://lsus.obth.eu/alpine/v3.23/main\nhttps://lsus.obth.eu/alpine/v3.23/community" > /etc/apk/repositories
-    - apk add --cache=no nodejs npm && npm install -g bun@1.3.5
+    - apk add --cache=no nodejs npm && npm install -g bun@1.3.9
   script:
     - go generate kosync.go
     - go build -tags netgo -o kosync.exe kosync.go

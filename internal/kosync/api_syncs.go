@@ -7,45 +7,60 @@
 package kosync
 
 import (
-	"fmt"
-
-	"git.obth.eu/atjontv/kosync/internal/legacy"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
-func (app *Kosync) SyncsPostProgress(c *fiber.Ctx) error {
+var logApiSyncs = NewKlog("api/syncs")
+
+func (app *Kosync) SyncsPostProgress(c fiber.Ctx) error {
+	logApiSyncs.Debug("SyncsPostProgress")
 	// Parse payload
-	var data legacy.DocumentData
-	if err := c.BodyParser(&data); err != nil {
+	var data KoProgress
+	if err := c.Bind().Body(&data); err != nil {
+		logApiSyncs.Error("Failed to parse request body: %v", err.Error())
 		return err
 	}
-	doc := DocumentDataToNew(&data, c.Locals("current_user_id").(string))
+	doc := KoProgressToDocument(&data, c.Locals(CtxContextUserId).(string))
 
-	app.PrintDebug("Syncs", c.Locals("requestid").(string), fmt.Sprintf("User '%s' sent progress for document '%s'", c.Locals("current_user_name").(string), data.Document))
-	//if err := app.LegacyDb.AddOrUpdateDocument(c.Locals("current_user_name").(string), data); err != nil {
+	logApiSyncs.Debug("User '%s' sent document '%s' progress", c.Locals(CtxContextUserName).(string), doc.Id)
 	if err := app.Db.CreateOrUpdateDocument(&doc); err != nil {
+		logApiSyncs.Error("Failed to save document progress: %v", err.Error())
 		return err
 	}
+	if app.Config.EnableWebSocketApi {
+		go func(userId string) {
+			updatedDoc, found, err := app.Db.FindDocumentById(userId, doc.Id)
+			if err != nil || !found {
+				return
+			}
+			_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, updatedDoc)
+		}(doc.OwnerId)
+	}
 
+	logApiSyncs.Debug("Successfully saved document '%s' progress with '%s'", doc.Id, doc.ProgressAsString())
 	return c.SendStatus(fiber.StatusOK)
 }
 
-func (app *Kosync) SyncsGetProgress(c *fiber.Ctx) error {
+func (app *Kosync) SyncsGetProgress(c fiber.Ctx) error {
+	logApiSyncs.Debug("SyncsGetProgress")
 	documentId := c.Params("document", "-")
 	if documentId == "-" {
+		logApiSyncs.Error("No document id provided")
 		return fiber.ErrNotFound
 	}
-	app.PrintDebug("Syncs", c.Locals("requestid").(string), fmt.Sprintf("User '%s' requested progress of document '%s'", c.Locals("current_user_name").(string), documentId))
+	logApiSyncs.Debug("User '%s' requested progress of document '%s'", c.Locals(CtxContextUserName).(string), documentId)
 
 	// Find document
-	//docData, found := app.LegacyDb.GetUser(c.Locals("current_user_name").(string)).Documents[documentId]
-	docData, found, err := app.Db.FindDocumentById(c.Locals("current_user_id").(string), documentId)
+	docData, found, err := app.Db.FindDocumentById(c.Locals(CtxContextUserId).(string), documentId)
 	if err != nil {
+		logApiSyncs.Error("Failed to find document '%s': %v", documentId, err.Error())
 		return err
 	}
 	if !found {
+		logApiSyncs.Error("Document '%s' not found", documentId)
 		return fiber.ErrNotFound
 	}
 
-	return c.JSON(FileDataFromNew(docData))
+	logApiSyncs.Debug("Sending document state")
+	return c.JSON(DocumentToKoProgressWithTime(docData))
 }

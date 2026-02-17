@@ -7,7 +7,8 @@ You can find my OpenAPI specification [here](api/KOsync.yml).
 
 If you are using JetBrains IDEs, you can also try the HTTP files in `docs/api/examples`.
 
-In the even that KOsync gets additional features, it is very possible  
-that new API endpoints will be created for some of those features.
+## WebSocket API
 
-For such a case, the goal is to keep API compatibility with the official Server.
+KOsync has a WebSocket API that can be used for RPC and PubSub.
+
+See [WebSocket API](websocket.md) for more information.

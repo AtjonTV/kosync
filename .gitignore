@@ -8,12 +8,10 @@ kosync.exe
 # Database file (contains user data)
 database.json
 
-# Database and Config file
-kosync.db
+# Database, Config and Log files
+kosync*.db
 kosync.env
-
-# Database backups
-*.bak
+kosync.log
 
 # Local docker files
 .docker

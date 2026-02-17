@@ -8,117 +8,127 @@ package kosync
 
 import (
 	"database/sql"
+	"slices"
 	"strings"
 	"time"
+
+	"git.obth.eu/atjontv/kosync/internal/kosync/migrations"
 )
 
-func (db *Database) checkAndRunMigrations() error {
+var logDbMigrate = NewKlog("db/migrate")
+
+func (db *Database) checkAndRunMigrations(config *Config) error {
+	logDbMigrate.Debug("Checking and running database migrations")
+	currentVersion, err := db.getCurrentSchemaVersion()
+	if err != nil {
+		return err
+	}
+
+	logDbMigrate.Debug("Current database schema version: %d", currentVersion)
+
+	migs, newestVersion, err := migrations.LoadMigrations()
+	if err != nil {
+		return err
+	}
+	logDbMigrate.Debug("Latest database schema version: %d", newestVersion)
+
+	db.currentSchema = currentVersion
+	if currentVersion < newestVersion {
+		if currentVersion > 0 { // no need to backup an empty database, so we skip == 0
+			logDbMigrate.Debug("Creating backup of database before applying migrations")
+			err := BackupDatabase(config, db.rawDb)
+			if err != nil {
+				logDbMigrate.Error("Failed to backup database: %v", err.Error())
+				return err
+			}
+		}
+		logDbMigrate.Debug("Running database migrations")
+
+		if err := db.MigrateToTargetVersion(migs, newestVersion); err != nil {
+			return err
+		}
+
+		logDbMigrate.Debug("All migrations applied")
+	} else {
+		logDbMigrate.Debug("No migrations to apply")
+	}
+
+	return nil
+}
+
+func (db *Database) MigrateToTargetVersion(dbMigrations *[]migrations.Migration, targetVersion int) error {
+	var insertSchemaVersion = `INSERT INTO schema_versions (version, installed_at) VALUES (?, ?)`
+
+	if dbMigrations == nil {
+		return ErrMigrationWithoutMigrationsNotPossible
+	}
+
+	sorted := slices.IsSortedFunc(*dbMigrations, func(a, b migrations.Migration) int {
+		return a.Compare(&b)
+	})
+	if !sorted {
+		slices.SortFunc(*dbMigrations, func(a, b migrations.Migration) int {
+			return a.Compare(&b)
+		})
+	}
+
+	hasMig := slices.ContainsFunc(*dbMigrations, func(mig migrations.Migration) bool {
+		return mig.Version == targetVersion
+	})
+	if !hasMig {
+		return ErrMigrationTargetNotAvailable
+	}
+
+	for i := range *dbMigrations {
+		mig := (*dbMigrations)[i]
+		if db.currentSchema < mig.Version && mig.Version <= targetVersion {
+			logDbMigrate.Debug("Migrating to version %d", mig.Version)
+
+			migFile, err := mig.ReadMigration()
+			if err != nil {
+				logDbMigrate.Error("Failed to read migration %d from file %s", mig.Version, mig.Path)
+			}
+
+			if _, err := db.rawDb.Exec(migFile); err != nil {
+				logDbMigrate.Error("Failed to run migration %d: %v", mig.Version, err.Error())
+				return err
+			}
+
+			if _, err := db.rawDb.Exec(insertSchemaVersion, mig.Version, time.Now().Unix()); err != nil {
+				logDbMigrate.Error("Failed to insert schema version: %v", err.Error())
+				return err
+			}
+			logDbMigrate.Debug("Successfully applied migration %d", mig.Version)
+			db.currentSchema = mig.Version
+		}
+	}
+
+	if db.currentSchema != targetVersion {
+		return ErrMigrationTargetNotReachedAfterMigrations
+	}
+
+	return nil
+}
+
+func (db *Database) getCurrentSchemaVersion() (vers int, err error) {
 	versionsRes, err := db.rawDb.Query("SELECT version FROM schema_versions ORDER BY version DESC LIMIT 1;")
 	if err != nil && !strings.Contains(err.Error(), "no such table: schema_versions") {
-		return err
+		logDbMigrate.Error("Failed to check database schema version: %v", err.Error())
+		return
+	} else if err != nil {
+		return 0, nil
 	}
 	defer func(versionsRes *sql.Rows) {
 		if versionsRes != nil {
 			_ = versionsRes.Close()
 		}
 	}(versionsRes)
-	var currentVersion int
 	if versionsRes != nil && versionsRes.Next() {
-		if err := versionsRes.Scan(&currentVersion); err != nil {
-			return err
-		}
-	} else {
-		currentVersion = 0
-	}
-	if currentVersion < SchemaVersion {
-		db.currentSchema = currentVersion
-
-		for ver := currentVersion + 1; ver <= SchemaVersion; ver++ {
-			if err := db.migrateTo(ver); err != nil {
-				return err
-			}
+		err = versionsRes.Scan(&vers)
+		if err != nil {
+			logDbMigrate.Error("Failed to scan database schema version: %v", err.Error())
+			return
 		}
 	}
-
-	return nil
-}
-
-func (db *Database) migrateTo(targetVersion int) error {
-	var insertSchemaVersion = `INSERT INTO schema_versions (version, installed_at) VALUES (?, ?)`
-
-	if targetVersion == 100 {
-		var createSchemaVersionTable = `
-            CREATE TABLE IF NOT EXISTS schema_versions (
-                version INTEGER PRIMARY KEY,
-                installed_at INTEGER NOT NULL
-            );
-        `
-		if _, err := db.rawDb.Exec(createSchemaVersionTable); err != nil {
-			return err
-		}
-
-		var createUsersTable = `
-            CREATE TABLE IF NOT EXISTS users (
-                id TEXT PRIMARY KEY,
-                username TEXT UNIQUE,
-                password TEXT,
-                created_at INTEGER NOT NULL,
-                updated_at INTEGER,
-                deleted_at INTEGER
-            );
-        `
-		if _, err := db.rawDb.Exec(createUsersTable); err != nil {
-			return err
-		}
-
-		var createDocumentsTable = `
-            CREATE TABLE IF NOT EXISTS documents (
-                id TEXT NOT NULL,
-                owner_id TEXT NOT NULL,
-                
-                title TEXT,
-                current_location TEXT,
-                progress FLOAT,
-                last_read_on_device TEXT,
-                last_read_on_device_id TEXT,
-                last_read_at INTEGER,
-                
-                created_at INTEGER NOT NULL,
-                updated_at INTEGER,
-                deleted_at INTEGER,
-                PRIMARY KEY (id, owner_id)
-            );
-        `
-		if _, err := db.rawDb.Exec(createDocumentsTable); err != nil {
-			return err
-		}
-
-		var createDocumentHistoryTable = `
-            CREATE TABLE IF NOT EXISTS document_history (
-                id TEXT NOT NULL,
-                owner_id TEXT NOT NULL,
-                last_read_at INTEGER NOT NULL,
-                
-                title TEXT,
-                current_location TEXT,
-                progress FLOAT,
-                last_read_on_device TEXT,
-                last_read_on_device_id TEXT,
-                
-                created_at INTEGER NOT NULL,
-                updated_at INTEGER,
-                deleted_at INTEGER,
-                PRIMARY KEY (id, owner_id, last_read_at)
-            );
-        `
-		if _, err := db.rawDb.Exec(createDocumentHistoryTable); err != nil {
-			return err
-		}
-
-		if _, err := db.rawDb.Exec(insertSchemaVersion, 100, time.Now().Unix()); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return
 }

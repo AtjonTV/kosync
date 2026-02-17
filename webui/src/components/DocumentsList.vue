@@ -3,11 +3,17 @@
 import {useSyncStore} from "@/stores/sync.ts";
 import {ref} from "vue";
 import {fetchApi} from "@/api.ts";
+import {useUserStore} from "@/stores/user.ts";
 
 const {customTitle} = defineProps<{customTitle?: string}>()
 
+const userStore = useUserStore();
+
 const syncStore = useSyncStore();
-syncStore.doSync();
+if (await userStore.isLoggedIn()) {
+  syncStore.doSync();
+  syncStore.doPubSubSync();
+}
 
 const expandedRows = ref({});
 
@@ -25,8 +31,6 @@ const onEditComplete = async (event: any) => {
     } else {
         event.preventDefault();
     }
-
-    await syncStore.doSync(true);
 }
 </script>
 
@@ -45,20 +49,20 @@ const onEditComplete = async (event: any) => {
       >
         <Column expander style="width: 5rem" />
         <Column field="id" header="ID" :sortable="true" style="width: 25%"></Column>
-        <Column field="pretty_name" header="Title" :sortable="true" style="width: 25%">
+        <Column field="title" header="Title" :sortable="true" style="width: 25%">
             <template #editor="{data, field}">
                 <InputText v-model="data[field]" :defaultValue="data[field]" autofocus fluid />
             </template>
         </Column>
-        <Column field="percentage" header="Reading progress" :sortable="true">
+        <Column field="progress" header="Reading progress" :sortable="true">
           <template #body="slotProps">
-            {{ Number(slotProps.data.percentage*100).toFixed(2) }}%
+            {{ Number(slotProps.data.progress*100).toFixed(2) }}%
           </template>
         </Column>
-        <Column field="device" header="Device" :sortable="true"></Column>
-        <Column field="timestamp" header="Last read" :sortable="true">
+        <Column field="last_read_on_device" header="Device" :sortable="true"></Column>
+        <Column field="last_read_at" header="Last read" :sortable="true">
           <template #body="slotProps">
-            {{ new Date(slotProps.data.timestamp*1000).toISOString() }}
+            {{ new Date(slotProps.data.last_read_at/10).toISOString() }}
           </template>
         </Column>
 
@@ -67,15 +71,16 @@ const onEditComplete = async (event: any) => {
             <h3 class="text-2xl">History</h3>
             <div v-if="slotProps.data.history !== null">
               <DataTable :value="slotProps.data.history">
-                <Column field="percentage" header="Reading progress" :sortable="true">
+                <Column field="progress" header="Reading progress" :sortable="true">
                   <template #body="slotProps">
-                    {{ Number(slotProps.data.percentage*100).toFixed(2) }}%
+                    {{ Number(slotProps.data.progress*100).toFixed(2) }}%
                   </template>
                 </Column>
-                <Column field="device" header="Device" :sortable="true"></Column>
-                <Column field="timestamp" header="When" :sortable="true">
+                <Column field="title" header="Previous Title" :sortable="true"></Column>
+                <Column field="last_read_on_device" header="Device" :sortable="true"></Column>
+                <Column field="last_read_at" header="When" :sortable="true">
                   <template #body="slotProps">
-                    {{ new Date(slotProps.data.timestamp*1000).toISOString() }}
+                    {{ new Date(slotProps.data.last_read_at/10).toISOString() }}
                   </template>
                 </Column>
               </DataTable>
@@ -89,7 +94,3 @@ const onEditComplete = async (event: any) => {
     </div>
   </div>
 </template>
-
-<style scoped>
-
-</style>

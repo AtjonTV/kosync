@@ -1,12 +1,12 @@
 ## Multi-stage build: compile a single static Go binary, run it, and allow mounting database.json
 
 # 1) Build stage
-FROM golang:1.25.6-alpine3.23 AS builder
+FROM golang:1.25.7-alpine3.23 AS builder
 
 WORKDIR /src
 
 # Install build deps
-RUN apk add --cache=no ca-certificates git build-base nodejs npm && npm install -g bun@1.3.5
+RUN apk add --cache=no ca-certificates git build-base nodejs npm && npm install -g bun@1.3.9
 
 # Cache go modules first
 COPY ../go.mod ./
@@ -27,13 +27,15 @@ RUN go build -tags netgo -ldflags='-s -w -extldflags "-static"' -o /out/kosync k
 FROM alpine:3.23.3
 
 # Install CA certs for HTTPS outbound, if needed
-RUN apk add --no-cache ca-certificates && update-ca-certificates
+RUN apk add --cache=no ca-certificates && update-ca-certificates
 
 # Copy the binary
 COPY --from=builder /out/kosync /app/kosync
 
 # The application listens on 8080 by default
 EXPOSE 8080
+
+USER 1000:1000
 
 VOLUME /data
 WORKDIR /data
