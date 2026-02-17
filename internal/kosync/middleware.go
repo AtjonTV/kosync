@@ -58,18 +58,19 @@ func (app *Kosync) NewAuthMiddleware() fiber.Handler {
 			rawToken, _ := strings.CutPrefix(authHeader, tokenType)
 			token := strings.TrimSpace(rawToken)
 
-			valid, userIdentifier := app.Crypt.VerifyToken(token)
+			var valid bool
+			valid, userIdentifier = app.Crypt.VerifyToken(token)
 			if valid {
 				user, found, err = app.Db.FindUserById(userIdentifier)
-			} else if allowFail {
+			} else if !valid && allowFail {
 				return c.Next()
-			} else {
+			} else if !valid && !allowFail {
 				log.Error("Invalid token '%s'", token)
 				return fiber.ErrUnauthorized
 			}
 		} else {
 			// get the headers
-			userIdentifier := c.Get("x-auth-user", "")
+			userIdentifier = c.Get("x-auth-user", "")
 			password := c.Get("x-auth-key", "")
 
 			if userIdentifier == "" || password == "" {
