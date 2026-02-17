@@ -7,9 +7,7 @@
 package kosync
 
 import (
-	"fmt"
 	"os"
-	"reflect"
 	"strconv"
 	"strings"
 
@@ -84,53 +82,7 @@ func GetEnvInt(key string, fallback int) int {
 }
 
 func loadConfigFromEnvironment(conf *Config) {
-	// Get a referential (pointer) reflection of conf, without "&" it would get a copy
-	confReflect := reflect.ValueOf(conf)
-	// Writable instance of confReflect
-	confReValue := confReflect.Elem()
-	for i := 0; i < confReValue.NumField(); i++ {
-		field := confReValue.Field(i)
-		fieldType := confReValue.Type().Field(i)
-		// Only process fields with the env tag, ignore all others
-		if alias, ok := fieldType.Tag.Lookup("env"); ok {
-			// Require a tag to be actually present
-			if alias == "" {
-				continue
-			}
-			if !field.CanSet() {
-				println("Cannot set bool value for field: " + fieldType.Name)
-				continue
-			}
-
-			if field.Kind() == reflect.Bool {
-				fieldDefault := false
-				// Try to get a default
-				if def, ok := fieldType.Tag.Lookup("default"); ok {
-					fieldDefault, _ = strconv.ParseBool(strings.ToLower(def))
-				}
-				// Set if possible
-				field.SetBool(GetEnvBool(alias, fieldDefault))
-				continue
-			} else if field.Kind() == reflect.String {
-				fieldDefault := ""
-				// Try to get a default
-				if def, ok := fieldType.Tag.Lookup("default"); ok {
-					fieldDefault = def
-				}
-				// Set if possible
-				field.SetString(GetEnv(alias, fieldDefault))
-				continue
-			} else if field.Kind() == reflect.Int {
-				fieldDefault := 0
-				// Try to get a default
-				if def, ok := fieldType.Tag.Lookup("default"); ok {
-					fieldDefault, _ = strconv.Atoi(def)
-				}
-				// Set if possible
-				field.SetInt(int64(GetEnvInt(alias, fieldDefault)))
-			} else {
-				panic(fmt.Sprintf("Config: Unsupported type '%s' of field '%s'.", fieldType.Type.Name(), fieldType.Name))
-			}
-		}
+	if err := DecodeStructFromEnv(conf); err != nil {
+		LogError("Failed to load config from environment: %v", err.Error())
 	}
 }
