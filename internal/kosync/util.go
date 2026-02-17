@@ -8,6 +8,7 @@ package kosync
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -101,6 +102,7 @@ func DecodeStruct(dest *interface{}, aliasTag string, valueFunc func(field *refl
 				field.SetInt(int64(val.(int)))
 				continue
 			}
+			return errors.New(fmt.Sprintf("unsupported type '%s' for field '%s'", fieldType.Type, fieldType.Name))
 		}
 	}
 	return nil
