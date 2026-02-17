@@ -6,7 +6,11 @@
 
 package kosync
 
-import "fmt"
+import (
+	"fmt"
+
+	"git.obth.eu/atjontv/kosync/pkg/decode"
+)
 
 type User struct {
 	Id       string
@@ -38,7 +42,7 @@ func (d *Document) ProgressAsString() string {
 
 func DocumentFromMap(m map[string]interface{}) Document {
 	doc := Document{}
-	DecodeStructFromMap(m, doc, "json")
+	_ = decode.StructFromMap(m, doc, "json")
 	return doc
 }
 

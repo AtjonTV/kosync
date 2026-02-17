@@ -7,10 +7,7 @@
 package kosync
 
 import (
-	"os"
-	"strconv"
-	"strings"
-
+	"git.obth.eu/atjontv/kosync/pkg/decode"
 	"github.com/joho/godotenv"
 )
 
@@ -57,32 +54,8 @@ func NewConfig(fallback *Config) *Config {
 	return &conf
 }
 
-func GetEnv(key, fallback string) string {
-	value := os.Getenv(key)
-	if len(value) == 0 {
-		return fallback
-	}
-	return value
-}
-
-func GetEnvBool(key string, fallback bool) bool {
-	if s, err := strconv.ParseBool(strings.ToLower(GetEnv(key, strconv.FormatBool(fallback)))); err != nil {
-		return fallback
-	} else {
-		return s
-	}
-}
-
-func GetEnvInt(key string, fallback int) int {
-	if i, err := strconv.Atoi(GetEnv(key, strconv.Itoa(fallback))); err != nil {
-		return fallback
-	} else {
-		return i
-	}
-}
-
 func loadConfigFromEnvironment(conf *Config) {
-	if err := DecodeStructFromEnv(conf); err != nil {
+	if err := decode.StructFromEnv(conf); err != nil {
 		LogError("Failed to load config from environment: %v", err.Error())
 	}
 }

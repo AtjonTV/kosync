@@ -1,10 +1,10 @@
 //
-// File:        internal/kosync/util.go
+// File:        pkg/decode/decode.go
 // Project:     https://git.obth.eu/atjontv/kosync
 // Copyright:   © 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
 //
 
-package kosync
+package decode
 
 import (
 	"errors"
@@ -12,17 +12,19 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+
+	"git.obth.eu/atjontv/kosync/pkg/environ"
 )
 
-func DecodeStructFromMap(data map[string]interface{}, dest interface{}, aliasName string) error {
-	return DecodeStruct(&dest, "json", func(field *reflect.StructField, alias *string) (interface{}, bool) {
+func StructFromMap(data map[string]interface{}, dest interface{}, aliasName string) error {
+	return Struct(&dest, "json", func(field *reflect.StructField, alias *string) (interface{}, bool) {
 		val, found := data[aliasName]
 		return val, found
 	})
 }
 
-func DecodeStructFromEnv(dest interface{}) error {
-	return DecodeStruct(&dest, "env", func(field *reflect.StructField, alias *string) (ret interface{}, has bool) {
+func StructFromEnv(dest interface{}) error {
+	return Struct(&dest, "env", func(field *reflect.StructField, alias *string) (ret interface{}, has bool) {
 		var err error
 		defStr, hasDef := field.Tag.Lookup("default")
 
@@ -34,13 +36,13 @@ func DecodeStructFromEnv(dest interface{}) error {
 					return nil, false
 				}
 			}
-			return GetEnvBool(*alias, def), true
+			return environ.GetEnvBool(*alias, def), true
 		} else if field.Type.Kind() == reflect.String {
 			var def string
 			if hasDef {
 				def = defStr
 			}
-			return GetEnv(*alias, def), true
+			return environ.GetEnv(*alias, def), true
 		} else if field.Type.Kind() == reflect.Int {
 			var def int
 			if hasDef {
@@ -49,14 +51,14 @@ func DecodeStructFromEnv(dest interface{}) error {
 					return nil, false
 				}
 			}
-			return GetEnvInt(*alias, def), true
+			return environ.GetEnvInt(*alias, def), true
 		}
 
 		return nil, false
 	})
 }
 
-func DecodeStruct(dest *interface{}, aliasTag string, valueFunc func(field *reflect.StructField, aliasName *string) (interface{}, bool)) error {
+func Struct(dest *interface{}, aliasTag string, valueFunc func(field *reflect.StructField, aliasName *string) (interface{}, bool)) error {
 	// Get a referential reflection of dest
 	destReflect := reflect.ValueOf(*dest)
 	// Writable instance of destReflect
