@@ -104,7 +104,7 @@ func Struct(dest *interface{}, aliasTag string, valueFunc func(field *reflect.St
 				field.SetInt(int64(val.(int)))
 				continue
 			}
-			return errors.New(fmt.Sprintf("unsupported type '%s' for field '%s'", fieldType.Type, fieldType.Name))
+			return fmt.Errorf("unsupported type '%s' for field '%s'", fieldType.Type, fieldType.Name)
 		}
 	}
 	return nil
