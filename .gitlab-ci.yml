@@ -41,7 +41,7 @@ tests:
     - go mod vendor
   script:
     - go test -coverprofile=coverage.out -json ./... > test-report.json
-    - go tool cover -func covergage.out
+    - go tool cover -func coverage.out
   coverage: '/total:\s+\(statements\)\s+\d+.\d+%/'
   artifacts:
     when: always
