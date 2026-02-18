@@ -40,8 +40,14 @@ tests:
   before_script:
     - go mod vendor
   script:
-    - go test -coverprofile=cover.profile ./... && go tool cover -func cover.profile
+    - go test -coverprofile=coverage.out -json ./... > test-report.json
+    - go tool cover -func covergage.out
   coverage: '/total:\s+\(statements\)\s+\d+.\d+%/'
+  artifacts:
+    when: always
+    paths:
+      - coverage.out
+      - test-report.json
 
 compile:
   stage: build
