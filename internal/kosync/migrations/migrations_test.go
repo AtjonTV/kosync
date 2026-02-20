@@ -15,7 +15,7 @@ import (
 func TestLoadMigrations(t *testing.T) {
 	migs, newest, err := migrations.LoadMigrations()
 	if err != nil {
-		t.Errorf("Could not load migrations: %v", err.Error())
+		t.Fatalf("Could not load migrations: %v", err.Error())
 	}
 
 	expected := 100
@@ -32,12 +32,11 @@ func TestLoadMigrations(t *testing.T) {
 func TestMigration_ReadMigration(t *testing.T) {
 	migs, _, err := migrations.LoadMigrations()
 	if err != nil {
-		t.Errorf("Could not load migrations: %v", err.Error())
+		t.Fatalf("Could not load migrations: %v", err.Error())
 	}
 
 	if migs == nil {
-		t.Errorf("Did not find at least one migration, cant test if they can be read")
-		return
+		t.Fatalf("Did not find at least one migration, cant test if they can be read")
 	}
 
 	mig, err := (*migs)[0].ReadMigration()
