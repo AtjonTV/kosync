@@ -19,6 +19,10 @@ import (
 func StructFromMap(dest any, aliasName string, data map[string]interface{}) error {
 	return StructRaw(&dest, aliasName, func(field *reflect.StructField, alias *string) (interface{}, bool) {
 		val, found := data[*alias]
+		// If the field is not a pointer, construct an empty instance if val is nil
+		if val == nil && field.Type.Kind() != reflect.Ptr {
+			return reflect.New(field.Type).Elem().Interface(), found
+		}
 		return val, found
 	})
 }
