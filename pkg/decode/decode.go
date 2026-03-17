@@ -101,22 +101,13 @@ func StructRaw(dest *interface{}, aliasTag string, valueFunc func(field *reflect
 				continue
 			}
 
-			valType := reflect.TypeOf(val).Kind()
+			// Reject nil value when field cant hold nil
+			if val == nil && field.Kind() != reflect.Ptr {
+				return fmt.Errorf("value is nil for field '%s'", fieldType.Name)
+			}
 
-			// Match on type and set value
-			if field.Kind() == reflect.Bool && valType == reflect.Bool {
-				field.SetBool(val.(bool))
-				continue
-			}
-			if field.Kind() == reflect.String && valType == reflect.String {
-				field.SetString(val.(string))
-				continue
-			}
-			if field.Kind() == reflect.Int && valType == reflect.Int {
-				field.SetInt(int64(val.(int)))
-				continue
-			}
-			return fmt.Errorf("unsupported type '%s' for field '%s'", fieldType.Type, fieldType.Name)
+			// Set the field value to val
+			field.Set(reflect.ValueOf(val))
 		}
 	}
 	return nil
