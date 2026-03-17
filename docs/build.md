@@ -25,7 +25,7 @@ go build -tags netgo -o kosync.exe kosync.go
 
 These commands compile KOsync to a single static executable named `kosync.exe`.
 
-It will contain the WebUI, which can be enabled by passing `--webui` via CLI or by setting `enable_webui` in the database.json.
+It will contain the WebUI, which can be enabled by passing `--webui` via CLI or by setting the `ENABLE_WEBUI` environment variable.
 
 ### Dynamic Executable (`go install`)
 Compilation requires the Go Toolchain.
@@ -39,7 +39,7 @@ This method will **NOT** contain the WebUI because `go generate` will not be run
 
 Run this command in the project root directory: `docker buildx build -f deployment/Dockerfile -t docker.obth.eu/atjontv/kosync:custom .`.
 
-This will build a docker image with the WebUI included. To use the WebUI you either have to override the entrypoint to add `--webui` or set `enable_webui` in the database.json
+This will build a docker image with the WebUI included. To use the WebUI you either have to override the entrypoint to add `--webui` or set `the `ENABLE_WEBUI` environment variable.
 
 Each tagged release will have a pre-build image at `docker.obth.eu/atjontv/kosync:latest` (you can replace `latest` with a version tag like `2026.03.0` so you know what version you pulled).
 
