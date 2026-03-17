@@ -62,7 +62,15 @@ func StructFromEnv(dest any) error {
 	})
 }
 
-func StructRaw(dest *interface{}, aliasTag string, valueFunc func(field *reflect.StructField, aliasName *string) (interface{}, bool)) error {
+func StructRaw(dest *interface{}, aliasTag string, valueFunc func(field *reflect.StructField, aliasName *string) (interface{}, bool)) (err error) {
+	defer func() {
+		// recover from panic if one occurred.
+		e := recover()
+		if e != nil {
+			err = fmt.Errorf("%+v", e)
+		}
+	}()
+
 	// Get a referential reflection of dest
 	destReflect := reflect.ValueOf(*dest)
 	// Writable instance of destReflect
