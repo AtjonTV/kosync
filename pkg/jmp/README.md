@@ -11,30 +11,31 @@ Each message must be a JSON Object with all the following fields:
 
 ### RPC
 RPC Request Payload
-- method: Name of the RPC to call
+- `method: string`: Name of the RPC to call
+- `arguments: object`: Object with RPC specific arguments, might be null
 
 RPC Response Payload:
-- for_rpc: Name of the RPC (same as "method" from the request)
-- type_hint: Optional string to identify the Result Object type
-- data: Object with RPC specific data. Must be null on error.
-- errors: Array of Strings in case any errors occurred. Must be empty when non occurred
+- `for_rpc: string`: Name of the RPC (same as "method" from the request)
+- `type_hint: string`: Optional string to identify the Result Object type
+- `data: object`: Object with RPC specific data. Must be null on error.
+- `errors: string[]`: Array of Strings in case any errors occurred. Must be empty when non occurred
 
 ### PubSub
 PubSub Request Payload
-- topic: Name of the Topic to subscribe to
+- `topic: string`: Name of the Topic to subscribe to
 
 PubSub Response Payload
-- for_topic: Name of the topic (same as "topic" from the request)
-- type_hint: Hardcoded "SubscriptionResult"
-- data: Object with "subscribed" boolen field. Must be null on error.
-- errors: Array of Strings in case any errors occurred. Must be empty when non occurred
+- `for_topic: string`: Name of the topic (same as "topic" from the request)
+- `type_hint: string`: Hardcoded "SubscriptionResult"
+- `data: object`: Object with "subscribed" boolen field. Must be null on error.
+- `errors: string[]`: Array of Strings in case any errors occurred. Must be empty when non occurred
 
 PubSub Announce Payload
-- for_topic: Name of the topic
-- type_hint: Optional string to identify the PubSub Object type
-- data: Object with PubSub specific data. Must be null on error.
-- errors: Array of Strings in case any errors occurred. Must be empty when non occurred
+- `for_topic: string`: Name of the topic
+- `type_hint: string`: Optional string to identify the PubSub Object type
+- `data: object`: Object with PubSub specific data. Must be null on error.
+- `errors: string[]`: Array of Strings in case any errors occurred. Must be empty when non occurred
 
 
 Type 'SubscriptionResult'
-- subscribed: Boolean status of PubSub Subscription
+- `subscribed: bool`: Boolean status of PubSub Subscription
