@@ -1,6 +1,7 @@
 package jmp
 
 import (
+	"math/rand"
 	"reflect"
 
 	"git.obth.eu/atjontv/kosync/pkg/decode"
@@ -12,6 +13,10 @@ const ProtoPubSub = "pubsub"
 const RpcCall = "rpc.call"
 const RpcResult = "rpc.result"
 const RpcNotice = "rpc.notice"
+
+const PubSubscribe = "pubsub.subscribe"
+const PubSubscription = "pubsub.subscription"
+const PubAnnounce = "pubsub.announce"
 
 const TypeString = "string"
 const TypeInt = "int"
@@ -68,8 +73,25 @@ func (m Message) IsRpcCall() bool {
 	return m.Proto == ProtoRpc && m.Content == RpcCall
 }
 
+func (m Message) IsPubSubSubscribe() bool {
+	return m.Proto == ProtoPubSub && m.Content == PubSubscribe
+}
+
 type Context struct {
-	Data map[string]any
+	UniqueRequestorId int64
+	Data              map[string]any
+	RawSocket         any
+}
+
+func NewContext() *Context {
+	return &Context{
+		UniqueRequestorId: rand.Int63(),
+		Data:              make(map[string]any),
+	}
+}
+
+func (c Context) HasId() bool {
+	return c.UniqueRequestorId != 0
 }
 
 func (c Context) GetString(key string) string {
@@ -134,4 +156,9 @@ type PubSubResponsePayload struct {
 
 type PubSubSubscriptionResult struct {
 	Subscribed bool `json:"subscribed"`
+}
+
+type PubSubSubscription struct {
+	Ctx   *Context
+	Topic string
 }
