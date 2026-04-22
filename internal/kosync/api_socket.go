@@ -7,10 +7,11 @@
 package kosync
 
 import (
-	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
+	"git.obth.eu/atjontv/kosync/pkg/jmp"
 	"github.com/gofiber/contrib/v3/websocket"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/utils/v2"
@@ -34,6 +35,56 @@ func (app *Kosync) HandleOpenWebsocket(c fiber.Ctx) error {
 	return c.Redirect().Status(fiber.StatusSeeOther).To(redirUrl)
 }
 
+const JmpContextRequestId = "request_id"
+const JmpContextDisconnect = "disconnect"
+
+func (app *Kosync) ConfigureJmp() {
+	_ = app.Jmp.RegisterRpc("documents.all", func(ctx *jmp.Context, rpc *jmp.RpcRequestPayload) jmp.Result {
+		result, e := app.apiGetUserDocuments(ctx.GetString(CtxContextUserName))
+		if e != nil {
+			return jmp.NewErrorResultFromErr(e)
+		}
+		return jmp.NewOkResult("Array[DocumentWithHistory]", result)
+	})
+
+	_ = app.Jmp.RegisterRpc("documents.update", func(ctx *jmp.Context, rpc *jmp.RpcRequestPayload) jmp.Result {
+		rpcDoc, found := rpc.Arguments["document"]
+		if !found {
+			return jmp.NewErrorResult([]string{"RPC call is missing the argument 'document'"})
+		}
+
+		doc := DocumentFromMap(rpcDoc.(map[string]interface{}))
+
+		err := app.Db.CreateOrUpdateDocument(&doc)
+		if err != nil {
+			return jmp.NewErrorResultFromErr(err)
+		}
+
+		updatedDoc, _, e := app.Db.FindDocumentById(ctx.GetString(CtxContextUserId), doc.Id)
+		if e != nil {
+			return jmp.NewErrorResultFromErr(e)
+		}
+
+		go func() {
+			_ = app.PubSubAnnounce(ctx.GetString(CtxContextUserId), PubSubTopicUserDocuments, updatedDoc)
+		}()
+
+		return jmp.NewOkResult("Document", updatedDoc)
+	})
+
+	_ = app.Jmp.RegisterRpc("disconnect", func(ctx *jmp.Context, rpc *jmp.RpcRequestPayload) jmp.Result {
+		ctx.Data[JmpContextDisconnect] = true
+		return jmp.NewOkResult(jmp.TypeString, "goodbye.")
+	})
+
+	_ = app.Jmp.RegisterPubSubWriter("RawSocket", func(ctx *jmp.Context, msg *jmp.Message) {
+		err := ctx.RawSocket.(*websocket.Conn).WriteJSON(msg)
+		if err != nil {
+			return
+		}
+	})
+}
+
 func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 	LogDebug("HandleWebsocket")
 
@@ -54,6 +105,16 @@ func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 		return
 	}
 
+	user, found, err := app.Db.FindUserById(userId)
+	if err != nil {
+		LogError("Failed to find user: %v", err.Error())
+		return
+	}
+	if !found {
+		LogError("User not found: %s", userId)
+		return
+	}
+
 	requestId := utils.UUIDv4()
 	currClose := c.CloseHandler()
 	c.SetCloseHandler(func(code int, text string) error {
@@ -70,38 +131,34 @@ func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 		})
 	}()
 
-	err := c.WriteJSON(WsMessage{
-		Type: "rpc",
-		Payload: WsInfo{
-			ServerName:    "KOsync",
-			ServerVersion: Version,
-			Message:       "KOsync WebSocket API. Hello!",
-		},
-	})
+	err = c.WriteJSON(jmp.NewRpcNoticeMessage(jmp.NewRpcResponseFromResult("", jmp.NewOkResult("ServerInfo", WsInfo{
+		ServerName:    "KOsync",
+		ServerVersion: Version,
+		Message:       "KOsync WebSocket API. Hello!",
+	}))))
 	if err != nil {
 		LogDebug("Failed to send WebSocket welcome message: %v", err.Error())
 		return
 	}
 
-	// rpcMethod tries to handle the RPC function; returns true if it was handled
-	rpcMethod := func(msg *WsRpc, method string, fun func() error) bool {
-		if msg.Method == method {
-			err := fun()
-			if err != nil {
-				LogDebug("Failed to execute RPC method '%s': %v", method, err.Error())
-				err2 := c.WriteJSON(newWsError(method, err.Error()))
-				if err2 != nil {
-					LogDebug("Failed to send WebSocket error message: %v", err.Error())
-				}
-			}
-			return true
-		} else {
-			LogDebug("RPC method '%s' does not match handler '%s'", msg.Method, method)
-			return false
-		}
+	userIdInt, err := strconv.Atoi(userId)
+	if err != nil {
+		LogError("Failed to convert user ID to integer for JMP Context: %v", err.Error())
+		return
 	}
 
-	var msg WsMessage
+	ctx := jmp.Context{
+		UniqueRequestorId: int64(userIdInt),
+		Data: map[string]interface{}{
+			JmpContextRequestId: requestId,
+			CtxContextUserId:    userId,
+			CtxContextUserName:  user.Username,
+		},
+		RawSocket: c,
+	}
+
+	//var msg WsMessage
+	var msg map[string]any
 	for {
 		if err := c.ReadJSON(&msg); err != nil {
 			LogError("Failed to read WebSocket message: %v", err.Error())
@@ -111,119 +168,45 @@ func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 			continue
 		}
 
-		if msg.Type == "rpc" {
-			var rpc = WsRpcFromMap(msg.Payload.(map[string]interface{}))
-			LogDebug("Received RPC: %s", rpc.Method)
-			var handled = false
+		jmpMsg, err := jmp.MessageFromMap(msg)
+		if err != nil {
+			LogError("Failed to parse WebSocket message: %v", err.Error())
+			continue
+		}
 
-			handled = rpcMethod(&rpc, "documents.all", func() (e error) {
-				result, e := app.apiGetUserDocuments(c.Locals(CtxContextUserName).(string))
-				if e != nil {
-					return
-				}
-				e = c.WriteJSON(newWsResult(rpc.Method, *result))
-				if e != nil {
-					return
-				}
-				return
-			})
-			if handled {
-				continue
-			}
-
-			handled = rpcMethod(&rpc, "documents.update", func() (e error) {
-				rpcDoc, found := rpc.Arguments["document"]
-				if !found {
-					return fmt.Errorf("RPC call is missing the argument 'document'")
-				}
-
-				doc := DocumentFromMap(rpcDoc.(map[string]interface{}))
-
-				e = app.Db.CreateOrUpdateDocument(&doc)
-				if e != nil {
-					return
-				}
-
-				updatedDoc, _, e := app.Db.FindDocumentById(userId, doc.Id)
-				if e != nil {
-					return
-				}
-
-				e = c.WriteJSON(newWsResult(rpc.Method, updatedDoc))
-
-				go func() {
-					_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, updatedDoc)
-				}()
-
-				return
-			})
-			if handled {
-				continue
-			}
-
-			handled = rpcMethod(&rpc, "disconnect", func() (e error) {
-				e = c.WriteJSON(newWsResult(rpc.Method, "goodbye."))
-				if e != nil {
-					return
-				}
-				e = c.Close()
-				return
-			})
-			if handled {
-				return
-			}
-
-			LogDebug("Unknown RPC method: '%s': %+v", rpc.Method, rpc)
-			err := c.WriteJSON(newWsError(rpc.Method, fmt.Sprintf("Unknown RPC method: '%s'", rpc.Method)))
+		res, err := app.Jmp.HandleMessage(&ctx, jmpMsg)
+		if err != nil {
+			LogError("Failed to handle RPC: %v", err.Error())
+			err = c.WriteJSON(res)
 			if err != nil {
-				LogDebug("Failed to send WebSocket error message: %v", err.Error())
-				return
+				LogError("Failed to send WebSocket response: %v", err.Error())
 			}
-		} else if msg.Type == "pubsub" {
-			var rpc = WsPubsubFromMap(msg.Payload.(map[string]interface{}))
+			continue
+		}
 
-			topicId := PubSubTopicFromString(rpc.Topic)
-			if topicId == PubSubTopicUnknown {
-				LogDebug("Unknown PubSub topic: '%s'", rpc.Topic)
-				err := c.WriteJSON(newWsError("pubsub", fmt.Sprintf("Unknown PubSub topic: '%s'", rpc.Topic)))
-				if err != nil {
-					LogDebug("Failed to send WebSocket error message: %v", err.Error())
-					return
-				}
-			}
-			LogDebug("Received PubSub: %s", rpc.Topic)
+		err = c.WriteJSON(res)
+		if err != nil {
+			LogError("Failed to send WebSocket response: %v", err.Error())
+		}
 
-			alreadyInSubs := slices.ContainsFunc(*app.WsSubs, func(s *WsSub) bool {
-				return s.RequestId == requestId && s.Topic == topicId
-			})
-			if !alreadyInSubs {
-				*app.WsSubs = append(*app.WsSubs, &WsSub{
-					UserId:    userId,
-					RequestId: requestId,
-					Topic:     topicId,
-					Socket:    c,
-				})
-			}
-
-			err := c.WriteJSON(newPsResult(topicId, "subscribed"))
+		if ctx.Data[JmpContextDisconnect] == true {
+			err = c.Close()
 			if err != nil {
-				LogDebug("Failed to send WebSocket result: %v", err.Error())
-				return
+				LogError("Failed to close WebSocket connection: %v", err.Error())
 			}
+			return
 		}
 	}
 }
 
 func (app *Kosync) PubSubAnnounce(userId string, topic PubSubTopic, data interface{}) error {
 	LogDebug("PubSubAnnounce(userId='%s', topic='%s', data=%+v)", userId, topic, data)
-	for sub := range slices.Values(*app.WsSubs) {
-		if sub.UserId == userId && sub.Topic == topic {
-			err := sub.Socket.WriteJSON(newPsResult(topic, data))
-			if err != nil {
-				LogDebug("Failed to send PubSub message: %v", err.Error())
-				continue
-			}
-		}
+	userIdInt, err := strconv.Atoi(userId)
+	if err != nil {
+		LogError("Failed to convert user ID to integer for JMP Context: %v", err.Error())
+		return err
 	}
+	userIdInt64 := int64(userIdInt)
+	app.Jmp.PubSubAnnounce(PubSubTopicStrings[topic], &userIdInt64, data, "Document")
 	return nil
 }

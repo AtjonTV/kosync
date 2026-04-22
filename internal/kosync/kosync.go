@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"git.obth.eu/atjontv/kosync/internal/webui"
+	"git.obth.eu/atjontv/kosync/pkg/jmp"
 	"github.com/gofiber/contrib/v3/websocket"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/basicauth"
@@ -37,6 +38,7 @@ type Kosync struct {
 	Db     *Database
 	WsSubs *[]*WsSub
 	Crypt  *CryptState
+	Jmp    *jmp.JMP
 }
 
 func Run() {
@@ -91,6 +93,7 @@ func Run() {
 			StaticKeySeed:      config.CryptoKeysSeed,
 			JwtDurationSeconds: config.JwtDuration,
 		}),
+		Jmp: jmp.New(),
 	}
 	defer func(koapp *Kosync) {
 		_ = koapp.Db.Close()
@@ -192,6 +195,8 @@ func Run() {
 	app.Get("/api/auth.jwt", koapp.ApiAuthForToken)
 
 	if koapp.Config.EnableWebSocketApi {
+		koapp.ConfigureJmp()
+
 		app.Get("/api/ws", koapp.HandleOpenWebsocket)
 		app.Get("/api/ws/:id", websocket.New(koapp.HandleWebsocket, websocket.Config{
 			Subprotocols: []string{"kosync.rpc", "kosync.pubsub"},
