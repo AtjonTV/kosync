@@ -36,6 +36,7 @@ PubSub Announce Payload
 - `data: object`: Object with PubSub specific data. Must be null on error.
 - `errors: string[]`: Array of Strings in case any errors occurred. Must be empty when non occurred
 
+#### Predefined Types
 
-Type 'SubscriptionResult'
+Type `SubscriptionResult`
 - `subscribed: bool`: Boolean status of PubSub Subscription
