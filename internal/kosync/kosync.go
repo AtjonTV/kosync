@@ -36,7 +36,6 @@ const (
 type Kosync struct {
 	Config *Config
 	Db     *Database
-	WsSubs *[]*WsSub
 	Crypt  *CryptState
 	Jmp    *jmp.JMP
 }
@@ -88,7 +87,6 @@ func Run() {
 	koapp := Kosync{
 		Config: config,
 		Db:     db,
-		WsSubs: new([]*WsSub),
 		Crypt: NewCryptState(CryptConfig{
 			StaticKeySeed:      config.CryptoKeysSeed,
 			JwtDurationSeconds: config.JwtDuration,

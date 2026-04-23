@@ -8,7 +8,6 @@ package kosync
 
 import (
 	"encoding/binary"
-	"slices"
 	"strings"
 
 	"git.obth.eu/atjontv/kosync/pkg/jmp"
@@ -117,16 +116,10 @@ func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 	currClose := c.CloseHandler()
 	c.SetCloseHandler(func(code int, text string) error {
 		LogDebug("Websocket connection closed: %d %s", code, text)
-		*app.WsSubs = slices.DeleteFunc(*app.WsSubs, func(s *WsSub) bool {
-			return s.RequestId == requestId
-		})
 		return currClose(code, text)
 	})
 	defer func() {
 		LogDebug("Websocket connection ended")
-		*app.WsSubs = slices.DeleteFunc(*app.WsSubs, func(s *WsSub) bool {
-			return s.RequestId == requestId
-		})
 	}()
 
 	err = c.WriteJSON(jmp.NewRpcNoticeMessage(jmp.NewRpcResponseFromResult("connect", jmp.NewOkResult("ServerInfo", WsInfo{
