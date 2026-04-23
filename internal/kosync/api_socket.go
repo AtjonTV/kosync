@@ -77,6 +77,7 @@ func (app *Kosync) ConfigureJmp() {
 		return jmp.NewOkResult(jmp.TypeString, "goodbye.")
 	})
 
+	_ = app.Jmp.RegisterKnownTopic("user.documents")
 	_ = app.Jmp.RegisterPubSubWriter("RawSocket", func(ctx *jmp.Context, msg *jmp.Message) {
 		err := ctx.RawSocket.(*websocket.Conn).WriteJSON(msg)
 		if err != nil {
