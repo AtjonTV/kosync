@@ -92,13 +92,10 @@ func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 	token := c.Params("id")
 	valid, userId := app.Crypt.VerifyToken(token)
 	if !valid {
-		err := c.WriteJSON(WsMessage{
-			Type: "rpc",
-			Payload: WsResult{
-				ForRpc: "connect",
-				ErrMsg: "Your access token is invalid. Make sure it is supplied like this: /api/ws/{token}",
-			},
-		})
+		err := c.WriteJSON(jmp.NewRpcNoticeMessage(jmp.NewRpcResponseFromResult("connect", jmp.NewErrorResult([]string{
+			"Your access token is invalid. Make sure it is supplied like this: /api/ws/{token}",
+		}))))
+
 		if err != nil {
 			LogDebug("Failed to send WebSocket auth failure message: %v", err.Error())
 			return
@@ -132,7 +129,7 @@ func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 		})
 	}()
 
-	err = c.WriteJSON(jmp.NewRpcNoticeMessage(jmp.NewRpcResponseFromResult("", jmp.NewOkResult("ServerInfo", WsInfo{
+	err = c.WriteJSON(jmp.NewRpcNoticeMessage(jmp.NewRpcResponseFromResult("connect", jmp.NewOkResult("ServerInfo", WsInfo{
 		ServerName:    "KOsync",
 		ServerVersion: Version,
 		Message:       "KOsync WebSocket API. Hello!",
