@@ -180,7 +180,7 @@ func (s *JMP) PubSubAnnounce(topic string, recipient *int64, data any, typeHint 
 
 	payload := Message{
 		Version: Version,
-		Proto:   ProtoRpc,
+		Proto:   ProtoPubSub,
 		Content: PubAnnounce,
 		Payload: PubSubResponsePayload{
 			ForTopic: topic,
