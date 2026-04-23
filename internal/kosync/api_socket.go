@@ -7,8 +7,8 @@
 package kosync
 
 import (
+	"encoding/binary"
 	"slices"
-	"strconv"
 	"strings"
 
 	"git.obth.eu/atjontv/kosync/pkg/jmp"
@@ -141,14 +141,8 @@ func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 		return
 	}
 
-	userIdInt, err := strconv.Atoi(userId)
-	if err != nil {
-		LogError("Failed to convert user ID to integer for JMP Context: %v", err.Error())
-		return
-	}
-
 	ctx := jmp.Context{
-		UniqueRequestorId: int64(userIdInt),
+		UniqueRequestorId: int64(binary.BigEndian.Uint32([]byte(userId))),
 		Data: map[string]interface{}{
 			JmpContextRequestId: requestId,
 			CtxContextUserId:    userId,
@@ -201,12 +195,10 @@ func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 
 func (app *Kosync) PubSubAnnounce(userId string, topic PubSubTopic, data interface{}) error {
 	LogDebug("PubSubAnnounce(userId='%s', topic='%s', data=%+v)", userId, topic, data)
-	userIdInt, err := strconv.Atoi(userId)
+	userIdInt64 := int64(binary.BigEndian.Uint32([]byte(userId)))
+	err := app.Jmp.PubSubAnnounce(PubSubTopicStrings[topic], &userIdInt64, data, "Document")
 	if err != nil {
-		LogError("Failed to convert user ID to integer for JMP Context: %v", err.Error())
 		return err
 	}
-	userIdInt64 := int64(userIdInt)
-	app.Jmp.PubSubAnnounce(PubSubTopicStrings[topic], &userIdInt64, data, "Document")
 	return nil
 }
