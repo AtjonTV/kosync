@@ -4,12 +4,10 @@
 // Copyright:   © 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
 //
 
-package decode_test
+package decode
 
 import (
 	"testing"
-
-	"git.obth.eu/atjontv/kosync/pkg/decode"
 )
 
 type SampleStruct struct {
@@ -26,7 +24,7 @@ var data = map[string]any{
 
 func TestStructFromMap(t *testing.T) {
 	var s = SampleStruct{}
-	err := decode.StructFromMap(&s, "env", data)
+	err := StructFromMap(&s, "env", data)
 	if err != nil {
 		t.Fatalf("Failed to decode struct: %v", err)
 	}
@@ -46,7 +44,7 @@ func TestStructFromMap(t *testing.T) {
 
 func TestStructFromEnv(t *testing.T) {
 	var s = SampleStruct{}
-	err := decode.StructFromEnv(&s)
+	err := StructFromEnv(&s)
 	if err != nil {
 		t.Fatalf("Failed to decode struct from environment: %v", err)
 	}

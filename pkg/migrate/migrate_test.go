@@ -4,14 +4,12 @@
 // Copyright:   © 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
 //
 
-package migrate_test
+package migrate
 
 import (
 	"io/fs"
 	"testing"
 	"testing/fstest"
-
-	"git.obth.eu/atjontv/kosync/pkg/migrate"
 )
 
 func getMockFs() fs.FS {
@@ -30,7 +28,7 @@ func getMockFs() fs.FS {
 
 func TestLoadMigrations(t *testing.T) {
 	testFs := getMockFs()
-	migs, newest, err := migrate.LoadFromFs(&testFs, "sql_test")
+	migs, newest, err := LoadFromFs(&testFs, "sql_test")
 	if err != nil {
 		t.Fatalf("Could not load migrations: %v", err.Error())
 	}
@@ -48,7 +46,7 @@ func TestLoadMigrations(t *testing.T) {
 
 func TestMigration_ReadMigration(t *testing.T) {
 	testFs := getMockFs()
-	migs, _, err := migrate.LoadFromFs(&testFs, "sql_test")
+	migs, _, err := LoadFromFs(&testFs, "sql_test")
 	if err != nil {
 		t.Fatalf("Could not load migrations: %v", err.Error())
 	}

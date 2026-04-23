@@ -4,16 +4,14 @@
 // Copyright:   © 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
 //
 
-package migrations_test
+package migrations
 
 import (
 	"testing"
-
-	"git.obth.eu/atjontv/kosync/internal/kosync/migrations"
 )
 
 func TestLoadMigrations(t *testing.T) {
-	migs, newest, err := migrations.LoadMigrations()
+	migs, newest, err := LoadMigrations()
 	if err != nil {
 		t.Fatalf("Could not load migrations: %v", err.Error())
 	}
@@ -30,7 +28,7 @@ func TestLoadMigrations(t *testing.T) {
 }
 
 func TestMigration_ReadMigration(t *testing.T) {
-	migs, _, err := migrations.LoadMigrations()
+	migs, _, err := LoadMigrations()
 	if err != nil {
 		t.Fatalf("Could not load migrations: %v", err.Error())
 	}

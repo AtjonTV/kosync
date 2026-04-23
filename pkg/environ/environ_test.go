@@ -4,14 +4,12 @@
 // Copyright:   © 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
 //
 
-package environ_test
+package environ
 
 import (
 	"fmt"
 	"os"
 	"testing"
-
-	"git.obth.eu/atjontv/kosync/pkg/environ"
 )
 
 const (
@@ -37,7 +35,7 @@ func prepareEnv() {
 func TestGetEnv(t *testing.T) {
 	prepareEnv()
 
-	strVal := environ.GetEnv(EnvTestStr, "")
+	strVal := GetEnv(EnvTestStr, "")
 	if strVal != "test" {
 		t.Errorf("Expected %s to be '%s', got '%s'", EnvTestStr, envs[EnvTestStr], strVal)
 	}
@@ -46,7 +44,7 @@ func TestGetEnv(t *testing.T) {
 func TestGetEnvInt(t *testing.T) {
 	prepareEnv()
 
-	intVal := environ.GetEnvInt(EnvTestInt, 0)
+	intVal := GetEnvInt(EnvTestInt, 0)
 	if intVal != 123 {
 		t.Errorf("Expected %s to be '%d', got '%d'", EnvTestInt, envs[EnvTestInt], intVal)
 	}
@@ -55,12 +53,12 @@ func TestGetEnvInt(t *testing.T) {
 func TestGetEnvBool(t *testing.T) {
 	prepareEnv()
 
-	trueVal := environ.GetEnvBool(EnvTestBoolTrue, false)
+	trueVal := GetEnvBool(EnvTestBoolTrue, false)
 	if !trueVal {
 		t.Errorf("Expected %s to be '%t', got '%t'", EnvTestBoolTrue, envs[EnvTestBoolTrue], trueVal)
 	}
 
-	falseVal := environ.GetEnvBool(EnvTestBoolFalse, true)
+	falseVal := GetEnvBool(EnvTestBoolFalse, true)
 	if falseVal {
 		t.Errorf("Expected %s to be '%t', got '%t'", EnvTestBoolFalse, envs[EnvTestBoolFalse], falseVal)
 	}

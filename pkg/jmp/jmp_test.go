@@ -4,21 +4,19 @@
 // Copyright:   © 2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
 //
 
-package jmp_test
+package jmp
 
 import (
 	"encoding/json"
 	"fmt"
 	"testing"
-
-	"git.obth.eu/atjontv/kosync/pkg/jmp"
 )
 
 // TODO: Convert into actual tests
 func TestNew(t *testing.T) {
-	var s = jmp.New()
-	err := s.RegisterRpc("hello", func(ctx *jmp.Context, req *jmp.RpcRequestPayload) (res jmp.Result) {
-		return jmp.Result{TypeHint: "string", Data: fmt.Sprintf("meow to you '%s'", ctx.Data["username"])}
+	var s = New()
+	err := s.RegisterRpc("hello", func(ctx *Context, req *RpcRequestPayload) (res Result) {
+		return Result{TypeHint: "string", Data: fmt.Sprintf("meow to you '%s'", ctx.Data["username"])}
 	})
 	if err != nil {
 		panic(err)
@@ -30,12 +28,12 @@ func TestNew(t *testing.T) {
 		panic(err)
 	}
 	//msg := &data
-	msg, err := jmp.MessageFromMap(data)
+	msg, err := MessageFromMap(data)
 	if err != nil {
 		panic(err)
 	}
 
-	ctx := jmp.Context{
+	ctx := Context{
 		UniqueRequestorId: 1,
 		Data:              map[string]any{"username": "USER"},
 	}
@@ -50,14 +48,14 @@ func TestNew(t *testing.T) {
 	fmt.Println("---------------------")
 
 	_ = s.RegisterKnownTopic("meow")
-	_ = s.RegisterPubSubWriter("someName", func(ctx *jmp.Context, msg *jmp.Message) {
+	_ = s.RegisterPubSubWriter("someName", func(ctx *Context, msg *Message) {
 		t.Logf("Sub: %+v\n", *msg)
 	})
 
-	subscribe := &jmp.Message{
-		Version: jmp.Version,
-		Proto:   jmp.ProtoPubSub,
-		Content: jmp.PubSubscribe,
+	subscribe := &Message{
+		Version: Version,
+		Proto:   ProtoPubSub,
+		Content: PubSubscribe,
 		Payload: map[string]any{"topic": "meow"},
 	}
 	t.Logf("Snd: %+v\n", *subscribe)
