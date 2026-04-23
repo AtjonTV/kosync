@@ -91,6 +91,8 @@ type Context struct {
 
 func NewContext() *Context {
 	return &Context{
+		// This random value is not for a secure context, it is only used to identify a client later on for sending responses.
+		// bearer:disable go_gosec_crypto_weak_random
 		UniqueRequestorId: rand.Int63(),
 		Data:              make(map[string]any),
 	}

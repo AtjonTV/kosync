@@ -90,6 +90,9 @@ func (db *Database) MigrateToTargetVersion(dbMigrations *[]migrate.Migration, ta
 				logDbMigrate.Error("Failed to read migration %d from file %s", mig.Version, mig.Path)
 			}
 
+			// Ignore SQL Injection warning.
+			// An attacker would need to modify migrations, either before or after compilation, and then cause the modified executable to run with a fitting database.
+			// bearer:disable go_gosec_sql_concat_sqli
 			if _, err := db.rawDb.Exec(migFile); err != nil {
 				logDbMigrate.Error("Failed to run migration %d: %v", mig.Version, err.Error())
 				return err
