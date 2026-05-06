@@ -42,7 +42,7 @@ func (d *Document) ProgressAsString() string {
 
 func DocumentFromMap(m map[string]interface{}) Document {
 	doc := Document{}
-	_ = decode.StructFromMap(doc, "json", m)
+	_ = decode.StructFromMap(&doc, "json", m)
 	return doc
 }
 

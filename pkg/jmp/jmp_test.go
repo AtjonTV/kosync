@@ -7,64 +7,168 @@
 package jmp
 
 import (
-	"encoding/json"
 	"fmt"
 	"testing"
 )
 
-// TODO: Convert into actual tests
 func TestNew(t *testing.T) {
-	var s = New()
-	err := s.RegisterRpc("hello", func(ctx *Context, req *RpcRequestPayload) (res Result) {
-		return Result{TypeHint: "string", Data: fmt.Sprintf("meow to you '%s'", ctx.Data["username"])}
+	s := New()
+	if s == nil {
+		t.Fatal("New() returned nil")
+	}
+}
+
+func TestJMP_RegisterRpc(t *testing.T) {
+	s := New()
+	handler := func(ctx *Context, req *RpcRequestPayload) Result {
+		return NewOkResult("string", "hello")
+	}
+	err := s.RegisterRpc("test", handler)
+	if err != nil {
+		t.Errorf("RegisterRpc failed: %v", err)
+	}
+	err = s.RegisterRpc("test", handler)
+	if err == nil {
+		t.Error("RegisterRpc should fail for duplicate registration")
+	}
+}
+
+func TestJMP_UnregisterRpc(t *testing.T) {
+	s := New()
+	s.RegisterRpc("test", func(ctx *Context, req *RpcRequestPayload) Result { return Result{} })
+	s.UnregisterRpc("test")
+	if _, ok := s.rpcHandlers["test"]; ok {
+		t.Error("RpcHandler still exists after UnregisterRpc")
+	}
+}
+
+func TestJMP_RegisterKnownTopic(t *testing.T) {
+	s := New()
+	err := s.RegisterKnownTopic("topic1")
+	if err != nil {
+		t.Errorf("RegisterKnownTopic failed: %v", err)
+	}
+	err = s.RegisterKnownTopic("topic1")
+	if err == nil {
+		t.Error("RegisterKnownTopic should fail for duplicate topic")
+	}
+}
+
+func TestJMP_UnregisterKnownTopic(t *testing.T) {
+	s := New()
+	s.RegisterKnownTopic("topic1")
+	err := s.UnregisterKnownTopic("topic1")
+	if err != nil {
+		t.Errorf("UnregisterKnownTopic failed: %v", err)
+	}
+	for _, topic := range *s.knownTopics {
+		if topic == "topic1" {
+			t.Error("Topic still exists after UnregisterKnownTopic")
+		}
+	}
+}
+
+func TestJMP_RegisterPubSubWriter(t *testing.T) {
+	s := New()
+	handler := func(ctx *Context, msg *Message) {}
+	err := s.RegisterPubSubWriter("writer1", handler)
+	if err != nil {
+		t.Errorf("RegisterPubSubWriter failed: %v", err)
+	}
+	err = s.RegisterPubSubWriter("writer1", handler)
+	if err == nil {
+		t.Error("RegisterPubSubWriter should fail for duplicate registration")
+	}
+}
+
+func TestJMP_UnregisterPubSubHandler(t *testing.T) {
+	s := New()
+	s.RegisterPubSubWriter("writer1", func(ctx *Context, msg *Message) {})
+	s.UnregisterPubSubHandler("writer1")
+	if _, ok := s.pubSubWriters["writer1"]; ok {
+		t.Error("PubSubWriter still exists after UnregisterPubSubHandler")
+	}
+}
+
+func TestJMP_HandleMessage_Rpc(t *testing.T) {
+	s := New()
+	s.RegisterRpc("hello", func(ctx *Context, req *RpcRequestPayload) (res Result) {
+		return NewOkResult("string", fmt.Sprintf("hello %s", ctx.GetString("user")))
 	})
+
+	msg := &Message{
+		Version: Version,
+		Proto:   ProtoRpc,
+		Content: RpcCall,
+		Payload: map[string]any{"method": "hello"},
+	}
+
+	ctx := NewContext()
+	ctx.Data["user"] = "Junie"
+
+	resp, err := s.HandleMessage(ctx, msg)
 	if err != nil {
-		panic(err)
+		t.Fatalf("HandleMessage failed: %v", err)
 	}
 
-	var data map[string]any
-	err = json.Unmarshal([]byte(`{"jmp": "1", "proto":"rpc","content":"rpc.call","payload":{"method":"hello"}}`), &data)
-	if err != nil {
-		panic(err)
-	}
-	//msg := &data
-	msg, err := MessageFromMap(data)
-	if err != nil {
-		panic(err)
+	if resp.Content != RpcResult {
+		t.Errorf("Expected %s, got %s", RpcResult, resp.Content)
 	}
 
-	ctx := Context{
-		UniqueRequestorId: 1,
-		Data:              map[string]any{"username": "USER"},
+	payload := resp.Payload.(RpcResponsePayload)
+	if payload.Result.Data != "hello Junie" {
+		t.Errorf("Expected 'hello Junie', got %v", payload.Result.Data)
 	}
+}
 
-	t.Logf("Snd: %+v\n", *msg)
-	r, err := s.HandleMessage(&ctx, msg)
-	if err != nil {
-		panic(err)
-	}
+func TestJMP_HandleMessage_PubSub(t *testing.T) {
+	s := New()
+	s.RegisterKnownTopic("news")
 
-	t.Logf("Rcv: %+v\n", *r)
-	fmt.Println("---------------------")
-
-	_ = s.RegisterKnownTopic("meow")
-	_ = s.RegisterPubSubWriter("someName", func(ctx *Context, msg *Message) {
-		t.Logf("Sub: %+v\n", *msg)
-	})
-
-	subscribe := &Message{
+	msg := &Message{
 		Version: Version,
 		Proto:   ProtoPubSub,
 		Content: PubSubscribe,
-		Payload: map[string]any{"topic": "meow"},
+		Payload: map[string]any{"topic": "news"},
 	}
-	t.Logf("Snd: %+v\n", *subscribe)
-	r, err = s.HandleMessage(&ctx, subscribe)
-	if err != nil {
-		panic(err)
-	}
-	t.Logf("Rcv: %+v\n", *r)
 
-	rep := int64(2)
-	_ = s.PubSubAnnounce("meow", &rep, "Sound of a cat", "string")
+	ctx := NewContext()
+	resp, err := s.HandleMessage(ctx, msg)
+	if err != nil {
+		t.Fatalf("HandleMessage failed: %v", err)
+	}
+
+	payload := resp.Payload.(PubSubResponsePayload)
+	res := payload.Result.Data.(PubSubSubscriptionResult)
+	if !res.Subscribed {
+		t.Error("Expected Subscribed to be true")
+	}
+}
+
+func TestJMP_PubSubAnnounce(t *testing.T) {
+	s := New()
+	s.RegisterKnownTopic("news")
+
+	received := false
+	s.RegisterPubSubWriter("test", func(ctx *Context, msg *Message) {
+		received = true
+	})
+
+	ctx := NewContext()
+	subscribeMsg := &Message{
+		Version: Version,
+		Proto:   ProtoPubSub,
+		Content: PubSubscribe,
+		Payload: map[string]any{"topic": "news"},
+	}
+	s.HandleMessage(ctx, subscribeMsg)
+
+	err := s.PubSubAnnounce("news", nil, "Breaking News", "string")
+	if err != nil {
+		t.Errorf("PubSubAnnounce failed: %v", err)
+	}
+
+	if !received {
+		t.Error("PubSubWriter did not receive announcement")
+	}
 }

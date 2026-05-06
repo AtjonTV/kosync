@@ -20,6 +20,11 @@ For transparency, below is a table with the files and how such an Agent interact
 | internal/kosync/log_test.go                | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/database_document_test.go  | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | TESTS.md                                   | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
+| internal/kosync/models_test.go             | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
+| pkg/jmp/types_test.go                      | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
+| internal/kosync/api_auth_test.go           | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
+| pkg/jmp/jmp_test.go                        | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| internal/kosync/models.go                  | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 
 ## Commit Annotation
 Since 2026-05-06 19:30 CEST all new commits where AI Agents or similar where used,  
