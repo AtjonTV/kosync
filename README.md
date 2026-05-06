@@ -67,6 +67,13 @@ See [docs/websocket.md](docs/websocket.md) for RPC/PubSub-like.
 
 See [webui/README.md](webui/README.md)
 
+## AI Usage
+
+Sections of files and some files in whole where created by an AI Agent, LLM or similar.  
+For transparency, there is a best-effort list of files written or modified by such agents.
+
+See [AI-Usage](AI-Usage.md)
+
 ## License
 
 KOsync is licensed under the [European Union Public License v1.2 or later](/LICENSE.txt)
