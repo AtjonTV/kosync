@@ -45,3 +45,23 @@ You can run all tests in the project using the standard Go command:
 ```bash
 go test ./...
 ```
+
+### Test Coverage
+
+To collect test coverage data, run:
+
+```bash
+go test -coverprofile=coverage.out ./...
+```
+
+To view the coverage report in your browser, run:
+
+```bash
+go tool cover -html=coverage.out
+```
+
+To view the coverage report in your terminal, run:
+
+```bash
+go tool cover -func=coverage.out
+```
