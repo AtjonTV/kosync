@@ -13,19 +13,23 @@ For deployment, I recommend using Docker Compose, but you can choose whatever me
 In any case a Reverse Proxy like Caddy is required for TLS and generally recommended.
 
 ### Static Executable (recommended when docker is not an option)
-Compilation requires the Go Toolchain.
+Compilation requires the Go Toolchain and Bun.
 
-Run these commands in the project root directory:
+Run this command to build:
 ```bash
-# Build WebUI with Bun, do not run this if you do not want the WebUI
-go generate kosync.go
-# Compile static executable
-go build -tags netgo -o kosync.exe kosync.go
-```  
+go run build.go
+```
+
+To build without the WebUI, and thus without Bun, run:
+```bash
+go run build.go -web=false
+```
 
 These commands compile KOsync to a single static executable named `kosync.exe`.
 
-It will contain the WebUI, which can be enabled by passing `--webui` via CLI or by setting the `ENABLE_WEBUI` environment variable.
+When build with the WebUI, the WebUI needs to be enabled at runtime by passing `--webui` via CLI or by setting the `ENABLE_WEBUI` environment variable.
+
+See the output of `go run build.go -help` for additional options.
 
 ### Dynamic Executable (`go install`)
 Compilation requires the Go Toolchain.
