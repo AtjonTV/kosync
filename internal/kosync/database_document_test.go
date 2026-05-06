@@ -239,3 +239,45 @@ func TestGetDocumentHistory(t *testing.T) {
 		t.Fatalf("Expected 1 history entry, got %d", len(history))
 	}
 }
+
+func TestAllDocumentsOfUserWithHistory(t *testing.T) {
+	db, err := NewTemporaryDatabase(true)
+	if err != nil {
+		t.Fatalf("Failed to create a database for testing: %v", err)
+	}
+
+	doc := Document{
+		Id:      "doc1",
+		OwnerId: "user1",
+		Title:   "Title 1",
+	}
+
+	err = db.CreateOrUpdateDocument(&doc)
+	if err != nil {
+		t.Fatalf("Failed to create a document: %v", err)
+	}
+
+	// Update to create history
+	doc.Title = "Title 1 Updated"
+	err = db.CreateOrUpdateDocument(&doc)
+	if err != nil {
+		t.Fatalf("Failed to update document: %v", err)
+	}
+
+	results, err := db.AllDocumentsOfUserWithHistory("user1")
+	if err != nil {
+		t.Fatalf("Failed to get documents with history: %v", err)
+	}
+
+	if len(*results) != 1 {
+		t.Fatalf("Expected 1 document, got %d", len(*results))
+	}
+
+	if (*results)[0].Document.Id != "doc1" {
+		t.Errorf("Expected doc1, got %s", (*results)[0].Document.Id)
+	}
+
+	if len((*results)[0].History) != 1 {
+		t.Fatalf("Expected 1 history entry, got %d", len((*results)[0].History))
+	}
+}
