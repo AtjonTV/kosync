@@ -73,6 +73,8 @@ compile:
 # Run sonarqube after compile
 sonarqube:
   stage: analyze
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
   image:
     name: sonarsource/sonar-scanner-cli:${SONARSOURCE_VERSION}
     entrypoint: [""]
