@@ -172,3 +172,43 @@ func TestJMP_PubSubAnnounce(t *testing.T) {
 		t.Error("PubSubWriter did not receive announcement")
 	}
 }
+
+func TestJMP_PubSubAnnounceWithMatcher(t *testing.T) {
+	s := New()
+	s.RegisterKnownTopic("news")
+
+	receivedCount := 0
+	s.RegisterPubSubWriter("test", func(ctx *Context, msg *Message) {
+		receivedCount++
+	})
+
+	ctx1 := NewContext()
+	ctx2 := NewContext()
+
+	subscribeMsg := &Message{
+		Version: Version,
+		Proto:   ProtoPubSub,
+		Content: PubSubscribe,
+		Payload: map[string]any{"topic": "news"},
+	}
+
+	s.HandleMessage(ctx1, subscribeMsg)
+	s.HandleMessage(ctx2, subscribeMsg)
+
+	// Matcher that only selects ctx1
+	matcher := func(ctx *Context) int64 {
+		if ctx.UniqueRequestorId == ctx1.UniqueRequestorId {
+			return ctx.UniqueRequestorId
+		}
+		return 0
+	}
+
+	err := s.PubSubAnnounceWithMatcher("news", "Targeted News", "string", matcher)
+	if err != nil {
+		t.Errorf("PubSubAnnounceWithMatcher failed: %v", err)
+	}
+
+	if receivedCount != 1 {
+		t.Errorf("Expected 1 announcement, got %d", receivedCount)
+	}
+}
