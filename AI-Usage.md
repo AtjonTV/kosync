@@ -31,6 +31,9 @@ For transparency, below is a table with the files and how such an Agent interact
 | webui/README.md                            | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | webui/package.json                         | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 
+The table is maintained on a best-effort basis and may not be exhaustive.  
+Each file is only listed once.
+
 ## Commit Annotation
 Since 2026-05-06 19:30 CEST all new commits where AI Agents or similar where used,  
 have been annotated with the Git Trailers `AI-Agent` and `AI-Model`.
