@@ -151,7 +151,8 @@ func (db *Database) CreateOrUpdateDocument(doc *Document) error {
                        last_read_on_device = $6,
                        last_read_on_device_id = $7,
                        last_read_at = if($8 = unixepoch(), unixepoch('subsec')*1000, $8),
-                       updated_at = (unixepoch('subsec')*1000);
+                       updated_at = (unixepoch('subsec')*1000),
+                       deleted_at = null;
     `
 	_, err = t.Exec(
 		updateDocument,
