@@ -131,3 +131,21 @@ func TestIsUserExists(t *testing.T) {
 		t.Fatal("User should not exist")
 	}
 }
+
+func TestFindUserBy_Error(t *testing.T) {
+	db, _ := NewTemporaryDatabase(true)
+	db.Close()
+	_, _, err := db.FindUserBy("id", "test")
+	if err == nil {
+		t.Error("Expected error when database is closed")
+	}
+}
+
+func TestIsUserExists_Error(t *testing.T) {
+	db, _ := NewTemporaryDatabase(true)
+	db.Close()
+	_, err := db.IsUserExists("id", "username")
+	if err == nil {
+		t.Error("Expected error when database is closed")
+	}
+}

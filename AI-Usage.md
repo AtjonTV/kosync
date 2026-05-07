@@ -11,12 +11,12 @@ For transparency, below is a table with the files and how such an Agent interact
 | internal/kosync/migrations_test.go         | Modified           | OpenCode (Ministral 3 - 3B Ollama)      |
 | internal/kosync/crypto_test.go             | Written partially  | OpenCode (Ministral 3 - 3B Ollama)      |
 | internal/kosync/database_document_test.go  | Written partially  | OpenCode (Ministral 3 - 3B Ollama)      |
-| internal/kosync/database_migration_test.go | Written partially  | OpenCode (Ministral 3 - 3B Ollama)      |
+| internal/kosync/database_migration_test.go | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/koreader_test.go           | Written partially  | OpenCode (Ministral 3 - 3B Ollama)      |
 | pkg/**/*_test.go                           | Modified           | OpenCode (Ministral 3 - 3B Ollama)      |
 | internal/kosync/config_test.go             | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/database_backup_test.go    | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
-| internal/kosync/database_user_test.go      | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
+| internal/kosync/database_user_test.go      | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/log_test.go                | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
 | TESTS.md                                   | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/models_test.go             | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
@@ -33,8 +33,11 @@ For transparency, below is a table with the files and how such an Agent interact
 | internal/kosync/api_webui.go               | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/kosync.go                  | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/api_webui_test.go          | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
-| internal/kosync/api_syncs_test.go          | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
+| internal/kosync/api_syncs_test.go          | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/api_users_test.go          | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
+| internal/kosync/api_auth_test.go           | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| internal/kosync/config_test.go             | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| internal/kosync/database_document_test.go  | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/middleware.go              | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | webui/src/components/DocumentsList.vue     | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | webui/src/main.ts                          | Modified           | JetBrains Junie (Google Gemini 3 Flash) |

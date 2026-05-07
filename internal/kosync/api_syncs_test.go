@@ -111,3 +111,38 @@ func TestSyncsGetProgress(t *testing.T) {
 		t.Errorf("Expected 404, got %v", resp.StatusCode)
 	}
 }
+
+func TestSyncsPostProgress_InvalidBody(t *testing.T) {
+	db, _ := NewTemporaryDatabase(true)
+	defer db.Close()
+	koapp := &Kosync{Db: db, Config: &Config{}}
+	app := fiber.New()
+	app.Put("/syncs/progress", koapp.SyncsPostProgress)
+
+	req := httptest.NewRequest(http.MethodPut, "/syncs/progress", bytes.NewReader([]byte("invalid-json")))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ := app.Test(req)
+
+	if resp.StatusCode == http.StatusOK {
+		t.Error("Expected error status for invalid body, got 200")
+	}
+}
+
+func TestSyncsGetProgress_NoDocumentId(t *testing.T) {
+	db, _ := NewTemporaryDatabase(true)
+	defer db.Close()
+	koapp := &Kosync{Db: db}
+	app := fiber.New()
+	app.Get("/syncs/progress/:document", koapp.SyncsGetProgress)
+
+	// Fiber might not match the route if param is missing, but let's test the handler directly if possible
+	// or use a path that results in empty documentId if the handler handles it.
+	// In api_syncs.go: documentId := c.Params("document", "-")
+
+	req := httptest.NewRequest(http.MethodGet, "/syncs/progress/-", nil)
+	resp, _ := app.Test(req)
+
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("Expected 404 for missing document id, got %v", resp.StatusCode)
+	}
+}

@@ -143,4 +143,22 @@ func TestNewAuthMiddleware(t *testing.T) {
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Errorf("Expected 401 with invalid password, got %v", resp.StatusCode)
 	}
+
+	// 6. AllowFail route
+	app.Get("/api/ws", func(c fiber.Ctx) error {
+		return c.SendString("WS")
+	})
+	req = httptest.NewRequest(http.MethodGet, "/api/ws", nil)
+	resp, _ = app.Test(req)
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected 200 for allowFail route without auth, got %v", resp.StatusCode)
+	}
+
+	// 7. Invalid Bearer Token
+	req = httptest.NewRequest(http.MethodGet, "/syncs", nil)
+	req.Header.Set("Authorization", "Bearer invalidtoken")
+	resp, _ = app.Test(req)
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("Expected 401 with invalid token, got %v", resp.StatusCode)
+	}
 }

@@ -50,3 +50,12 @@ func TestMigrationsApplied(t *testing.T) {
 		}
 	}
 }
+
+func TestGetCurrentSchemaVersion_Error(t *testing.T) {
+	db, _ := NewTemporaryDatabase(true)
+	db.Close()
+	_, err := db.getCurrentSchemaVersion()
+	if err == nil {
+		t.Error("Expected error when database is closed")
+	}
+}

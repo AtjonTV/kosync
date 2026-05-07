@@ -86,6 +86,40 @@ func TestUpdateDocument(t *testing.T) {
 	}
 }
 
+func TestUpdateDocumentEmptyTitle(t *testing.T) {
+	db, err := NewTemporaryDatabase(true)
+	if err != nil {
+		t.Fatalf("Failed to create database for testing: %+v", err)
+	}
+
+	doc := Document{
+		Id:      "empty_title_test",
+		OwnerId: "owner_123",
+		Title:   "Original Title",
+	}
+
+	err = db.CreateOrUpdateDocument(&doc)
+	if err != nil {
+		t.Fatalf("Failed to create the first document: %v", err)
+	}
+
+	// Update with empty title
+	doc.Title = ""
+	err = db.CreateOrUpdateDocument(&doc)
+	if err != nil {
+		t.Fatalf("Failed to update document: %v", err)
+	}
+
+	dbDoc, _, err := db.FindDocumentById("owner_123", "empty_title_test")
+	if err != nil {
+		t.Fatalf("Failed to get document: %v", err)
+	}
+
+	if dbDoc.Title != "Original Title" {
+		t.Fatalf("Title should have remained 'Original Title', but got '%s'", dbDoc.Title)
+	}
+}
+
 func TestDocumentCRUD(t *testing.T) {
 	// Setup
 	db, err := NewTemporaryDatabase(true)
@@ -383,5 +417,15 @@ func TestDeleteDocumentById(t *testing.T) {
 	}
 	if len(docs) != 0 {
 		t.Fatalf("Expected 0 documents, got %d", len(docs))
+	}
+}
+
+func TestCreateOrUpdateDocument_TransactionFail(t *testing.T) {
+	// Trigger an error by closing the DB
+	db, _ := NewTemporaryDatabase(true)
+	db.Close()
+	err := db.CreateOrUpdateDocument(&Document{Id: "test", OwnerId: "user"})
+	if err == nil {
+		t.Error("Expected error when database is closed")
 	}
 }

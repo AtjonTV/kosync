@@ -52,3 +52,13 @@ func TestNewConfigWithFallback(t *testing.T) {
 		t.Error("Expected EnableWebUi to be true due to fallback")
 	}
 }
+
+func TestNewConfigDebugLog(t *testing.T) {
+	os.Setenv("DEBUG_LOG", "true")
+	defer os.Unsetenv("DEBUG_LOG")
+
+	conf := NewConfig(nil)
+	if !conf.DebugLog {
+		t.Error("Expected DebugLog to be true")
+	}
+}
