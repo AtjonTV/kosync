@@ -26,7 +26,7 @@ func (db *Database) FindDocumentById(ownerId, documentId string) (*Document, boo
             last_read_on_device_id,
             last_read_at
         FROM documents
-        WHERE id = ? and owner_id = ?;
+        WHERE id = ? and owner_id = ? AND deleted_at IS NULL;
     `
 	rows, err := db.rawDb.Query(findOneDocument, documentId, ownerId)
 	if err != nil {
@@ -67,7 +67,7 @@ func (db *Database) AllDocumentsOfUser(ownerId string) ([]Document, error) {
             last_read_on_device_id,
             last_read_at
         FROM documents
-        WHERE owner_id = ?;
+        WHERE owner_id = ? AND deleted_at IS NULL;
     `
 	rows, err := db.rawDb.Query(findAllDocuments, ownerId)
 	if err != nil {
@@ -176,6 +176,23 @@ func (db *Database) CreateOrUpdateDocument(doc *Document) error {
 	}
 	logDbDoc.Debug("Successfully updated document")
 	return t.Commit()
+}
+
+func (db *Database) DeleteDocumentById(ownerId, documentId string) error {
+	logDbDoc.Debug("DeleteDocumentById(ownerId='%s', documentId='%s')", ownerId, documentId)
+	var deleteDocument = `
+        UPDATE documents
+        SET deleted_at = (unixepoch('subsec')*1000)
+        WHERE id = ? AND owner_id = ?;
+    `
+	_, err := db.rawDb.Exec(deleteDocument, documentId, ownerId)
+	if err != nil {
+		logDbDoc.Error("Failed to delete document '%s' of user '%s': %v", documentId, ownerId, err.Error())
+		return err
+	}
+
+	logDbDoc.Debug("Successfully deleted document")
+	return nil
 }
 
 func (db *Database) prepareHistoryCreationInTransaction(tx *sql.Tx, doc *Document) error {

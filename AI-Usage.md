@@ -18,7 +18,6 @@ For transparency, below is a table with the files and how such an Agent interact
 | internal/kosync/database_backup_test.go    | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/database_user_test.go      | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/log_test.go                | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
-| internal/kosync/database_document_test.go  | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | TESTS.md                                   | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/models_test.go             | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
 | pkg/jmp/types_test.go                      | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
@@ -30,6 +29,10 @@ For transparency, below is a table with the files and how such an Agent interact
 | webui/src/views/HomeView.vue               | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | webui/README.md                            | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | webui/package.json                         | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| internal/kosync/database_document.go      | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| internal/kosync/api_webui.go               | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| internal/kosync/kosync.go                  | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| internal/kosync/api_webui_test.go          | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
 
 The table is maintained on a best-effort basis and may not be exhaustive.  
 Each file is only listed once.

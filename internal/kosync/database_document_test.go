@@ -281,3 +281,52 @@ func TestAllDocumentsOfUserWithHistory(t *testing.T) {
 		t.Fatalf("Expected 1 history entry, got %d", len((*results)[0].History))
 	}
 }
+
+func TestDeleteDocumentById(t *testing.T) {
+	// Setup
+	db, err := NewTemporaryDatabase(true)
+	if err != nil {
+		t.Fatalf("Failed to create database for testing: %+v", err)
+	}
+
+	doc := &Document{
+		Id:      "delete_me",
+		OwnerId: "owner_123",
+		Title:   "Delete Me",
+	}
+
+	err = db.CreateOrUpdateDocument(doc)
+	if err != nil {
+		t.Fatalf("Failed to create document: %v", err)
+	}
+
+	// Verify it exists
+	_, found, err := db.FindDocumentById("owner_123", "delete_me")
+	if err != nil || !found {
+		t.Fatalf("Document should exist before deletion")
+	}
+
+	// Delete
+	err = db.DeleteDocumentById("owner_123", "delete_me")
+	if err != nil {
+		t.Fatalf("Failed to delete document: %v", err)
+	}
+
+	// Verify it's gone from FindDocumentById
+	_, found, err = db.FindDocumentById("owner_123", "delete_me")
+	if err != nil {
+		t.Fatalf("Error finding document: %v", err)
+	}
+	if found {
+		t.Fatalf("Document should NOT be found after deletion")
+	}
+
+	// Verify it's gone from AllDocumentsOfUser
+	docs, err := db.AllDocumentsOfUser("owner_123")
+	if err != nil {
+		t.Fatalf("Error getting all documents: %v", err)
+	}
+	if len(docs) != 0 {
+		t.Fatalf("Expected 0 documents, got %d", len(docs))
+	}
+}

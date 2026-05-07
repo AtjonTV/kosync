@@ -58,6 +58,30 @@ func (app *Kosync) ApiPutDocument(c fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
+func (app *Kosync) ApiDeleteDocument(c fiber.Ctx) error {
+	logApiWeb.Debug("ApiDeleteDocument")
+	documentId := c.Query("id")
+	if documentId == "" {
+		logApiWeb.Error("Missing document id in query")
+		return fiber.ErrBadRequest
+	}
+
+	userId := c.Locals(CtxContextUserId).(string)
+	logApiWeb.Debug("User '%s' requested deletion of document '%s'", userId, documentId)
+
+	if err := app.Db.DeleteDocumentById(userId, documentId); err != nil {
+		logApiWeb.Error("Failed to delete document: %v", err.Error())
+		return err
+	}
+
+	if app.Config.EnableWebSocketApi {
+		_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, nil)
+	}
+
+	logApiWeb.Debug("Successfully deleted document '%s'", documentId)
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
 func (app *Kosync) apiGetUserDocuments(username string) (*[]DocumentWithHistory, error) {
 	user, found, err := app.Db.FindUserByUsername(username)
 	if err != nil {
