@@ -78,8 +78,11 @@ func (app *Kosync) ConfigureJmp() {
 
 	_ = app.Jmp.RegisterKnownTopic("user.documents")
 	_ = app.Jmp.RegisterPubSubWriter("RawSocket", func(ctx *jmp.Context, msg *jmp.Message) {
-		err := ctx.RawSocket.(*websocket.Conn).WriteJSON(msg)
+		soc := ctx.RawSocket.(*websocket.Conn)
+		LogDebug("Sending pubsub message to client with IP '%s'", soc.IP())
+		err := soc.WriteJSON(msg)
 		if err != nil {
+			LogError("Failed to send message to raw socket: %v", err.Error())
 			return
 		}
 	})
@@ -133,7 +136,7 @@ func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 	}
 
 	ctx := jmp.Context{
-		UniqueRequestorId: int64(binary.BigEndian.Uint32([]byte(userId))),
+		UniqueRequestorId: int64(binary.BigEndian.Uint32([]byte(requestId))),
 		Data: map[string]interface{}{
 			JmpContextRequestId: requestId,
 			CtxContextUserId:    userId,
@@ -186,8 +189,12 @@ func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 
 func (app *Kosync) PubSubAnnounce(userId string, topic PubSubTopic, data interface{}) error {
 	LogDebug("PubSubAnnounce(userId='%s', topic='%s', data=%+v)", userId, topic, data)
-	userIdInt64 := int64(binary.BigEndian.Uint32([]byte(userId)))
-	err := app.Jmp.PubSubAnnounce(PubSubTopicStrings[topic], &userIdInt64, data, "Document")
+	err := app.Jmp.PubSubAnnounceWithMatcher(PubSubTopicStrings[topic], data, "Document", func(ctx *jmp.Context) int64 {
+		if ctx.GetString(CtxContextUserId) == userId {
+			return ctx.UniqueRequestorId
+		}
+		return 0
+	})
 	if err != nil {
 		return err
 	}
