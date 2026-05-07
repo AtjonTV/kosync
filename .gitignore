@@ -21,3 +21,6 @@ vendor/
 
 # JetBrains Junie
 .junie/memory
+
+# Go Test Coverage
+coverage.out
