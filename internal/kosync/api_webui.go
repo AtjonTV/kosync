@@ -14,7 +14,12 @@ var logApiWeb = NewKlog("api/webui")
 
 func (app *Kosync) ApiGetDocumentsAll(c fiber.Ctx) error {
 	logApiWeb.Debug("ApiGetDocumentsAll")
-	result, err := app.apiGetUserDocuments(c.Locals(CtxContextUserName).(string))
+	userNameVal := c.Locals(CtxContextUserName)
+	if userNameVal == nil {
+		logApiWeb.Error("User Name not found in context")
+		return fiber.ErrUnauthorized
+	}
+	result, err := app.apiGetUserDocuments(userNameVal.(string))
 	if err != nil {
 		return err
 	}
@@ -26,9 +31,14 @@ func (app *Kosync) ApiGetDocumentsAll(c fiber.Ctx) error {
 
 func (app *Kosync) ApiPutDocument(c fiber.Ctx) error {
 	logApiWeb.Debug("ApiPutDocument")
-	user, _, err := app.Db.FindUserByUsername(c.Locals(CtxContextUserName).(string))
+	userNameVal := c.Locals(CtxContextUserName)
+	if userNameVal == nil {
+		logApiWeb.Error("User Name not found in context")
+		return fiber.ErrUnauthorized
+	}
+	user, _, err := app.Db.FindUserByUsername(userNameVal.(string))
 	if err != nil {
-		logApiWeb.Error("Failed to find user '%s': %v", c.Locals(CtxContextUserName).(string), err.Error())
+		logApiWeb.Error("Failed to find user '%s': %v", userNameVal.(string), err.Error())
 		return err
 	}
 
@@ -45,13 +55,16 @@ func (app *Kosync) ApiPutDocument(c fiber.Ctx) error {
 	}
 
 	if app.Config.EnableWebSocketApi {
-		go func(userId, docId string) {
-			updatedDoc, _, e := app.Db.FindDocumentById(userId, docId)
-			if e != nil {
-				return
-			}
-			_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, updatedDoc)
-		}(c.Locals(CtxContextUserId).(string), document.Id)
+		userIdVal := c.Locals(CtxContextUserId)
+		if userIdVal != nil {
+			go func(userId, docId string) {
+				updatedDoc, _, e := app.Db.FindDocumentById(userId, docId)
+				if e != nil {
+					return
+				}
+				_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, updatedDoc)
+			}(userIdVal.(string), document.Id)
+		}
 	}
 
 	logApiWeb.Debug("Successfully saved document '%s'", document.Id)
@@ -66,7 +79,12 @@ func (app *Kosync) ApiDeleteDocument(c fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	userId := c.Locals(CtxContextUserId).(string)
+	userIdVal := c.Locals(CtxContextUserId)
+	if userIdVal == nil {
+		logApiWeb.Error("User ID not found in context")
+		return fiber.ErrUnauthorized
+	}
+	userId := userIdVal.(string)
 	logApiWeb.Debug("User '%s' requested deletion of document '%s'", userId, documentId)
 
 	if err := app.Db.DeleteDocumentById(userId, documentId); err != nil {
