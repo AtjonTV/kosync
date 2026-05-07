@@ -37,6 +37,7 @@ For transparency, below is a table with the files and how such an Agent interact
 | webui/src/components/DocumentsList.vue     | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | webui/src/main.ts                          | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | webui/src/App.vue                          | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| .junie/AGENTS.md                           | Written partially  | JetBrains Junie (Google Gemini 3 Flash) |
 
 The table is maintained on a best-effort basis and may not be exhaustive.  
 Each file is only listed once.

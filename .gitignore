@@ -20,4 +20,4 @@ kosync.log
 vendor/
 
 # JetBrains Junie
-.junie
+.junie/memory
