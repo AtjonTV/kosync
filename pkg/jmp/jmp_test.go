@@ -70,7 +70,9 @@ func TestJMP_UnregisterKnownTopic(t *testing.T) {
 
 func TestJMP_RegisterPubSubWriter(t *testing.T) {
 	s := New()
-	handler := func(ctx *Context, msg *Message) {}
+	handler := func(ctx *Context, msg *Message) {
+		// Test writer handler: no action needed for registration test
+	}
 	err := s.RegisterPubSubWriter("writer1", handler)
 	if err != nil {
 		t.Errorf("RegisterPubSubWriter failed: %v", err)
@@ -83,7 +85,9 @@ func TestJMP_RegisterPubSubWriter(t *testing.T) {
 
 func TestJMP_UnregisterPubSubHandler(t *testing.T) {
 	s := New()
-	s.RegisterPubSubWriter("writer1", func(ctx *Context, msg *Message) {})
+	s.RegisterPubSubWriter("writer1", func(ctx *Context, msg *Message) {
+		// Test writer handler: no action needed for registration test
+	})
 	s.UnregisterPubSubHandler("writer1")
 	if _, ok := s.pubSubWriters["writer1"]; ok {
 		t.Error("PubSubWriter still exists after UnregisterPubSubHandler")

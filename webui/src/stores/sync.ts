@@ -59,9 +59,9 @@ export const useSyncStore = defineStore('sync', () => {
         const doc = data as DocumentWithHistory;
         for (const docIndex in sync.value.documents) {
           const orig = sync.value.documents[docIndex];
-          if (orig && orig.id === doc.id) {
-            const origCopy = JSON.parse(JSON.stringify(orig));
-            delete origCopy.history;
+          if (orig?.id === doc.id) {
+            const origCopy = structuredClone(orig);
+            delete (origCopy as any).history;
             let newHistory: Document[] = [];
             if (orig.history) {
               newHistory = [

@@ -10,16 +10,23 @@ import (
 	"testing"
 )
 
+const (
+	testDbCreateError = "Failed to create database for testing: %+v"
+	testDocTitle      = "Test Document"
+	testDocCreateErr  = "Failed to create document: %v"
+	testTitle         = "Test Title"
+)
+
 func TestCreateDocument(t *testing.T) {
 	db, err := NewTemporaryDatabase(true)
 	if err != nil {
-		t.Fatalf("Failed to create database for testing: %+v", err)
+		t.Fatalf(testDbCreateError, err)
 	}
 
 	doc := Document{
 		Id:                 "valid_id",
 		OwnerId:            "owner_123",
-		Title:              "Test Document",
+		Title:              testDocTitle,
 		CurrentLocation:    "location_1",
 		Progress:           0.5,
 		LastReadOnDevice:   "device_abc",
@@ -36,13 +43,13 @@ func TestCreateDocument(t *testing.T) {
 func TestUpdateDocument(t *testing.T) {
 	db, err := NewTemporaryDatabase(true)
 	if err != nil {
-		t.Fatalf("Failed to create database for testing: %+v", err)
+		t.Fatalf(testDbCreateError, err)
 	}
 
 	doc := Document{
 		Id:                 "valid_id",
 		OwnerId:            "owner_123",
-		Title:              "Test Document",
+		Title:              testDocTitle,
 		CurrentLocation:    "location_1",
 		Progress:           0.5,
 		LastReadOnDevice:   "device_abc",
@@ -89,7 +96,7 @@ func TestUpdateDocument(t *testing.T) {
 func TestUpdateDocumentEmptyTitle(t *testing.T) {
 	db, err := NewTemporaryDatabase(true)
 	if err != nil {
-		t.Fatalf("Failed to create database for testing: %+v", err)
+		t.Fatalf(testDbCreateError, err)
 	}
 
 	doc := Document{
@@ -124,13 +131,13 @@ func TestDocumentCRUD(t *testing.T) {
 	// Setup
 	db, err := NewTemporaryDatabase(true)
 	if err != nil {
-		t.Fatalf("Failed to create database for testing: %+v", err)
+		t.Fatalf(testDbCreateError, err)
 	}
 	// Test CreateOrUpdateDocument
 	testDoc := &Document{
 		Id:                 "valid_id",
 		OwnerId:            "owner_123",
-		Title:              "Test Document",
+		Title:              testDocTitle,
 		CurrentLocation:    "location_1",
 		Progress:           0.5,
 		LastReadOnDevice:   "device_abc",
@@ -140,7 +147,7 @@ func TestDocumentCRUD(t *testing.T) {
 	// Test
 	err = db.CreateOrUpdateDocument(testDoc)
 	if err != nil {
-		t.Fatalf("Failed to create document: %v", err)
+		t.Fatalf(testDocCreateErr, err)
 	}
 	// Verify document exists
 	doc, found, err := db.FindDocumentById("owner_123", "valid_id")
@@ -150,21 +157,21 @@ func TestDocumentCRUD(t *testing.T) {
 	if !found {
 		t.Fatalf("Document not found after creation")
 	}
-	if doc.Title != "Test Document" {
-		t.Fatalf("Title mismatch: expected '%s', got '%s'", "Test Document", doc.Title)
+	if doc.Title != testDocTitle {
+		t.Fatalf("Title mismatch: expected '%s', got '%s'", testDocTitle, doc.Title)
 	}
 }
 func TestFindDocumentById(t *testing.T) {
 	// Setup
 	db, err := NewTemporaryDatabase(true)
 	if err != nil {
-		t.Fatalf("Failed to create database for testing: %+v", err)
+		t.Fatalf(testDbCreateError, err)
 	}
 	// Create a test document
 	testDoc := &Document{
 		Id:                 "valid_id",
 		OwnerId:            "owner_123",
-		Title:              "Test Title",
+		Title:              testTitle,
 		CurrentLocation:    "location_1",
 		Progress:           0.5,
 		LastReadOnDevice:   "device_abc",
@@ -173,7 +180,7 @@ func TestFindDocumentById(t *testing.T) {
 	}
 	err = db.CreateOrUpdateDocument(testDoc)
 	if err != nil {
-		t.Fatalf("Failed to create document: %v", err)
+		t.Fatalf(testDocCreateErr, err)
 	}
 	// Test Case 1: Document found
 	doc, found, err := db.FindDocumentById("owner_123", "valid_id")
@@ -183,8 +190,8 @@ func TestFindDocumentById(t *testing.T) {
 	if !found || doc == nil {
 		t.Fatal("Document not found")
 	}
-	if doc.Title != "Test Title" {
-		t.Fatalf("Title mismatch: expected '%s', got '%s'", "Test Title", doc.Title)
+	if doc.Title != testTitle {
+		t.Fatalf("Title mismatch: expected '%s', got '%s'", testTitle, doc.Title)
 	}
 	// Test Case 2: Document not found
 	_, found, err = db.FindDocumentById("owner_123", "invalid_id")
@@ -199,7 +206,7 @@ func TestAllDocumentsOfUser(t *testing.T) {
 	// Setup
 	db, err := NewTemporaryDatabase(true)
 	if err != nil {
-		t.Fatalf("Failed to create database for testing: %+v", err)
+		t.Fatalf(testDbCreateError, err)
 	}
 	// Create multiple documents
 	docs := []*Document{
@@ -243,13 +250,13 @@ func TestGetDocumentHistory(t *testing.T) {
 	// Setup
 	db, err := NewTemporaryDatabase(true)
 	if err != nil {
-		t.Fatalf("Failed to create database for testing: %+v", err)
+		t.Fatalf(testDbCreateError, err)
 	}
 	// Create a test document
 	testDoc := &Document{
 		Id:                 "valid_id",
 		OwnerId:            "owner_123",
-		Title:              "Test Title",
+		Title:              testTitle,
 		CurrentLocation:    "location_1",
 		Progress:           0.5,
 		LastReadOnDevice:   "device_abc",
@@ -258,11 +265,11 @@ func TestGetDocumentHistory(t *testing.T) {
 	}
 	err = db.CreateOrUpdateDocument(testDoc)
 	if err != nil {
-		t.Fatalf("Failed to create document: %v", err)
+		t.Fatalf(testDocCreateErr, err)
 	}
 	err = db.CreateOrUpdateDocument(testDoc)
 	if err != nil {
-		t.Fatalf("Failed to create document: %v", err)
+		t.Fatalf(testDocCreateErr, err)
 	}
 	// Test
 	history, err := db.GetDocumentHistory("owner_123", "valid_id")
@@ -319,7 +326,7 @@ func TestAllDocumentsOfUserWithHistory(t *testing.T) {
 func TestSoftDeleteDocumentHistory(t *testing.T) {
 	db, err := NewTemporaryDatabase(true)
 	if err != nil {
-		t.Fatalf("Failed to create database for testing: %+v", err)
+		t.Fatalf(testDbCreateError, err)
 	}
 
 	ownerId := "user_h"
@@ -334,7 +341,7 @@ func TestSoftDeleteDocumentHistory(t *testing.T) {
 	// Create document
 	err = db.CreateOrUpdateDocument(doc)
 	if err != nil {
-		t.Fatalf("Failed to create document: %v", err)
+		t.Fatalf(testDocCreateErr, err)
 	}
 
 	// Update document to create history entry
@@ -375,7 +382,7 @@ func TestDeleteDocumentById(t *testing.T) {
 	// Setup
 	db, err := NewTemporaryDatabase(true)
 	if err != nil {
-		t.Fatalf("Failed to create database for testing: %+v", err)
+		t.Fatalf(testDbCreateError, err)
 	}
 
 	doc := &Document{
@@ -386,7 +393,7 @@ func TestDeleteDocumentById(t *testing.T) {
 
 	err = db.CreateOrUpdateDocument(doc)
 	if err != nil {
-		t.Fatalf("Failed to create document: %v", err)
+		t.Fatalf(testDocCreateErr, err)
 	}
 
 	// Verify it exists

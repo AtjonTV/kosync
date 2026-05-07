@@ -19,12 +19,14 @@ type Database struct {
 	currentSchema int
 }
 
+const errFailedToOpenDatabase = "Failed to open SQLite database: %v"
+
 func NewDatabase(config *Config) (*Database, error) {
 	log := NewKlog("database")
 	log.Debug("Trying to open SQLite database at '%s'", config.DatabaseFile)
 	rawDb, err := sql.Open("sqlite", config.DatabaseFile)
 	if err != nil {
-		log.Error("Failed to open SQLite database: %v", err.Error())
+		log.Error(errFailedToOpenDatabase, err.Error())
 		return nil, err
 	}
 
@@ -33,7 +35,7 @@ func NewDatabase(config *Config) (*Database, error) {
 		currentSchema: 0,
 	}
 	if err := db.checkAndRunMigrations(config); err != nil {
-		log.Error("Failed to open SQLite database: %v", err.Error())
+		log.Error(errFailedToOpenDatabase, err.Error())
 		return nil, err
 	}
 
@@ -45,7 +47,7 @@ func NewDatabaseWithoutMigrate(config *Config) (*Database, error) {
 	log.Debug("Trying to open SQLite database at '%s'", config.DatabaseFile)
 	rawDb, err := sql.Open("sqlite", config.DatabaseFile)
 	if err != nil {
-		log.Error("Failed to open SQLite database: %v", err.Error())
+		log.Error(errFailedToOpenDatabase, err.Error())
 		return nil, err
 	}
 

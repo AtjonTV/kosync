@@ -14,14 +14,14 @@ type JmpOnConnectedCallback = () => void;
 // Client class
 class JMPClient {
   private socket: WebSocket | null = null;
-  private rpcCallbacks: Map<string, JmpRpcCallback> = new Map();
-  private pubSubCallbacks: Map<string, JmpPubSubCallback> = new Map();
+  private readonly rpcCallbacks: Map<string, JmpRpcCallback> = new Map();
+  private readonly pubSubCallbacks: Map<string, JmpPubSubCallback> = new Map();
 
-  private static JmpVersion = "1";
-  private static JmpProtoRpc = "rpc";
-  private static JmpProtoPubSub = "pubsub";
+  private static readonly JmpVersion = "1";
+  private static readonly JmpProtoRpc = "rpc";
+  private static readonly JmpProtoPubSub = "pubsub";
 
-  constructor(private websocketUrl: string, private debugLog?: boolean) {}
+  constructor(private readonly websocketUrl: string, private readonly debugLog?: boolean) {}
 
   // Connect to WebSocket
   public connect(onConnected?: JmpOnConnectedCallback): void {

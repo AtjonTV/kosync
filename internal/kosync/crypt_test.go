@@ -10,9 +10,11 @@ import (
 	"testing"
 )
 
+const testSeed = "random-32-character-seed-for-key"
+
 func TestCryptStateInitialization(t *testing.T) {
 	// Test with seed
-	conf := CryptConfig{StaticKeySeed: "random-32-character-seed-for-key"}
+	conf := CryptConfig{StaticKeySeed: testSeed}
 	state := NewCryptState(conf)
 	if !state.HasKeys() {
 		t.Error("Private key should be generated with seed")
@@ -28,7 +30,7 @@ func TestCryptStateInitialization(t *testing.T) {
 func TestGenerateKeys(t *testing.T) {
 	state := NewDefaultCryptState()
 	// Test with seed
-	seed := "random-32-character-seed-for-key"
+	seed := testSeed
 	err := state.GenerateKeys(&seed)
 	if err != nil {
 		t.Error("Should generate keys with seed")
@@ -44,7 +46,7 @@ func TestGenerateKeys(t *testing.T) {
 
 func TestKeysAsPem(t *testing.T) {
 	state := NewDefaultCryptState()
-	seed := "random-32-character-seed-for-key"
+	seed := testSeed
 	err := state.GenerateKeys(&seed)
 	if err != nil {
 		t.Error("Should generate keys before testing PEM")
@@ -61,7 +63,7 @@ func TestKeysAsPem(t *testing.T) {
 
 func TestCreateToken(t *testing.T) {
 	state := NewDefaultCryptState()
-	seed := "random-32-character-seed-for-key"
+	seed := testSeed
 	err := state.GenerateKeys(&seed)
 	if err != nil {
 		t.Error("Should generate keys before testing token")
@@ -78,7 +80,7 @@ func TestCreateToken(t *testing.T) {
 
 func TestVerifyToken(t *testing.T) {
 	state := NewDefaultCryptState()
-	seed := "random-32-character-seed-for-key"
+	seed := testSeed
 	err := state.GenerateKeys(&seed)
 	if err != nil {
 		t.Error("Should generate keys before testing token")

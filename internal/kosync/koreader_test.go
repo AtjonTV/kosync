@@ -12,10 +12,12 @@ import (
 	"time"
 )
 
+const testDocId = "test-doc"
+
 func TestDocumentToKoProgressWithTime(t *testing.T) {
 	// Test case 1: Normal input
 	d := &Document{
-		Id:                 "test-doc",
+		Id:                 testDocId,
 		CurrentLocation:    "start",
 		Progress:           50.0,
 		LastReadOnDevice:   "device1",
@@ -23,8 +25,8 @@ func TestDocumentToKoProgressWithTime(t *testing.T) {
 		LastReadAt:         1609459200000000000,
 	}
 	result := DocumentToKoProgressWithTime(d)
-	if result.Document != "test-doc" {
-		t.Errorf("Expected document 'test-doc', got %s", result.Document)
+	if result.Document != testDocId {
+		t.Errorf("Expected document '%s', got %s", testDocId, result.Document)
 	}
 	if result.Percentage != 50.0 {
 		t.Errorf("Expected percentage 50.0, got %f", result.Percentage)
@@ -40,15 +42,15 @@ func TestKoProgressToDocument(t *testing.T) {
 	// Test case 1: Normal input
 	ownerId := "owner1"
 	doc := KoProgress{
-		Document:   "test-doc",
+		Document:   testDocId,
 		Progress:   "start",
 		Percentage: 50.0,
 		Device:     "device1",
 		DeviceId:   "device1-id",
 	}
 	result := KoProgressToDocument(&doc, ownerId)
-	if result.Id != "test-doc" {
-		t.Errorf("Expected document 'test-doc', got %s", result.Id)
+	if result.Id != testDocId {
+		t.Errorf("Expected document '%s', got %s", testDocId, result.Id)
 	}
 	if result.CurrentLocation != "start" {
 		t.Errorf("Expected current location 'start', got %s", result.CurrentLocation)
