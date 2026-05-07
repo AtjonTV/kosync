@@ -7,8 +7,8 @@ interface JMPMessage {
 }
 
 // Define callback types
-type JmpRpcCallback = (data: any, errors?: string[]) => void;
-type JmpPubSubCallback = (data: any, errors?: string[]) => void;
+type JmpRpcCallback = (data: any, typeHint: string, errors?: string[]) => void;
+type JmpPubSubCallback = (data: any, typeHint: string, errors?: string[]) => void;
 type JmpOnConnectedCallback = () => void;
 
 // Client class
@@ -55,12 +55,12 @@ class JMPClient {
     if (message.proto === JMPClient.JmpProtoRpc) {
       const callback = this.rpcCallbacks.get(message.payload.method);
       if (callback) {
-        callback(message.payload.data, message.payload.errors);
+        callback(message.payload.data, message.payload.type_hint, message.payload.errors);
       }
     } else if (message.proto === JMPClient.JmpProtoPubSub) {
       const callback = this.pubSubCallbacks.get(message.payload.for_topic);
       if (callback) {
-        callback(message.payload.data, message.payload.errors);
+        callback(message.payload.data, message.payload.type_hint, message.payload.errors);
       }
     }
   }
