@@ -1,7 +1,7 @@
 import {type Ref, ref} from 'vue'
 import { defineStore } from 'pinia'
 import JMPClient from "jmp-client-js";
-import type {DocumentWithHistory} from "@/models/document.ts";
+import type {Document, DocumentWithHistory} from "@/models/document.ts";
 import {fetchApi, getWebSocketUrl} from "@/api.ts";
 
 export type SyncState = {
@@ -61,12 +61,16 @@ export const useSyncStore = defineStore('sync', () => {
         if (orig && orig.id === doc.id) {
           const origCopy = JSON.parse(JSON.stringify(orig));
           delete origCopy.history;
-          sync.value.documents[docIndex] = {
-            ...doc,
-            history: [
+          let newHistory: Document[] = [];
+          if (orig.history) {
+            newHistory = [
               ...orig.history, // take full previous history
               origCopy // add original doc to history
-            ]
+            ];
+          }
+          sync.value.documents[docIndex] = {
+            ...doc,
+            history: newHistory
           };
           break;
         }
