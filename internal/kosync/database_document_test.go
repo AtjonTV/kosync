@@ -282,6 +282,61 @@ func TestAllDocumentsOfUserWithHistory(t *testing.T) {
 	}
 }
 
+func TestSoftDeleteDocumentHistory(t *testing.T) {
+	db, err := NewTemporaryDatabase(true)
+	if err != nil {
+		t.Fatalf("Failed to create database for testing: %+v", err)
+	}
+
+	ownerId := "user_h"
+	docId := "doc_h"
+
+	doc := &Document{
+		Id:      docId,
+		OwnerId: ownerId,
+		Title:   "Original Title",
+	}
+
+	// Create document
+	err = db.CreateOrUpdateDocument(doc)
+	if err != nil {
+		t.Fatalf("Failed to create document: %v", err)
+	}
+
+	// Update document to create history entry
+	doc.Title = "Updated Title"
+	err = db.CreateOrUpdateDocument(doc)
+	if err != nil {
+		t.Fatalf("Failed to update document: %v", err)
+	}
+
+	// Get history
+	history, err := db.GetDocumentHistory(ownerId, docId)
+	if err != nil {
+		t.Fatalf("Failed to get history: %v", err)
+	}
+	if len(history) != 1 {
+		t.Fatalf("Expected 1 history entry, got %d", len(history))
+	}
+	historyItem := history[0]
+
+	// Verify we can delete it (this will fail compilation until we add the method)
+	// We'll use the last_read_at as identifier for the history item since document_id + owner_id + last_read_at is a typical way to identify them
+	err = db.DeleteDocumentHistoryItem(ownerId, docId, int64(historyItem.LastReadAt))
+	if err != nil {
+		t.Fatalf("Failed to delete history item: %v", err)
+	}
+
+	// Verify it's gone from history
+	history, err = db.GetDocumentHistory(ownerId, docId)
+	if err != nil {
+		t.Fatalf("Failed to get history after deletion: %v", err)
+	}
+	if len(history) != 0 {
+		t.Fatalf("Expected 0 history entries after deletion, got %d", len(history))
+	}
+}
+
 func TestDeleteDocumentById(t *testing.T) {
 	// Setup
 	db, err := NewTemporaryDatabase(true)

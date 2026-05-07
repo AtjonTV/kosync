@@ -7,6 +7,8 @@
 package kosync
 
 import (
+	"strconv"
+
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -97,6 +99,43 @@ func (app *Kosync) ApiDeleteDocument(c fiber.Ctx) error {
 	}
 
 	logApiWeb.Debug("Successfully deleted document '%s'", documentId)
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
+func (app *Kosync) ApiDeleteDocumentHistory(c fiber.Ctx) error {
+	logApiWeb.Debug("ApiDeleteDocumentHistory")
+	documentId := c.Query("id")
+	lastReadAtStr := c.Query("last_read_at")
+	if documentId == "" || lastReadAtStr == "" {
+		logApiWeb.Error("Missing document id or last_read_at in query")
+		return fiber.ErrBadRequest
+	}
+
+	lastReadAt, err := strconv.ParseInt(lastReadAtStr, 10, 64)
+	if err != nil {
+		logApiWeb.Error("Failed to parse last_read_at: %v", err.Error())
+		return fiber.ErrBadRequest
+	}
+
+	userIdVal := c.Locals(CtxContextUserId)
+	if userIdVal == nil {
+		logApiWeb.Error("User ID not found in context")
+		return fiber.ErrUnauthorized
+	}
+	userId := userIdVal.(string)
+	logApiWeb.Debug("User '%s' requested deletion of history item for document '%s' at %d", userId, documentId, lastReadAt)
+
+	if err := app.Db.DeleteDocumentHistoryItem(userId, documentId, lastReadAt); err != nil {
+		logApiWeb.Error("Failed to delete history item: %v", err.Error())
+		return err
+	}
+
+	if app.Config.EnableWebSocketApi {
+		// Announce update to refresh history in UI
+		_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, nil, "")
+	}
+
+	logApiWeb.Debug("Successfully deleted history item for document '%s'", documentId)
 	return c.SendStatus(fiber.StatusNoContent)
 }
 

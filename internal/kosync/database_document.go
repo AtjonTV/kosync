@@ -101,7 +101,7 @@ func (db *Database) GetDocumentHistory(ownerId, documentId string) ([]Document, 
             last_read_on_device_id,
             last_read_at
         FROM document_history
-        WHERE document_id = ? and owner_id = ?;
+        WHERE document_id = ? and owner_id = ? AND deleted_at IS NULL;
     `
 	rows, err := db.rawDb.Query(findDocumentHistory, documentId, ownerId)
 	if err != nil {
@@ -176,6 +176,23 @@ func (db *Database) CreateOrUpdateDocument(doc *Document) error {
 	}
 	logDbDoc.Debug("Successfully updated document")
 	return t.Commit()
+}
+
+func (db *Database) DeleteDocumentHistoryItem(ownerId, documentId string, lastReadAt int64) error {
+	logDbDoc.Debug("DeleteDocumentHistoryItem(ownerId='%s', documentId='%s', lastReadAt=%d)", ownerId, documentId, lastReadAt)
+	var deleteHistoryItem = `
+        UPDATE document_history
+        SET deleted_at = (unixepoch('subsec')*1000)
+        WHERE document_id = ? AND owner_id = ? AND last_read_at = ?;
+    `
+	_, err := db.rawDb.Exec(deleteHistoryItem, documentId, ownerId, lastReadAt)
+	if err != nil {
+		logDbDoc.Error("Failed to delete history item of document '%s' of user '%s': %v", documentId, ownerId, err.Error())
+		return err
+	}
+
+	logDbDoc.Debug("Successfully deleted history item")
+	return nil
 }
 
 func (db *Database) DeleteDocumentById(ownerId, documentId string) error {
