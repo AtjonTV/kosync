@@ -89,8 +89,8 @@ KOsync uses SQLite. The production database is typically `kosync.db`.
 
 ### AI-Usage.md
 - Whenever you (the AI Agent) create or significantly modify a file, you MUST update the table in `AI-Usage.md`.
-- Include the file path, interaction type, and the model name.
-- Each file only needs to be listed once.
+- Every file MUST only be listed once.
+- Include the file path, interaction type, and the agent plus model name.
 
 ### KDoc / Comments
 - Follow the existing comment style. Do not over-comment if the surrounding code is sparse, but ensure complex logic is explained.
