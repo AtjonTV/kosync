@@ -32,7 +32,9 @@ For transparency, below is a table with the files and how such an Agent interact
 | internal/kosync/database_document.go       | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/api_webui.go               | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/kosync.go                  | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
-| internal/kosync/api_webui_test.go          | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
+| internal/kosync/api_webui_test.go          | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| internal/kosync/api_syncs_test.go          | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
+| internal/kosync/api_users_test.go          | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/middleware.go              | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | webui/src/components/DocumentsList.vue     | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | webui/src/main.ts                          | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
