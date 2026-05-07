@@ -33,7 +33,7 @@ func (app *Kosync) SyncsPostProgress(c fiber.Ctx) error {
 			if err != nil || !found {
 				return
 			}
-			_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, updatedDoc)
+			_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, updatedDoc, "Document")
 		}(doc.OwnerId)
 	}
 

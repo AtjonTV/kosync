@@ -64,7 +64,7 @@ func (app *Kosync) ApiPutDocument(c fiber.Ctx) error {
 				if e != nil {
 					return
 				}
-				_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, updatedDoc)
+				_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, updatedDoc, "Document")
 			}(userIdVal.(string), document.Id)
 		}
 	}
@@ -95,7 +95,12 @@ func (app *Kosync) ApiDeleteDocument(c fiber.Ctx) error {
 	}
 
 	if app.Config.EnableWebSocketApi {
-		_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, nil)
+		go func(documentId string) {
+			type DocumentDeletion struct {
+				DocumentId string `json:"document_id"`
+			}
+			_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, DocumentDeletion{DocumentId: documentId}, "DocumentDeletion")
+		}(documentId)
 	}
 
 	logApiWeb.Debug("Successfully deleted document '%s'", documentId)
@@ -132,7 +137,15 @@ func (app *Kosync) ApiDeleteDocumentHistory(c fiber.Ctx) error {
 
 	if app.Config.EnableWebSocketApi {
 		// Announce update to refresh history in UI
-		_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, nil, "")
+		go func(userId string) {
+			go func(documentId string, lastReadAt int64) {
+				type HistoryDeletion struct {
+					DocumentId string `json:"document_id"`
+					LastReadAt int64  `json:"last_read_at"`
+				}
+				_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, HistoryDeletion{DocumentId: documentId, LastReadAt: lastReadAt}, "HistoryDeletion")
+			}(documentId, lastReadAt)
+		}(userId)
 	}
 
 	logApiWeb.Debug("Successfully deleted history item for document '%s'", documentId)

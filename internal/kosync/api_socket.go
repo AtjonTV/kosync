@@ -65,7 +65,7 @@ func (app *Kosync) ConfigureJmp() {
 		}
 
 		go func() {
-			_ = app.PubSubAnnounce(ctx.GetString(CtxContextUserId), PubSubTopicUserDocuments, updatedDoc)
+			_ = app.PubSubAnnounce(ctx.GetString(CtxContextUserId), PubSubTopicUserDocuments, updatedDoc, "Document")
 		}()
 
 		return jmp.NewOkResult("Document", updatedDoc)
@@ -187,9 +187,9 @@ func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 	}
 }
 
-func (app *Kosync) PubSubAnnounce(userId string, topic PubSubTopic, data interface{}) error {
+func (app *Kosync) PubSubAnnounce(userId string, topic PubSubTopic, data interface{}, typeHint string) error {
 	LogDebug("PubSubAnnounce(userId='%s', topic='%s', data=%+v)", userId, topic, data)
-	err := app.Jmp.PubSubAnnounceWithMatcher(PubSubTopicStrings[topic], data, "Document", func(ctx *jmp.Context) int64 {
+	err := app.Jmp.PubSubAnnounceWithMatcher(PubSubTopicStrings[topic], data, typeHint, func(ctx *jmp.Context) int64 {
 		if ctx.GetString(CtxContextUserId) == userId {
 			return ctx.UniqueRequestorId
 		}
