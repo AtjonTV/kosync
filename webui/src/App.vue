@@ -5,7 +5,10 @@ import { RouterView } from 'vue-router'
 <template>
   <Suspense>
     <template #default>
-      <RouterView />
+      <div>
+        <ConfirmDialog />
+        <RouterView />
+      </div>
     </template>
 
     <template #fallback>

@@ -24,6 +24,7 @@
     "blueimp-md5": "^2.19.0",
     "jmp-client-js": "../pkg/jmp-client-js",
     "pinia": "3.0.4",
+    "primeicons": "^7.0.0",
     "primevue": "4.5.4",
     "tailwindcss": "4.1.18",
     "tailwindcss-primeui": "0.6.1",

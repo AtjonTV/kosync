@@ -4,10 +4,12 @@ import {useSyncStore} from "@/stores/sync.ts";
 import {ref} from "vue";
 import {fetchApi} from "@/api.ts";
 import {useUserStore} from "@/stores/user.ts";
+import { useConfirm } from "primevue/useconfirm";
 
 const {customTitle} = defineProps<{customTitle?: string}>()
 
 const userStore = useUserStore();
+const confirm = useConfirm();
 
 const syncStore = useSyncStore();
 if (await userStore.isLoggedIn()) {
@@ -32,6 +34,33 @@ const onEditComplete = async (event: any) => {
         event.preventDefault();
     }
 }
+
+const deleteDocument = (data: any) => {
+    confirm.require({
+        message: `Are you sure you want to delete "${data.title || data.id}"?`,
+        header: 'Confirmation',
+        icon: 'pi pi-exclamation-triangle',
+        rejectProps: {
+            label: 'Cancel',
+            severity: 'secondary',
+            outlined: true
+        },
+        acceptProps: {
+            label: 'Delete',
+            severity: 'danger'
+        },
+        accept: async () => {
+            const result = await fetchApi(`/api/documents.delete?id=${data.id}`, {
+                method: "DELETE"
+            });
+            if (result.error !== null) {
+                alert("Failed to delete document: " + result.error)
+            } else {
+                await syncStore.doSync(true);
+            }
+        }
+    });
+};
 </script>
 
 <template>
@@ -64,6 +93,11 @@ const onEditComplete = async (event: any) => {
           <template #body="slotProps">
             {{ new Date(slotProps.data.last_read_at/10).toISOString() }}
           </template>
+        </Column>
+        <Column header="Actions" style="width: 5rem">
+            <template #body="slotProps">
+                <Button icon="pi pi-trash" severity="danger" variant="text" rounded @click="deleteDocument(slotProps.data)" />
+            </template>
         </Column>
 
         <template #expansion="slotProps">
