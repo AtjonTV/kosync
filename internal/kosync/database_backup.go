@@ -18,6 +18,23 @@ import (
 	"modernc.org/sqlite"
 )
 
+func performRawSqliteStep(bak *sqlite.Backup) error {
+	morePagesToProcess, err := bak.Step(-1)
+	if err != nil {
+		return err
+	}
+	if morePagesToProcess {
+		morePagesToProcess, err = bak.Step(-1)
+		if err != nil {
+			return err
+		}
+		if morePagesToProcess {
+			return fmt.Errorf("failed to process all database pages")
+		}
+	}
+	return nil
+}
+
 func BackupDatabase(cfg *Config, db *sql.DB) error {
 	type SQLiteBackup interface {
 		NewBackup(string) (*sqlite.Backup, error)
@@ -40,18 +57,8 @@ func BackupDatabase(cfg *Config, db *sql.DB) error {
 			return err
 		}
 
-		morePagesToProcess, err := bak.Step(-1)
-		if err != nil {
+		if err := performRawSqliteStep(bak); err != nil {
 			return err
-		}
-		if morePagesToProcess {
-			morePagesToProcess, err = bak.Step(-1)
-			if err != nil {
-				return err
-			}
-			if morePagesToProcess {
-				return fmt.Errorf("failed to backup database")
-			}
 		}
 
 		return bak.Finish()
@@ -95,18 +102,8 @@ func RestoreDatabase(db *sql.DB, backupFile string) error {
 			return err
 		}
 
-		morePagesToProcess, err := bak.Step(-1)
-		if err != nil {
+		if err := performRawSqliteStep(bak); err != nil {
 			return err
-		}
-		if morePagesToProcess {
-			morePagesToProcess, err = bak.Step(-1)
-			if err != nil {
-				return err
-			}
-			if morePagesToProcess {
-				return fmt.Errorf("failed to backup database")
-			}
 		}
 
 		return bak.Finish()

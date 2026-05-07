@@ -7,11 +7,42 @@
 package kosync
 
 import (
+	"errors"
 	"slices"
 	"strings"
 
 	"github.com/gofiber/fiber/v3"
 )
+
+func (app *Kosync) handleTokenAuth(authHeader string, allowFail bool) (bool, *User, error) {
+	log := NewKlog("auth")
+	tokenType := "Bearer"
+	rawToken, _ := strings.CutPrefix(authHeader, tokenType)
+	token := strings.TrimSpace(rawToken)
+
+	valid, userIdentifier := app.Crypt.VerifyToken(token)
+	if valid {
+		user, found, err := app.Db.FindUserById(userIdentifier)
+		return found, user, err
+	}
+
+	if !allowFail {
+		log.Error("Invalid token '%s'", token)
+	}
+	return false, nil, fiber.ErrUnauthorized
+}
+
+func (app *Kosync) handleHeaderAuth(c fiber.Ctx) (bool, *User, *string, error) {
+	userIdentifier := c.Get("x-auth-user", "")
+	password := c.Get("x-auth-key", "")
+
+	if userIdentifier == "" || password == "" {
+		return false, nil, nil, fiber.ErrUnauthorized
+	}
+
+	user, found, err := app.Db.FindUserByUsername(userIdentifier)
+	return found, user, &password, err
+}
 
 func (app *Kosync) NewAuthMiddleware() fiber.Handler {
 	enableUrl := []string{
@@ -46,75 +77,44 @@ func (app *Kosync) NewAuthMiddleware() fiber.Handler {
 			log.Debug("Skipping auth check for route '%s'", c.Path())
 			return c.Next()
 		}
+
 		var (
-			userIdentifier string
-			user           *User
-			found          bool
-			err            error
-			userPassword   *string
+			user         *User
+			found        bool
+			err          error
+			userPassword *string
 		)
 
 		authHeader := c.Get("Authorization", "")
-		tokenType := "Bearer"
-		if strings.Contains(authHeader, tokenType) && len(authHeader) > len(tokenType) {
-			rawToken, _ := strings.CutPrefix(authHeader, tokenType)
-			token := strings.TrimSpace(rawToken)
-
-			var valid bool
-			valid, userIdentifier = app.Crypt.VerifyToken(token)
-			if valid {
-				user, found, err = app.Db.FindUserById(userIdentifier)
-			} else if !valid && allowFail {
-				return c.Next()
-			} else if !valid && !allowFail {
-				log.Error("Invalid token '%s'", token)
-				return fiber.ErrUnauthorized
-			}
+		if strings.Contains(authHeader, "Bearer") && len(authHeader) > 6 {
+			found, user, err = app.handleTokenAuth(authHeader, allowFail)
 		} else {
-			// get the headers
-			userIdentifier = c.Get("x-auth-user", "")
-			password := c.Get("x-auth-key", "")
-
-			if userIdentifier == "" || password == "" {
-				if allowFail {
-					return c.Next()
-				}
-				log.Error("Username or Password missing from request headers: username='%s', password='%s'", userIdentifier, password)
-				return fiber.ErrUnauthorized
-			}
-			userPassword = &password
-
-			// try to find the user
-			user, found, err = app.Db.FindUserByUsername(userIdentifier)
+			found, user, userPassword, err = app.handleHeaderAuth(c)
 		}
 
-		if err != nil {
-			if allowFail {
-				return c.Next()
+		if err != nil && !allowFail {
+			if errors.Is(err, fiber.ErrUnauthorized) {
+				return err
 			}
-
-			log.Error("Failed to find user '%s': %v", userIdentifier, err.Error())
+			log.Error("Auth error: %v", err.Error())
 			return err
 		}
-		if !found {
-			if allowFail {
-				return c.Next()
-			}
 
-			log.Error("Could not find user '%s'", userIdentifier)
+		if (!found || err != nil) && allowFail {
+			return c.Next()
+		}
+
+		if !found {
+			log.Error("User not found or credentials missing")
 			return fiber.ErrUnauthorized
 		}
 
-		if userPassword != nil {
-			// verify the passwords match (both are md5 hashed)
-			if user.Password != *userPassword {
-				if allowFail {
-					return c.Next()
-				}
-
-				log.Error("Passwords do not match for user '%s'", user.Username)
-				return fiber.ErrUnauthorized
+		if userPassword != nil && user.Password != *userPassword {
+			if allowFail {
+				return c.Next()
 			}
+			log.Error("Passwords do not match for user '%s'", user.Username)
+			return fiber.ErrUnauthorized
 		}
 
 		c.Locals(CtxContextUserId, user.Id)

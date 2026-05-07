@@ -27,42 +27,46 @@ func StructFromMap(dest any, aliasName string, data map[string]interface{}) erro
 	})
 }
 
-func StructFromEnv(dest any) error {
-	return StructRaw(&dest, "env", func(field *reflect.StructField, alias *string) (ret interface{}, has bool) {
-		var err error
-		defStr, hasDef := field.Tag.Lookup("default")
+func getEnvValue(field *reflect.StructField, alias *string) (interface{}, bool) {
+	var err error
+	defStr, hasDef := field.Tag.Lookup("default")
 
-		if field.Type.Kind() == reflect.Bool {
-			var def bool
-			if hasDef {
-				def, err = strconv.ParseBool(strings.ToLower(defStr))
-				if err != nil {
-					return nil, false
-				}
+	switch field.Type.Kind() {
+	case reflect.Bool:
+		var def bool
+		if hasDef {
+			def, err = strconv.ParseBool(strings.ToLower(defStr))
+			if err != nil {
+				return nil, false
 			}
-			return environ.GetEnvBool(*alias, def), true
-		} else if field.Type.Kind() == reflect.String {
-			var def string
-			if hasDef {
-				def = defStr
-			}
-			return environ.GetEnv(*alias, def), true
-		} else if field.Type.Kind() == reflect.Int {
-			var def int
-			if hasDef {
-				def, err = strconv.Atoi(defStr)
-				if err != nil {
-					return nil, false
-				}
-			}
-			return environ.GetEnvInt(*alias, def), true
 		}
+		return environ.GetEnvBool(*alias, def), true
+	case reflect.String:
+		var def string
+		if hasDef {
+			def = defStr
+		}
+		return environ.GetEnv(*alias, def), true
+	case reflect.Int:
+		var def int
+		if hasDef {
+			def, err = strconv.Atoi(defStr)
+			if err != nil {
+				return nil, false
+			}
+		}
+		return environ.GetEnvInt(*alias, def), true
+	default:
+	}
 
-		return nil, false
-	})
+	return nil, false
 }
 
-func StructRaw(dest *interface{}, aliasTag string, valueFunc func(field *reflect.StructField, aliasName *string) (interface{}, bool)) (err error) {
+func StructFromEnv(dest any) error {
+	return StructRaw(&dest, "env", getEnvValue)
+}
+
+func StructRaw(dest *any, aliasTag string, valueFunc func(field *reflect.StructField, aliasName *string) (interface{}, bool)) (err error) {
 	defer func() {
 		// recover from panic if one occurred.
 		e := recover()
@@ -81,34 +85,32 @@ func StructRaw(dest *interface{}, aliasTag string, valueFunc func(field *reflect
 		return errors.New("aliasTag must be set")
 	}
 
-	for i := 0; i < destReValue.NumField(); i++ {
+	for i := range destReValue.NumField() {
 		field := destReValue.Field(i)
 		fieldType := destReValue.Type().Field(i)
 		// Only process fields with the expected tag, ignore all others
-		if alias, ok := fieldType.Tag.Lookup(aliasTag); ok {
-			// Require the tag to be non-empty
-			if alias == "" {
-				continue
-			}
-			// Ignore field if it is read-only
-			if !field.CanSet() {
-				continue
-			}
-
-			// Get the value from the valueFunc
-			val, found := valueFunc(&fieldType, &alias)
-			if !found {
-				continue
-			}
-
-			// Reject nil value when field cant hold nil
-			if val == nil && field.Kind() != reflect.Ptr {
-				return fmt.Errorf("value is nil for field '%s'", fieldType.Name)
-			}
-
-			// Set the field value to val
-			field.Set(reflect.ValueOf(val))
+		alias, ok := fieldType.Tag.Lookup(aliasTag)
+		if !ok || alias == "" {
+			continue
 		}
+		// Ignore field if it is read-only
+		if !field.CanSet() {
+			continue
+		}
+
+		// Get the value from the valueFunc
+		val, found := valueFunc(&fieldType, &alias)
+		if !found {
+			continue
+		}
+
+		// Reject nil value when field cant hold nil
+		if val == nil && field.Kind() != reflect.Ptr {
+			return fmt.Errorf("value is nil for field '%s'", fieldType.Name)
+		}
+
+		// Set the field value to val
+		field.Set(reflect.ValueOf(val))
 	}
 	return nil
 }

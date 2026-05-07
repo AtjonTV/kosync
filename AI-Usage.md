@@ -35,9 +35,13 @@ For transparency, below is a table with the files and how such an Agent interact
 | internal/kosync/api_webui_test.go          | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/api_syncs_test.go          | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/api_users_test.go          | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
-| internal/kosync/database.go               | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
-| internal/kosync/crypt_test.go             | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
-| pkg/jmp-client-js/index.ts                | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| internal/kosync/database.go                | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| internal/kosync/api_socket.go              | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| internal/kosync/database_backup.go         | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| internal/kosync/database_migration.go      | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| pkg/decode/decode.go                       | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| internal/kosync/crypt_test.go              | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| pkg/jmp-client-js/index.ts                 | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/config_test.go             | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/database_document_test.go  | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/middleware.go              | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
@@ -45,7 +49,7 @@ For transparency, below is a table with the files and how such an Agent interact
 | webui/src/main.ts                          | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | webui/src/App.vue                          | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | .junie/AGENTS.md                           | Written partially  | JetBrains Junie (Google Gemini 3 Flash) |
-| CHANGELOG.md                              | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| CHANGELOG.md                               | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 
 The table is maintained on a best-effort basis and may not be exhaustive.  
 Each file is only listed once.
