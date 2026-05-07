@@ -25,6 +25,11 @@ For transparency, below is a table with the files and how such an Agent interact
 | internal/kosync/api_auth_test.go           | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
 | pkg/jmp/jmp_test.go                        | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/models.go                  | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| webui/src/components/LoginModal.vue        | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
+| webui/src/stores/user.ts                   | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| webui/src/views/HomeView.vue               | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| webui/README.md                            | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| webui/package.json                         | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 
 ## Commit Annotation
 Since 2026-05-06 19:30 CEST all new commits where AI Agents or similar where used,  
