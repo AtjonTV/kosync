@@ -1,7 +1,7 @@
-## Multi-stage build: compile a single static Go binary, run it, and allow mounting database.json
+## Multi-stage build: 1. compile webui and static binary, 2. run the binary with possible /data volume
 
 # 1) Build stage
-FROM golang:1.25.7-alpine3.23 AS builder
+FROM golang:1.26.0-alpine3.23 AS builder
 
 WORKDIR /src
 

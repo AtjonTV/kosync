@@ -8,6 +8,8 @@ package kosync
 
 import (
 	"database/sql"
+	"os"
+	"path/filepath"
 
 	_ "modernc.org/sqlite"
 )
@@ -50,6 +52,26 @@ func NewDatabaseWithoutMigrate(config *Config) (*Database, error) {
 	db := &Database{
 		rawDb:         rawDb,
 		currentSchema: 0,
+	}
+	return db, nil
+}
+
+func NewTemporaryDatabase(doMigrate bool) (*Database, error) {
+	conf := Config{
+		DatabaseFile: filepath.Join(os.TempDir(), "kotest.db"),
+	}
+	_ = os.Remove(conf.DatabaseFile)
+	if doMigrate {
+		db, err := NewDatabase(&conf)
+		if err != nil {
+			return nil, err
+		}
+		return db, nil
+	}
+
+	db, err := NewDatabaseWithoutMigrate(&conf)
+	if err != nil {
+		return nil, err
 	}
 	return db, nil
 }

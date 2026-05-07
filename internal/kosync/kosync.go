@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"git.obth.eu/atjontv/kosync/internal/webui"
+	"git.obth.eu/atjontv/kosync/pkg/jmp"
 	"github.com/gofiber/contrib/v3/websocket"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/basicauth"
@@ -25,7 +26,7 @@ import (
 )
 
 // Version NOTE: Must be the same as "sonar.projectVersion" in ../../sonar-project.properties
-const Version = "2026.06.0"
+const Version = "2026.06.1-dev.5"
 
 const (
 	CtxContextUserName = "current_user_name"
@@ -35,8 +36,8 @@ const (
 type Kosync struct {
 	Config *Config
 	Db     *Database
-	WsSubs *[]*WsSub
 	Crypt  *CryptState
+	Jmp    *jmp.JMP
 }
 
 func Run() {
@@ -86,11 +87,11 @@ func Run() {
 	koapp := Kosync{
 		Config: config,
 		Db:     db,
-		WsSubs: new([]*WsSub),
 		Crypt: NewCryptState(CryptConfig{
 			StaticKeySeed:      config.CryptoKeysSeed,
 			JwtDurationSeconds: config.JwtDuration,
 		}),
+		Jmp: jmp.New(),
 	}
 	defer func(koapp *Kosync) {
 		_ = koapp.Db.Close()
@@ -192,6 +193,8 @@ func Run() {
 	app.Get("/api/auth.jwt", koapp.ApiAuthForToken)
 
 	if koapp.Config.EnableWebSocketApi {
+		koapp.ConfigureJmp()
+
 		app.Get("/api/ws", koapp.HandleOpenWebsocket)
 		app.Get("/api/ws/:id", websocket.New(koapp.HandleWebsocket, websocket.Config{
 			Subprotocols: []string{"kosync.rpc", "kosync.pubsub"},

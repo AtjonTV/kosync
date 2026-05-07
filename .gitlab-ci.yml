@@ -1,15 +1,24 @@
-image: golang:1.25.7-alpine3.23
-
 stages:
   - validate
   - test
   - build
   - analyze
 
+variables:
+  GO_VERSION: 1.26.0-alpine3.23
+  BEARER_VERSION: 2.0.1
+  WWHRD_VERSION: 9ccc2ff
+  STATICCHECK_VERSION: 2026.1
+  ALPINE_VERSION: 3.23
+  BUN_VERSION: 1.3.13
+  SONARSOURCE_VERSION: 12.1.0.3225_8.0.1
+
+image: golang:${GO_VERSION}
+
 bearer:
   stage: validate
   image:
-    name: bearer/bearer:2.0.1
+    name: bearer/bearer:${BEARER_VERSION}
     entrypoint: [""]
   allow_failure: true # Allow failure so other stages also run, but a "high" severity is still shown in the pipeline overview.
   script: bearer scan . --format html --output bearer-report.html --fail-on-severity high
@@ -22,7 +31,7 @@ wwhrd:
   stage: validate
   allow_failure: true # Allow failure so other stages also run, but issues are still shown in the pipeline overview.
   before_script:
-    - go install github.com/frapposelli/wwhrd@9ccc2ff
+    - go install github.com/frapposelli/wwhrd@${WWHRD_VERSION}
     - go mod vendor
   script:
     - wwhrd check
@@ -31,7 +40,7 @@ staticcheck:
   stage: validate
   allow_failure: true # Allow failure so other stages also run, but issues are still shown in the pipeline overview.
   before_script:
-    - go install honnef.co/go/tools/cmd/staticcheck@2026.1
+    - go install honnef.co/go/tools/cmd/staticcheck@${STATICCHECK_VERSION}
   script:
     - staticcheck ./...
 
@@ -40,14 +49,20 @@ tests:
   before_script:
     - go mod vendor
   script:
-    - go test -coverprofile=cover.profile ./... && go tool cover -func cover.profile
+    - go test -coverprofile=coverage.out -json ./... > test-report.json
+    - go tool cover -func coverage.out
   coverage: '/total:\s+\(statements\)\s+\d+.\d+%/'
+  artifacts:
+    when: always
+    paths:
+      - coverage.out
+      - test-report.json
 
 compile:
   stage: build
   before_script:
-    - echo -e "https://lsus.obth.eu/alpine/v3.23/main\nhttps://lsus.obth.eu/alpine/v3.23/community" > /etc/apk/repositories
-    - apk add --cache=no nodejs npm && npm install -g bun@1.3.9
+    - echo -e "https://lsus.obth.eu/alpine/v${ALPINE_VERSION}/main\nhttps://lsus.obth.eu/alpine/v${ALPINE_VERSION}/community" > /etc/apk/repositories
+    - apk add --cache=no nodejs npm && npm install -g bun@${BUN_VERSION}
   script:
     - go generate kosync.go
     - go build -tags netgo -o kosync.exe kosync.go
@@ -58,8 +73,10 @@ compile:
 # Run sonarqube after compile
 sonarqube:
   stage: analyze
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
   image:
-    name: sonarsource/sonar-scanner-cli:12.0.0.3214_8.0.1
+    name: sonarsource/sonar-scanner-cli:${SONARSOURCE_VERSION}
     entrypoint: [""]
   allow_failure: true
   variables:

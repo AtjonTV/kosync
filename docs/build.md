@@ -13,19 +13,23 @@ For deployment, I recommend using Docker Compose, but you can choose whatever me
 In any case a Reverse Proxy like Caddy is required for TLS and generally recommended.
 
 ### Static Executable (recommended when docker is not an option)
-Compilation requires the Go Toolchain.
+Compilation requires the Go Toolchain and Bun.
 
-Run these commands in the project root directory:
+Run this command to build:
 ```bash
-# Build WebUI with Bun, do not run this if you do not want the WebUI
-go generate kosync.go
-# Compile static executable
-go build -tags netgo -o kosync.exe kosync.go
-```  
+go run build.go
+```
+
+To build without the WebUI, and thus without Bun, run:
+```bash
+go run build.go -web=false
+```
 
 These commands compile KOsync to a single static executable named `kosync.exe`.
 
-It will contain the WebUI, which can be enabled by passing `--webui` via CLI or by setting `enable_webui` in the database.json.
+When build with the WebUI, the WebUI needs to be enabled at runtime by passing `--webui` via CLI or by setting the `ENABLE_WEBUI` environment variable.
+
+See the output of `go run build.go -help` for additional options.
 
 ### Dynamic Executable (`go install`)
 Compilation requires the Go Toolchain.
@@ -39,7 +43,7 @@ This method will **NOT** contain the WebUI because `go generate` will not be run
 
 Run this command in the project root directory: `docker buildx build -f deployment/Dockerfile -t docker.obth.eu/atjontv/kosync:custom .`.
 
-This will build a docker image with the WebUI included. To use the WebUI you either have to override the entrypoint to add `--webui` or set `enable_webui` in the database.json
+This will build a docker image with the WebUI included. To use the WebUI you either have to override the entrypoint to add `--webui` or set `the `ENABLE_WEBUI` environment variable.
 
 Each tagged release will have a pre-build image at `docker.obth.eu/atjontv/kosync:latest` (you can replace `latest` with a version tag like `2026.03.0` so you know what version you pulled).
 

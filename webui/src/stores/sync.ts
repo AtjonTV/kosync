@@ -1,7 +1,8 @@
 import {type Ref, ref} from 'vue'
 import { defineStore } from 'pinia'
-import type {DocumentWithHistory} from "@/models/document.ts";
-import {fetchApi, openSocket} from "@/api.ts";
+import JMPClient from "jmp-client-js";
+import type {Document, DocumentWithHistory} from "@/models/document.ts";
+import {fetchApi, getWebSocketUrl} from "@/api.ts";
 
 export type SyncState = {
   lastSync: number,
@@ -37,37 +38,46 @@ export const useSyncStore = defineStore('sync', () => {
   }
 
   async function doPubSubSync() {
-    openSocket((ws) => {
-      console.log("Connected to websocket, sending subscribe");
-      ws.send(JSON.stringify({
-        type: "pubsub",
-        payload: {
-          topic: "user.documents"
-        }
-      }))
-    }, (ws, message) => {
-      const msg = JSON.parse(message);
-      if (msg.type === "pubsub" && msg.payload.for_topic === "user.documents") {
-        const doc = msg.payload.data as DocumentWithHistory;
-        for (const docIndex in sync.value.documents) {
-          const orig = sync.value.documents[docIndex];
-          if (orig && orig.id === doc.id) {
-            const origCopy = JSON.parse(JSON.stringify(orig));
-            delete origCopy.history;
-            sync.value.documents[docIndex] = {
-              ...doc,
-              history: [
-                ...orig.history, // take full previous history
-                origCopy // add original doc to history
-              ]
-            };
-            break;
-          }
-        }
-        // Persist updated state
-        // Note: Do not set lastSync, so that the next page-refresh causes a full sync
-        sessionStorage.setItem('syncState', btoa(JSON.stringify(sync.value)))
+    const socketUri = getWebSocketUrl();
+    if (socketUri === null) {
+      console.log("PubSub is only possible if a user is logged in, skipping.");
+      return;
+    }
+
+    const client = new JMPClient(socketUri);
+    client.connect(() => {
+      client.subscribe("user.documents");
+    });
+
+    client.registerPubSubCallback("user.documents", (data, errors) => {
+      if (errors && errors.length > 0) {
+        console.log(errors);
+        return;
       }
+
+      const doc = data as DocumentWithHistory;
+      for (const docIndex in sync.value.documents) {
+        const orig = sync.value.documents[docIndex];
+        if (orig && orig.id === doc.id) {
+          const origCopy = JSON.parse(JSON.stringify(orig));
+          delete origCopy.history;
+          let newHistory: Document[] = [];
+          if (orig.history) {
+            newHistory = [
+              ...orig.history, // take full previous history
+              origCopy // add original doc to history
+            ];
+          }
+          sync.value.documents[docIndex] = {
+            ...doc,
+            history: newHistory
+          };
+          break;
+        }
+      }
+      // Persist updated state
+      // Note: Do not set lastSync, so that the next page-refresh causes a full sync
+      sessionStorage.setItem('syncState', btoa(JSON.stringify(sync.value)))
     });
   }
 

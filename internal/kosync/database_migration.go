@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"git.obth.eu/atjontv/kosync/internal/kosync/migrations"
+	"git.obth.eu/atjontv/kosync/pkg/migrate"
 )
 
 var logDbMigrate = NewKlog("db/migrate")
@@ -56,23 +57,23 @@ func (db *Database) checkAndRunMigrations(config *Config) error {
 	return nil
 }
 
-func (db *Database) MigrateToTargetVersion(dbMigrations *[]migrations.Migration, targetVersion int) error {
+func (db *Database) MigrateToTargetVersion(dbMigrations *[]migrate.Migration, targetVersion int) error {
 	var insertSchemaVersion = `INSERT INTO schema_versions (version, installed_at) VALUES (?, ?)`
 
 	if dbMigrations == nil {
 		return ErrMigrationWithoutMigrationsNotPossible
 	}
 
-	sorted := slices.IsSortedFunc(*dbMigrations, func(a, b migrations.Migration) int {
+	sorted := slices.IsSortedFunc(*dbMigrations, func(a, b migrate.Migration) int {
 		return a.Compare(&b)
 	})
 	if !sorted {
-		slices.SortFunc(*dbMigrations, func(a, b migrations.Migration) int {
+		slices.SortFunc(*dbMigrations, func(a, b migrate.Migration) int {
 			return a.Compare(&b)
 		})
 	}
 
-	hasMig := slices.ContainsFunc(*dbMigrations, func(mig migrations.Migration) bool {
+	hasMig := slices.ContainsFunc(*dbMigrations, func(mig migrate.Migration) bool {
 		return mig.Version == targetVersion
 	})
 	if !hasMig {
@@ -89,6 +90,9 @@ func (db *Database) MigrateToTargetVersion(dbMigrations *[]migrations.Migration,
 				logDbMigrate.Error("Failed to read migration %d from file %s", mig.Version, mig.Path)
 			}
 
+			// Ignore SQL Injection warning.
+			// An attacker would need to modify migrations, either before or after compilation, and then cause the modified executable to run with a fitting database.
+			// bearer:disable go_gosec_sql_concat_sqli
 			if _, err := db.rawDb.Exec(migFile); err != nil {
 				logDbMigrate.Error("Failed to run migration %d: %v", mig.Version, err.Error())
 				return err

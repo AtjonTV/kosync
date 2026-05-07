@@ -39,6 +39,18 @@ func NewCryptState(conf CryptConfig) *CryptState {
 	return &c
 }
 
+func NewDefaultCryptState() *CryptState {
+	c := CryptState{
+		config: &CryptConfig{
+			JwtDurationSeconds: 60 * 60 * 24 * 7,
+		},
+	}
+
+	_ = c.GenerateKeys(nil)
+
+	return &c
+}
+
 func (c *CryptState) GenerateKeys(fromStatic *string) error {
 	if fromStatic != nil {
 		pri := ed25519.NewKeyFromSeed([]byte(*fromStatic))
@@ -54,6 +66,10 @@ func (c *CryptState) GenerateKeys(fromStatic *string) error {
 		c.tempPrivateKey = &pri
 	}
 	return nil
+}
+
+func (c *CryptState) HasKeys() bool {
+	return c.tempPublicKey != nil && c.tempPrivateKey != nil
 }
 
 func (c *CryptState) KeysAsPem() (pub, pri string, err error) {

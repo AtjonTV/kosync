@@ -142,15 +142,15 @@ func (db *Database) CreateOrUpdateDocument(doc *Document) error {
 	}
 	var updateDocument = `
         INSERT INTO documents (id, owner_id, title, current_location, progress, last_read_on_device, last_read_on_device_id, last_read_at, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, (unixepoch('subsec')*1000))
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, (unixepoch('subsec')*1000))
         ON CONFLICT (id, owner_id) DO
             UPDATE SET
-                       title = if(length(?), ?, title),
-                       current_location = ?,
-                       progress = ?,
-                       last_read_on_device = ?,
-                       last_read_on_device_id = ?,
-                       last_read_at = if(? = unixepoch(), unixepoch('subsec')*1000, ?),
+                       title = if(length($3), $3, title),
+                       current_location = $4,
+                       progress = $5,
+                       last_read_on_device = $6,
+                       last_read_on_device_id = $7,
+                       last_read_at = if($8 = unixepoch(), unixepoch('subsec')*1000, $8),
                        updated_at = (unixepoch('subsec')*1000);
     `
 	_, err = t.Exec(
@@ -162,16 +162,6 @@ func (db *Database) CreateOrUpdateDocument(doc *Document) error {
 		doc.Progress,
 		doc.LastReadOnDevice,
 		doc.LastReadOnDeviceId,
-		doc.LastReadAt,
-		doc.Title,
-		doc.Title,
-		doc.CurrentLocation,
-		doc.Progress,
-		doc.LastReadOnDevice,
-		doc.LastReadOnDeviceId,
-		doc.LastReadAt,
-		doc.LastReadAt,
-		doc.LastReadAt,
 		doc.LastReadAt,
 	)
 	if err != nil {
