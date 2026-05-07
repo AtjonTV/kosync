@@ -86,5 +86,19 @@ export const useSyncStore = defineStore('sync', () => {
     sync.value = {lastSync: -1, documents: []}
   }
 
-  return { sync, doSync, doPubSubSync, clear }
+  async function deleteHistoryItem(documentId: string, lastReadAt: number) {
+    const {error} = await fetchApi(`/api/documents.history.delete?id=${documentId}&last_read_at=${lastReadAt}`, {
+      method: "DELETE"
+    });
+
+    if (error) {
+      console.error("Failed to delete history item:", error);
+      return;
+    }
+
+    // Refresh data
+    await doSync(true);
+  }
+
+  return { sync, doSync, doPubSubSync, clear, deleteHistoryItem }
 })

@@ -61,6 +61,26 @@ const deleteDocument = (data: any) => {
         }
     });
 };
+
+const deleteHistoryItem = (doc: any, historyItem: any) => {
+    confirm.require({
+        message: `Are you sure you want to delete this history item from "${historyItem.last_read_at}"?`,
+        header: 'Confirmation',
+        icon: 'pi pi-exclamation-triangle',
+        rejectProps: {
+            label: 'Cancel',
+            severity: 'secondary',
+            outlined: true
+        },
+        acceptProps: {
+            label: 'Delete',
+            severity: 'danger'
+        },
+        accept: async () => {
+            await syncStore.deleteHistoryItem(doc.id, historyItem.last_read_at);
+        }
+    });
+};
 </script>
 
 <template>
@@ -115,6 +135,11 @@ const deleteDocument = (data: any) => {
                 <Column field="last_read_at" header="When" :sortable="true">
                   <template #body="slotProps">
                     {{ new Date(slotProps.data.last_read_at/10).toISOString() }}
+                  </template>
+                </Column>
+                <Column header="Actions" style="width: 3rem">
+                  <template #body="historySlotProps">
+                    <Button icon="pi pi-trash" severity="danger" variant="text" rounded @click="deleteHistoryItem(slotProps.data, historySlotProps.data)" />
                   </template>
                 </Column>
               </DataTable>
