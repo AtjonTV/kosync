@@ -206,3 +206,23 @@ func (s *JMP) PubSubAnnounce(topic string, recipient *int64, data any, typeHint 
 	}
 	return nil
 }
+
+type PubSubRecipientMatcher func(ctx *Context) int64
+
+func (s *JMP) PubSubAnnounceWithMatcher(topic string, data any, typeHint string, matcher PubSubRecipientMatcher) error {
+	subs, found := s.pubSubListeners[topic]
+	if !found {
+		return ErrPubSubNoListenersForTopic
+	}
+	for _, sub := range *subs {
+		recipient := matcher(sub.Ctx)
+		if recipient != 0 {
+			err := s.PubSubAnnounce(topic, &recipient, data, typeHint)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
