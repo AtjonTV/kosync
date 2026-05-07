@@ -49,32 +49,53 @@ export const useSyncStore = defineStore('sync', () => {
       client.subscribe("user.documents");
     });
 
-    client.registerPubSubCallback("user.documents", (data, errors) => {
+    client.registerPubSubCallback("user.documents", (data, typeHint, errors) => {
       if (errors && errors.length > 0) {
         console.log(errors);
         return;
       }
 
-      const doc = data as DocumentWithHistory;
-      for (const docIndex in sync.value.documents) {
-        const orig = sync.value.documents[docIndex];
-        if (orig && orig.id === doc.id) {
-          const origCopy = JSON.parse(JSON.stringify(orig));
-          delete origCopy.history;
-          let newHistory: Document[] = [];
-          if (orig.history) {
-            newHistory = [
-              ...orig.history, // take full previous history
-              origCopy // add original doc to history
-            ];
+      if (typeHint === "Document") {
+        const doc = data as DocumentWithHistory;
+        for (const docIndex in sync.value.documents) {
+          const orig = sync.value.documents[docIndex];
+          if (orig && orig.id === doc.id) {
+            const origCopy = JSON.parse(JSON.stringify(orig));
+            delete origCopy.history;
+            let newHistory: Document[] = [];
+            if (orig.history) {
+              newHistory = [
+                ...orig.history, // take full previous history
+                origCopy // add original doc to history
+              ];
+            }
+            sync.value.documents[docIndex] = {
+              ...doc,
+              history: newHistory
+            };
+            break;
           }
-          sync.value.documents[docIndex] = {
-            ...doc,
-            history: newHistory
-          };
-          break;
+        }
+      } else if (typeHint === "DocumentDeletion") {
+        const {document_id} = data as {document_id: string};
+        for (const docIndex in sync.value.documents) {
+          const doc = sync.value.documents[docIndex];
+          if (doc && doc.id === document_id) {
+            sync.value.documents.splice(Number(docIndex), 1);
+            break;
+          }
+        }
+      } else if (typeHint === "HistoryDeletion") {
+        const {document_id, last_read_at} = data as {document_id: string, last_read_at: number};
+        for (const docIndex in sync.value.documents) {
+          const doc = sync.value.documents[docIndex];
+          if (doc && doc.id === document_id) {
+            doc.history = doc.history?.filter(item => item.last_read_at !== last_read_at);
+            break;
+          }
         }
       }
+
       // Persist updated state
       // Note: Do not set lastSync, so that the next page-refresh causes a full sync
       sessionStorage.setItem('syncState', btoa(JSON.stringify(sync.value)))
