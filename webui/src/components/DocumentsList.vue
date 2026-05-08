@@ -17,7 +17,13 @@ if (await userStore.isLoggedIn()) {
   syncStore.doPubSubSync();
 }
 
-const expandedRows = ref({});
+const showHistoryDialog = ref(false);
+const selectedDocument = ref<any>(null);
+
+const openHistory = (doc: any) => {
+    selectedDocument.value = doc;
+    showHistoryDialog.value = true;
+};
 
 const onEditComplete = async (event: any) => {
     const result = await fetchApi("/api/documents.update", {
@@ -88,7 +94,6 @@ const deleteHistoryItem = (doc: any, historyItem: any) => {
     <h1 class="text-3xl">{{ customTitle ?? 'Documents' }}</h1>
     <div>
       <DataTable
-          v-model:expandedRows="expandedRows"
           dataKey="id"
           :value="syncStore.sync.documents"
           paginator :rows="15" :rowsPerPageOptions="[15, 25, 50, 100]"
@@ -96,7 +101,6 @@ const deleteHistoryItem = (doc: any, historyItem: any) => {
           resizableColumns columnResizeMode="fit" tableStyle="min-width: 100rem"
           sortField="last_read_at" :sortOrder="-1"
       >
-        <Column expander style="width: 5rem" />
         <Column field="id" header="ID" :sortable="true" style="width: 25%"></Column>
         <Column field="title" header="Title" :sortable="true" style="width: 25%">
             <template #editor="{data, field}">
@@ -116,40 +120,37 @@ const deleteHistoryItem = (doc: any, historyItem: any) => {
         </Column>
         <Column header="Actions" style="width: 5rem">
             <template #body="slotProps">
+                <Button icon="pi pi-history" variant="text" rounded @click="openHistory(slotProps.data)" />
                 <Button icon="pi pi-trash" severity="danger" variant="text" rounded @click="deleteDocument(slotProps.data)" />
             </template>
         </Column>
-
-        <template #expansion="slotProps">
-          <div class="p-4 flex flex-col gap-2">
-            <h3 class="text-2xl">History</h3>
-            <div v-if="slotProps.data.history !== null">
-              <DataTable :value="slotProps.data.history">
-                <Column field="progress" header="Reading progress" :sortable="true">
-                  <template #body="slotProps">
-                    {{ Number(slotProps.data.progress*100).toFixed(2) }}%
-                  </template>
-                </Column>
-                <Column field="title" header="Previous Title" :sortable="true"></Column>
-                <Column field="last_read_on_device" header="Device" :sortable="true"></Column>
-                <Column field="last_read_at" header="When" :sortable="true">
-                  <template #body="slotProps">
-                    {{ new Date(slotProps.data.last_read_at/10).toISOString() }}
-                  </template>
-                </Column>
-                <Column header="Actions" style="width: 3rem">
-                  <template #body="historySlotProps">
-                    <Button icon="pi pi-trash" severity="danger" variant="text" rounded @click="deleteHistoryItem(slotProps.data, historySlotProps.data)" />
-                  </template>
-                </Column>
-              </DataTable>
-            </div>
-            <div v-else>
-              <p>This document does not have a history.<br>You can try pushing your progress and you might want to check your automatic push setting.</p>
-            </div>
-          </div>
-        </template>
       </DataTable>
     </div>
+    <Dialog v-model:visible="showHistoryDialog" header="History" modal :breakpoints="{ '960px': '75vw', '640px': '90vw' }" :style="{ width: '80rem' }">
+      <div v-if="selectedDocument && selectedDocument.history !== null">
+        <DataTable :value="selectedDocument.history" scrollable tableStyle="min-width: 50rem">
+          <Column field="progress" header="Reading progress" :sortable="true">
+            <template #body="slotProps">
+              {{ Number(slotProps.data.progress*100).toFixed(2) }}%
+            </template>
+          </Column>
+          <Column field="title" header="Previous Title" :sortable="true"></Column>
+          <Column field="last_read_on_device" header="Device" :sortable="true"></Column>
+          <Column field="last_read_at" header="When" :sortable="true">
+            <template #body="slotProps">
+              {{ new Date(slotProps.data.last_read_at/10).toISOString() }}
+            </template>
+          </Column>
+          <Column header="Actions" style="width: 3rem">
+            <template #body="historySlotProps">
+              <Button icon="pi pi-trash" severity="danger" variant="text" rounded @click="deleteHistoryItem(selectedDocument, historySlotProps.data)" />
+            </template>
+          </Column>
+        </DataTable>
+      </div>
+      <div v-else>
+        <p>This document does not have a history.<br>You can try pushing your progress and you might want to check your automatic push setting.</p>
+      </div>
+    </Dialog>
   </div>
 </template>

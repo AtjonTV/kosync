@@ -15,6 +15,7 @@ declare module 'vue' {
     Column: typeof import('primevue/column')['default']
     ConfirmDialog: typeof import('primevue/confirmdialog')['default']
     DataTable: typeof import('primevue/datatable')['default']
+    Dialog: typeof import('primevue/dialog')['default']
     DocumentsList: typeof import('./src/components/DocumentsList.vue')['default']
     InputText: typeof import('primevue/inputtext')['default']
     LoginModal: typeof import('./src/components/LoginModal.vue')['default']
