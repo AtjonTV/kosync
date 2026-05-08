@@ -45,13 +45,25 @@ const doLogout = async () => {
 </script>
 
 <template>
-  <main class="m-4 flex flex-col gap-8">
-    <div class="flex gap-2 justify-end">
-      <Button v-if="!isLoggedIn" @click="openLogin">Login</Button>
-      <Button v-if="isLoggedIn" variant="secondary" disabled>Logged in as '{{userStore.getUsername()}}'</Button>
-      <Button v-if="isLoggedIn" @click="doLogout">Logout</Button>
-    </div>
-    <DocumentsList v-if="isLoggedIn" customTitle="My documents" />
+  <main class="m-4">
+    <Card>
+      <template #header>
+        <div class="flex justify-between items-center p-6 pb-2">
+          <h1 class="text-3xl font-bold">KOsync</h1>
+          <div class="flex gap-2">
+            <Button v-if="!isLoggedIn" @click="openLogin">Login</Button>
+            <Button v-if="isLoggedIn" variant="secondary" disabled>Logged in as '{{userStore.getUsername()}}'</Button>
+            <Button v-if="isLoggedIn" @click="doLogout">Logout</Button>
+          </div>
+        </div>
+      </template>
+      <template #content>
+        <DocumentsList v-if="isLoggedIn" customTitle="My documents" />
+        <div v-else class="text-center p-8">
+           <p>Please login to see your documents.</p>
+        </div>
+      </template>
+    </Card>
     <LoginModal v-model:visible="loginVisible" @login-success="onLoginSuccess" />
   </main>
 </template>
