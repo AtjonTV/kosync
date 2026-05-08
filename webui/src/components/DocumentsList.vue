@@ -5,6 +5,7 @@ import {ref} from "vue";
 import {fetchApi} from "@/api.ts";
 import {useUserStore} from "@/stores/user.ts";
 import { useConfirm } from "primevue/useconfirm";
+import HistoryList from "@/components/HistoryList.vue";
 
 const {customTitle} = defineProps<{customTitle?: string}>()
 
@@ -67,26 +68,6 @@ const deleteDocument = (data: any) => {
         }
     });
 };
-
-const deleteHistoryItem = (doc: any, historyItem: any) => {
-    confirm.require({
-        message: `Are you sure you want to delete this history item from "${historyItem.last_read_at}"?`,
-        header: 'Confirmation',
-        icon: 'pi pi-exclamation-triangle',
-        rejectProps: {
-            label: 'Cancel',
-            severity: 'secondary',
-            outlined: true
-        },
-        acceptProps: {
-            label: 'Delete',
-            severity: 'danger'
-        },
-        accept: async () => {
-            await syncStore.deleteHistoryItem(doc.id, historyItem.last_read_at);
-        }
-    });
-};
 </script>
 
 <template>
@@ -127,30 +108,7 @@ const deleteHistoryItem = (doc: any, historyItem: any) => {
       </DataTable>
     </div>
     <Dialog v-model:visible="showHistoryDialog" header="History" modal :breakpoints="{ '960px': '75vw', '640px': '90vw' }" :style="{ width: '80rem' }">
-      <div v-if="selectedDocument && selectedDocument.history !== null">
-        <DataTable :value="selectedDocument.history" scrollable tableStyle="min-width: 50rem">
-          <Column field="progress" header="Reading progress" :sortable="true">
-            <template #body="slotProps">
-              {{ Number(slotProps.data.progress*100).toFixed(2) }}%
-            </template>
-          </Column>
-          <Column field="title" header="Previous Title" :sortable="true"></Column>
-          <Column field="last_read_on_device" header="Device" :sortable="true"></Column>
-          <Column field="last_read_at" header="When" :sortable="true">
-            <template #body="slotProps">
-              {{ new Date(slotProps.data.last_read_at/10).toISOString() }}
-            </template>
-          </Column>
-          <Column header="Actions" style="width: 3rem">
-            <template #body="historySlotProps">
-              <Button icon="pi pi-trash" severity="danger" variant="text" rounded @click="deleteHistoryItem(selectedDocument, historySlotProps.data)" />
-            </template>
-          </Column>
-        </DataTable>
-      </div>
-      <div v-else>
-        <p>This document does not have a history.<br>You can try pushing your progress and you might want to check your automatic push setting.</p>
-      </div>
+      <HistoryList :document="selectedDocument" />
     </Dialog>
   </div>
 </template>

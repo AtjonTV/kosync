@@ -17,6 +17,7 @@ declare module 'vue' {
     DataTable: typeof import('primevue/datatable')['default']
     Dialog: typeof import('primevue/dialog')['default']
     DocumentsList: typeof import('./src/components/DocumentsList.vue')['default']
+    HistoryList: typeof import('./src/components/HistoryList.vue')['default']
     InputText: typeof import('primevue/inputtext')['default']
     LoginModal: typeof import('./src/components/LoginModal.vue')['default']
     ProgressSpinner: typeof import('primevue/progressspinner')['default']

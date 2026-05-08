@@ -47,6 +47,7 @@ For transparency, below is a table with the files and how such an Agent interact
 | internal/kosync/database_document_test.go  | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/middleware.go              | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | webui/src/components/DocumentsList.vue     | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| webui/src/components/HistoryList.vue       | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
 | webui/src/main.ts                          | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | webui/src/App.vue                          | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | .junie/AGENTS.md                           | Written partially  | JetBrains Junie (Google Gemini 3 Flash) |
