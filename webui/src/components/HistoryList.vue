@@ -36,7 +36,11 @@ const deleteHistoryItem = (doc: any, historyItem: any) => {
 
 <template>
   <div v-if="document && document.history !== null">
-    <DataTable :value="document.history" scrollable tableStyle="min-width: 50rem">
+    <DataTable
+      :value="document.history"
+      paginator :rows="10" :rowsPerPageOptions="[10, 25, 50, 100]"
+      scrollable tableStyle="min-width: 50rem"
+    >
       <Column field="progress" header="Reading progress" :sortable="true">
         <template #body="slotProps">
           {{ Number(slotProps.data.progress*100).toFixed(2) }}%
