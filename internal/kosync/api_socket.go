@@ -92,12 +92,16 @@ func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 	}
 
 	requestId := utils.UUIDv4()
+	uniqueReqId := int64(binary.BigEndian.Uint32([]byte(requestId)))
+
 	currClose := c.CloseHandler()
 	c.SetCloseHandler(func(code int, text string) error {
+		app.Jmp.InvalidatePubSubSubscriptionForRequestId(uniqueReqId)
 		LogDebug("Websocket connection closed: %d %s", code, text)
 		return currClose(code, text)
 	})
 	defer func() {
+		app.Jmp.InvalidatePubSubSubscriptionForRequestId(uniqueReqId)
 		LogDebug("Websocket connection ended")
 	}()
 
@@ -112,7 +116,7 @@ func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 	}
 
 	ctx := jmp.Context{
-		UniqueRequestorId: int64(binary.BigEndian.Uint32([]byte(requestId))),
+		UniqueRequestorId: uniqueReqId,
 		Data: map[string]interface{}{
 			JmpContextRequestId: requestId,
 			CtxContextUserId:    userId,

@@ -6,7 +6,9 @@
 
 package jmp
 
-import "slices"
+import (
+	"slices"
+)
 
 // Version is the implemented protocol version
 const Version = "1"
@@ -226,4 +228,12 @@ func (s *JMP) PubSubAnnounceWithMatcher(topic string, data any, typeHint string,
 	}
 
 	return nil
+}
+
+func (s *JMP) InvalidatePubSubSubscriptionForRequestId(uniqueRequestId int64) {
+	for _, topic := range *s.knownTopics {
+		slices.DeleteFunc(*s.pubSubListeners[topic], func(sub PubSubSubscription) bool {
+			return sub.Ctx.UniqueRequestorId == uniqueRequestId
+		})
+	}
 }
