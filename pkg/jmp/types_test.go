@@ -51,14 +51,16 @@ func TestContext_GetString(t *testing.T) {
 	}
 }
 
+const expectedGotFormat = "Expected %s, got %s"
+
 func TestNewRpcNoticeMessage(t *testing.T) {
 	payload := RpcResponsePayload{ForRpc: "test"}
 	msg := NewRpcNoticeMessage(payload)
 	if msg.Content != RpcNotice {
-		t.Errorf("Expected %s, got %s", RpcNotice, msg.Content)
+		t.Errorf(expectedGotFormat, RpcNotice, msg.Content)
 	}
 	if msg.Proto != ProtoRpc {
-		t.Errorf("Expected %s, got %s", ProtoRpc, msg.Proto)
+		t.Errorf(expectedGotFormat, ProtoRpc, msg.Proto)
 	}
 }
 
@@ -66,7 +68,7 @@ func TestNewRpcResultMessage(t *testing.T) {
 	payload := RpcResponsePayload{ForRpc: "test"}
 	msg := NewRpcResultMessage(payload)
 	if msg.Content != RpcResult {
-		t.Errorf("Expected %s, got %s", RpcResult, msg.Content)
+		t.Errorf(expectedGotFormat, RpcResult, msg.Content)
 	}
 }
 
@@ -74,7 +76,7 @@ func TestNewRpcResultFromError(t *testing.T) {
 	err := errors.New("something went wrong")
 	msg := NewRpcResultFromError("someMethod", err)
 	if msg.Content != RpcResult {
-		t.Errorf("Expected %s, got %s", RpcResult, msg.Content)
+		t.Errorf(expectedGotFormat, RpcResult, msg.Content)
 	}
 	payload := msg.Payload.(RpcResponsePayload)
 	if payload.ForRpc != "someMethod" {
@@ -116,7 +118,7 @@ func TestNewErrorResult(t *testing.T) {
 	errs := []string{"err1", "err2"}
 	res := NewErrorResult(errs)
 	if res.TypeHint != TypeErrors {
-		t.Errorf("Expected %s, got %s", TypeErrors, res.TypeHint)
+		t.Errorf(expectedGotFormat, TypeErrors, res.TypeHint)
 	}
 	if len(res.Errors) != 2 {
 		t.Errorf("Expected 2 errors, got %d", len(res.Errors))

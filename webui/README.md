@@ -8,8 +8,8 @@ The goal of the WebUI is to provide a simple and easy to use interface for manag
 
 The WebUI requests special APIs made for it.
 
-There are currently three endpoints:
-- GET `/api/auth.basic` for HTTP-Basic-Auth login.
+There are currently these endpoints:
+- GET `/api/auth.jwt` for JWT login (requires `x-auth-user` and `x-auth-key` headers, where `x-auth-key` is the MD5 hash of the password).
 - GET `/api/documents.all` which returns all documents in WebUI format.
 - PUT `/api/documents.update` which allows updating the `pretty_name` field.
 
@@ -17,17 +17,12 @@ The API Route names are in a RPC function name format instead of traditional RES
 
 ### Login Process
 
-When a user wants to login and clicks the "Login" button, the app redirects the user to `/api/auth.basic`.  
-This endpoint will ask the browser to perform HTTP-Basic-Auth.
+When a user wants to login and clicks the "Login" button, a modal opens asking for credentials.
+The app then sends a request to `/api/auth.jwt` with the credentials in the `x-auth-user` (username) and `x-auth-key` (MD5 hash of password) headers.
 
-After the HTTP-Basic-Auth the server will send a redirect to `/web?user=<base64_encoded_userdata>`.  
-The app then reads the encoded data from the URL, decodes it and stores it in the `userStore`.
+The server responds with a JWT token, which the app stores in the `userStore`.
 
-In the user data the username and password-hash are included.  
-Because calculating MD5 hashes in JavaScript is not possible without legacy libraries, it gets the hash from the server.
-
-The reason why the app received the password hash at all, is because that is the authentication mechanism used by  
-KOReader's Sync Plugin, and the fact that I did not want to build a second mechanism.
+All subsequent API requests are made with the `Authorization: Bearer <token>` header.
 
 Logout works by removing the user data from the `userStore`.
 

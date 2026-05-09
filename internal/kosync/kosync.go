@@ -11,6 +11,7 @@ import (
 	"crypto/md5"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -26,7 +27,7 @@ import (
 )
 
 // Version NOTE: Must be the same as "sonar.projectVersion" in ../../sonar-project.properties
-const Version = "2026.06.1-dev.5"
+const Version = "2026.06.1-dev.6"
 
 const (
 	CtxContextUserName = "current_user_name"
@@ -38,6 +39,35 @@ type Kosync struct {
 	Db     *Database
 	Crypt  *CryptState
 	Jmp    *jmp.JMP
+}
+
+func setupApp(config *Config, logStream io.Writer) *fiber.App {
+	app := fiber.New(fiber.Config{
+		AppName:      fmt.Sprintf("KOsync v%s", Version),
+		ServerHeader: "KOsync (https://git.obth.eu/atjontv/kosync)",
+		TrustProxy:   config.EnableTrustedProxies,
+		TrustProxyConfig: fiber.TrustProxyConfig{
+			Proxies: strings.Split(config.TrustedProxies, ","),
+		},
+		ProxyHeader:        fiber.HeaderXForwardedFor,
+		EnableIPValidation: config.ProxyIpValidation,
+	})
+
+	app.Use(requestid.New())
+	app.Use(logger.New(logger.Config{
+		Format: "${time} | ${requestid} | ${status} | ${latency} | ${ip} | ${method} | ${path} | ${error}\n",
+		CustomTags: map[string]logger.LogFunc{
+			"requestid": func(output logger.Buffer, c fiber.Ctx, data *logger.Data, extraParam string) (int, error) {
+				return output.Write([]byte(requestid.FromContext(c)))
+			},
+		},
+		Stream: logStream,
+	}))
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: []string{"*"},
+	}))
+
+	return app
 }
 
 func Run() {
@@ -106,35 +136,14 @@ func Run() {
 		}
 	}
 
-	app := fiber.New(fiber.Config{
-		AppName:      fmt.Sprintf("KOsync v%s", Version),
-		ServerHeader: "KOsync (https://git.obth.eu/atjontv/kosync)",
-		TrustProxy:   config.EnableTrustedProxies,
-		TrustProxyConfig: fiber.TrustProxyConfig{
-			Proxies: strings.Split(config.TrustedProxies, ","),
-		},
-		ProxyHeader:        fiber.HeaderXForwardedFor,
-		EnableIPValidation: config.ProxyIpValidation,
-	})
+	app := setupApp(config, logStream)
 	defer func(app *fiber.App) {
 		err := app.Shutdown()
 		if err != nil {
 			panic(err)
 		}
 	}(app)
-	app.Use(requestid.New())
-	app.Use(logger.New(logger.Config{
-		Format: "${time} | ${requestid} | ${status} | ${latency} | ${ip} | ${method} | ${path} | ${error}\n",
-		CustomTags: map[string]logger.LogFunc{
-			"requestid": func(output logger.Buffer, c fiber.Ctx, data *logger.Data, extraParam string) (int, error) {
-				return output.Write([]byte(requestid.FromContext(c)))
-			},
-		},
-		Stream: logStream,
-	}))
-	app.Use(cors.New(cors.Config{
-		AllowOrigins: []string{"*"},
-	}))
+
 	app.Use(koapp.NewAuthMiddleware())
 
 	if koapp.Config.EnableWebUi {
@@ -189,6 +198,8 @@ func Run() {
 
 	app.Get("/api/documents.all", koapp.ApiGetDocumentsAll)
 	app.Put("/api/documents.update", koapp.ApiPutDocument)
+	app.Delete("/api/documents.delete", koapp.ApiDeleteDocument)
+	app.Delete("/api/documents.history.delete", koapp.ApiDeleteDocumentHistory)
 	app.Get("/api/auth.basic", koapp.ApiAuthBasic)
 	app.Get("/api/auth.jwt", koapp.ApiAuthForToken)
 

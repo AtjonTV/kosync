@@ -11,10 +11,16 @@ import (
 	"testing"
 )
 
+const (
+	testDbCreateErr   = "Failed to create a database for testing: %v"
+	testUserCreateErr = "Failed to create user: %v"
+	testUserExistsErr = "IsUserExists failed: %v"
+)
+
 func TestCreateUser(t *testing.T) {
 	db, err := NewTemporaryDatabase(true)
 	if err != nil {
-		t.Fatalf("Failed to create a database for testing: %v", err)
+		t.Fatalf(testDbCreateErr, err)
 	}
 
 	username := "testuser"
@@ -22,7 +28,7 @@ func TestCreateUser(t *testing.T) {
 
 	user, err := db.CreateUser(username, password)
 	if err != nil {
-		t.Fatalf("Failed to create user: %v", err)
+		t.Fatalf(testUserCreateErr, err)
 	}
 
 	if user.Username != username {
@@ -47,7 +53,7 @@ func TestCreateUser(t *testing.T) {
 func TestFindUser(t *testing.T) {
 	db, err := NewTemporaryDatabase(true)
 	if err != nil {
-		t.Fatalf("Failed to create a database for testing: %v", err)
+		t.Fatalf(testDbCreateErr, err)
 	}
 
 	username := "findme"
@@ -55,7 +61,7 @@ func TestFindUser(t *testing.T) {
 
 	createdUser, err := db.CreateUser(username, password)
 	if err != nil {
-		t.Fatalf("Failed to create user: %v", err)
+		t.Fatalf(testUserCreateErr, err)
 	}
 
 	// Find by ID
@@ -95,7 +101,7 @@ func TestFindUser(t *testing.T) {
 func TestIsUserExists(t *testing.T) {
 	db, err := NewTemporaryDatabase(true)
 	if err != nil {
-		t.Fatalf("Failed to create a database for testing: %v", err)
+		t.Fatalf(testDbCreateErr, err)
 	}
 
 	username := "existsuser"
@@ -103,13 +109,13 @@ func TestIsUserExists(t *testing.T) {
 
 	createdUser, err := db.CreateUser(username, password)
 	if err != nil {
-		t.Fatalf("Failed to create user: %v", err)
+		t.Fatalf(testUserCreateErr, err)
 	}
 
 	// Check by ID and username
 	exists, err := db.IsUserExists(createdUser.Id, "somethingelse")
 	if err != nil {
-		t.Fatalf("IsUserExists failed: %v", err)
+		t.Fatalf(testUserExistsErr, err)
 	}
 	if !exists {
 		t.Fatal("User should exist by ID")
@@ -117,7 +123,7 @@ func TestIsUserExists(t *testing.T) {
 
 	exists, err = db.IsUserExists("somethingelse", username)
 	if err != nil {
-		t.Fatalf("IsUserExists failed: %v", err)
+		t.Fatalf(testUserExistsErr, err)
 	}
 	if !exists {
 		t.Fatal("User should exist by username")
@@ -125,9 +131,27 @@ func TestIsUserExists(t *testing.T) {
 
 	exists, err = db.IsUserExists("nothing", "nobody")
 	if err != nil {
-		t.Fatalf("IsUserExists failed: %v", err)
+		t.Fatalf(testUserExistsErr, err)
 	}
 	if exists {
 		t.Fatal("User should not exist")
+	}
+}
+
+func TestFindUserBy_Error(t *testing.T) {
+	db, _ := NewTemporaryDatabase(true)
+	db.Close()
+	_, _, err := db.FindUserBy("id", "test")
+	if err == nil {
+		t.Error("Expected error when database is closed")
+	}
+}
+
+func TestIsUserExists_Error(t *testing.T) {
+	db, _ := NewTemporaryDatabase(true)
+	db.Close()
+	_, err := db.IsUserExists("id", "username")
+	if err == nil {
+		t.Error("Expected error when database is closed")
 	}
 }

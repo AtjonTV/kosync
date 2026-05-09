@@ -21,17 +21,20 @@
   "dependencies": {
     "@primeuix/themes": "2.0.3",
     "@tailwindcss/vite": "4.1.18",
+    "blueimp-md5": "^2.19.0",
+    "jmp-client-js": "../pkg/jmp-client-js",
     "pinia": "3.0.4",
+    "primeicons": "^7.0.0",
     "primevue": "4.5.4",
     "tailwindcss": "4.1.18",
     "tailwindcss-primeui": "0.6.1",
     "vue": "3.5.28",
-    "vue-router": "5.0.2",
-    "jmp-client-js": "../pkg/jmp-client-js"
+    "vue-router": "5.0.2"
   },
   "devDependencies": {
     "@primevue/auto-import-resolver": "4.5.4",
     "@tsconfig/node24": "24.0.4",
+    "@types/blueimp-md5": "^2.18.2",
     "@types/node": "25.2.3",
     "@vitejs/plugin-vue": "6.0.4",
     "@vue/tsconfig": "0.8.1",

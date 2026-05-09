@@ -12,10 +12,15 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     Button: typeof import('primevue/button')['default']
+    Card: typeof import('primevue/card')['default']
     Column: typeof import('primevue/column')['default']
+    ConfirmDialog: typeof import('primevue/confirmdialog')['default']
     DataTable: typeof import('primevue/datatable')['default']
+    Dialog: typeof import('primevue/dialog')['default']
     DocumentsList: typeof import('./src/components/DocumentsList.vue')['default']
+    HistoryList: typeof import('./src/components/HistoryList.vue')['default']
     InputText: typeof import('primevue/inputtext')['default']
+    LoginModal: typeof import('./src/components/LoginModal.vue')['default']
     ProgressSpinner: typeof import('primevue/progressspinner')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']

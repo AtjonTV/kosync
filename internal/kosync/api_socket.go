@@ -65,7 +65,7 @@ func (app *Kosync) ConfigureJmp() {
 		}
 
 		go func() {
-			_ = app.PubSubAnnounce(ctx.GetString(CtxContextUserId), PubSubTopicUserDocuments, updatedDoc)
+			_ = app.PubSubAnnounce(ctx.GetString(CtxContextUserId), PubSubTopicUserDocuments, updatedDoc, "Document")
 		}()
 
 		return jmp.NewOkResult("Document", updatedDoc)
@@ -88,9 +88,7 @@ func (app *Kosync) ConfigureJmp() {
 	})
 }
 
-func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
-	LogDebug("HandleWebsocket")
-
+func (app *Kosync) authenticateWebsocket(c *websocket.Conn) (string, *User, bool) {
 	token := c.Params("id")
 	valid, userId := app.Crypt.VerifyToken(token)
 	if !valid {
@@ -100,18 +98,27 @@ func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 
 		if err != nil {
 			LogDebug("Failed to send WebSocket auth failure message: %v", err.Error())
-			return
 		}
-		return
+		return "", nil, false
 	}
 
 	user, found, err := app.Db.FindUserById(userId)
 	if err != nil {
 		LogError("Failed to find user: %v", err.Error())
-		return
+		return "", nil, false
 	}
 	if !found {
 		LogError("User not found: %s", userId)
+		return "", nil, false
+	}
+	return userId, user, true
+}
+
+func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
+	LogDebug("HandleWebsocket")
+
+	userId, user, ok := app.authenticateWebsocket(c)
+	if !ok {
 		return
 	}
 
@@ -125,7 +132,7 @@ func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 		LogDebug("Websocket connection ended")
 	}()
 
-	err = c.WriteJSON(jmp.NewRpcNoticeMessage(jmp.NewRpcResponseFromResult("connect", jmp.NewOkResult("ServerInfo", WsInfo{
+	err := c.WriteJSON(jmp.NewRpcNoticeMessage(jmp.NewRpcResponseFromResult("connect", jmp.NewOkResult("ServerInfo", WsInfo{
 		ServerName:    "KOsync",
 		ServerVersion: Version,
 		Message:       "KOsync WebSocket API. Hello!",
@@ -187,9 +194,9 @@ func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 	}
 }
 
-func (app *Kosync) PubSubAnnounce(userId string, topic PubSubTopic, data interface{}) error {
+func (app *Kosync) PubSubAnnounce(userId string, topic PubSubTopic, data interface{}, typeHint string) error {
 	LogDebug("PubSubAnnounce(userId='%s', topic='%s', data=%+v)", userId, topic, data)
-	err := app.Jmp.PubSubAnnounceWithMatcher(PubSubTopicStrings[topic], data, "Document", func(ctx *jmp.Context) int64 {
+	err := app.Jmp.PubSubAnnounceWithMatcher(PubSubTopicStrings[topic], data, typeHint, func(ctx *jmp.Context) int64 {
 		if ctx.GetString(CtxContextUserId) == userId {
 			return ctx.UniqueRequestorId
 		}

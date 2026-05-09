@@ -4,10 +4,13 @@ import {useSyncStore} from "@/stores/sync.ts";
 import {ref} from "vue";
 import {fetchApi} from "@/api.ts";
 import {useUserStore} from "@/stores/user.ts";
+import { useConfirm } from "primevue/useconfirm";
+import HistoryList from "@/components/HistoryList.vue";
 
 const {customTitle} = defineProps<{customTitle?: string}>()
 
 const userStore = useUserStore();
+const confirm = useConfirm();
 
 const syncStore = useSyncStore();
 if (await userStore.isLoggedIn()) {
@@ -15,7 +18,13 @@ if (await userStore.isLoggedIn()) {
   syncStore.doPubSubSync();
 }
 
-const expandedRows = ref({});
+const showHistoryDialog = ref(false);
+const selectedDocument = ref<any>(null);
+
+const openHistory = (doc: any) => {
+    selectedDocument.value = doc;
+    showHistoryDialog.value = true;
+};
 
 const onEditComplete = async (event: any) => {
     const result = await fetchApi("/api/documents.update", {
@@ -32,6 +41,33 @@ const onEditComplete = async (event: any) => {
         event.preventDefault();
     }
 }
+
+const deleteDocument = (data: any) => {
+    confirm.require({
+        message: `Are you sure you want to delete "${data.title || data.id}"?`,
+        header: 'Confirmation',
+        icon: 'pi pi-exclamation-triangle',
+        rejectProps: {
+            label: 'Cancel',
+            severity: 'secondary',
+            outlined: true
+        },
+        acceptProps: {
+            label: 'Delete',
+            severity: 'danger'
+        },
+        accept: async () => {
+            const result = await fetchApi(`/api/documents.delete?id=${data.id}`, {
+                method: "DELETE"
+            });
+            if (result.error !== null) {
+                alert("Failed to delete document: " + result.error)
+            } else {
+                await syncStore.doSync(true);
+            }
+        }
+    });
+};
 </script>
 
 <template>
@@ -39,15 +75,13 @@ const onEditComplete = async (event: any) => {
     <h1 class="text-3xl">{{ customTitle ?? 'Documents' }}</h1>
     <div>
       <DataTable
-          v-model:expandedRows="expandedRows"
           dataKey="id"
           :value="syncStore.sync.documents"
           paginator :rows="15" :rowsPerPageOptions="[15, 25, 50, 100]"
           editMode="cell" @cellEditComplete="onEditComplete"
           resizableColumns columnResizeMode="fit" tableStyle="min-width: 100rem"
-          sortField="timestamp" :sortOrder="-1"
+          sortField="last_read_at" :sortOrder="-1"
       >
-        <Column expander style="width: 5rem" />
         <Column field="id" header="ID" :sortable="true" style="width: 25%"></Column>
         <Column field="title" header="Title" :sortable="true" style="width: 25%">
             <template #editor="{data, field}">
@@ -65,32 +99,16 @@ const onEditComplete = async (event: any) => {
             {{ new Date(slotProps.data.last_read_at/10).toISOString() }}
           </template>
         </Column>
-
-        <template #expansion="slotProps">
-          <div class="p-4 flex flex-col gap-2">
-            <h3 class="text-2xl">History</h3>
-            <div v-if="slotProps.data.history !== null">
-              <DataTable :value="slotProps.data.history">
-                <Column field="progress" header="Reading progress" :sortable="true">
-                  <template #body="slotProps">
-                    {{ Number(slotProps.data.progress*100).toFixed(2) }}%
-                  </template>
-                </Column>
-                <Column field="title" header="Previous Title" :sortable="true"></Column>
-                <Column field="last_read_on_device" header="Device" :sortable="true"></Column>
-                <Column field="last_read_at" header="When" :sortable="true">
-                  <template #body="slotProps">
-                    {{ new Date(slotProps.data.last_read_at/10).toISOString() }}
-                  </template>
-                </Column>
-              </DataTable>
-            </div>
-            <div v-else>
-              <p>This document does not have a history.<br>You can try pushing your progress and you might want to check your automatic push setting.</p>
-            </div>
-          </div>
-        </template>
+        <Column header="Actions" style="width: 5rem">
+            <template #body="slotProps">
+                <Button icon="pi pi-history" variant="text" rounded @click="openHistory(slotProps.data)" />
+                <Button icon="pi pi-trash" severity="danger" variant="text" rounded @click="deleteDocument(slotProps.data)" />
+            </template>
+        </Column>
       </DataTable>
     </div>
+    <Dialog v-model:visible="showHistoryDialog" header="History" modal :breakpoints="{ '960px': '75vw', '640px': '90vw' }" :style="{ width: '80rem' }">
+      <HistoryList :document="selectedDocument" />
+    </Dialog>
   </div>
 </template>

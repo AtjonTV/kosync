@@ -1,6 +1,7 @@
 import {type Ref, ref} from 'vue'
 import { defineStore } from 'pinia'
 import {fetchApi} from "@/api.ts";
+import md5 from 'blueimp-md5';
 
 export type UserState = {
   accessToken: string,
@@ -24,6 +25,23 @@ export const useUserStore = defineStore('user', () => {
     user.value = {accessToken: token, lastCheck: 0}
     localStorage.setItem('userState', btoa(JSON.stringify(user.value)))
     return true;
+  }
+
+  async function loginWithCredentials(username: string, password: string): Promise<boolean> {
+    const response = await fetch("/api/auth.jwt", {
+      method: "GET",
+      headers: {
+        "x-auth-user": username,
+        "x-auth-key": md5(password)
+      }
+    });
+
+    if (!response.ok) {
+      return false;
+    }
+
+    const token = await response.text();
+    return await login(token);
   }
 
   function logout() {
@@ -61,5 +79,5 @@ export const useUserStore = defineStore('user', () => {
     return claims.username ?? null;
   }
 
-  return { user, login, logout, isLoggedIn, hasToken, getUsername }
+  return { user, login, loginWithCredentials, logout, isLoggedIn, hasToken, getUsername }
 })

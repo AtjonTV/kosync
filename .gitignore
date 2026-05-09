@@ -20,4 +20,7 @@ kosync.log
 vendor/
 
 # JetBrains Junie
-.junie
+.junie/memory
+
+# Go Test Coverage
+coverage.out

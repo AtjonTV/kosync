@@ -7,14 +7,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Document and History deletion (Backend and WebUI)
+- Login Modal, replacing the HTTP-Basic-Auth that caused issues on Firefox for Android
+- JMP (JSON Messaging Protocol) for WebUI communication (replacing the KOsync Socket API)
+- `build.go` tool for easier compilation and running
+- `AI-Usage.md` for transparency regarding AI usage
 
 ### Changed
+- WebUI: Migrated from KOsync Socket API to JMP using `jmp-client-js`
+- Updated Fiber to v3.2.0
+- Updated Go to 1.26.0
+- Updated dependencies
+- Extracted generic bits into resuable packages in `pkg/`
+- Improved test coverage
 
 ### Deprecated
 
 ### Removed
 
 ### Fixed
+- WebUI: Fix broken default sort
 
 ### Security
 

@@ -12,6 +12,8 @@ import (
 	"git.obth.eu/atjontv/kosync/internal/kosync/migrations"
 )
 
+const migrationErrFormat = "Migrations failed. Expected version %d, got %d."
+
 func TestMigrationsApplied(t *testing.T) {
 	migs, i, _ := migrations.LoadMigrations()
 
@@ -22,7 +24,7 @@ func TestMigrationsApplied(t *testing.T) {
 		}
 
 		if db.SchemaVersion() != i {
-			t.Fatalf("Migrations failed. Expected version %d, got %d.", i, db.SchemaVersion())
+			t.Fatalf(migrationErrFormat, i, db.SchemaVersion())
 		}
 	}
 
@@ -37,7 +39,7 @@ func TestMigrationsApplied(t *testing.T) {
 		}
 
 		if db.SchemaVersion() != (*migs)[0].Version {
-			t.Fatalf("Migrations failed. Expected version %d, got %d.", (*migs)[0].Version, db.SchemaVersion())
+			t.Fatalf(migrationErrFormat, (*migs)[0].Version, db.SchemaVersion())
 		}
 
 		err = db.MigrateToTargetVersion(migs, i)
@@ -46,7 +48,16 @@ func TestMigrationsApplied(t *testing.T) {
 		}
 
 		if db.SchemaVersion() != i {
-			t.Fatalf("Migrations failed. Expected version %d, got %d.", i, db.SchemaVersion())
+			t.Fatalf(migrationErrFormat, i, db.SchemaVersion())
 		}
+	}
+}
+
+func TestGetCurrentSchemaVersion_Error(t *testing.T) {
+	db, _ := NewTemporaryDatabase(true)
+	db.Close()
+	_, err := db.getCurrentSchemaVersion()
+	if err == nil {
+		t.Error("Expected error when database is closed")
 	}
 }

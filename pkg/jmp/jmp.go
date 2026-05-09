@@ -193,7 +193,8 @@ func (s *JMP) PubSubAnnounce(topic string, recipient *int64, data any, typeHint 
 
 	for _, write := range s.pubSubWriters {
 		for _, sub := range *subs {
-			// TODO: Find out if this is slow
+			// Note: This nested loop might be slow if there are many writers and subscribers.
+			// Optimization could involve indexing subscribers by recipient ID if performance becomes an issue.
 			if recipient != nil {
 				if sub.Ctx.UniqueRequestorId == *recipient {
 					write(sub.Ctx, &payload)

@@ -57,13 +57,7 @@ func (db *Database) checkAndRunMigrations(config *Config) error {
 	return nil
 }
 
-func (db *Database) MigrateToTargetVersion(dbMigrations *[]migrate.Migration, targetVersion int) error {
-	var insertSchemaVersion = `INSERT INTO schema_versions (version, installed_at) VALUES (?, ?)`
-
-	if dbMigrations == nil {
-		return ErrMigrationWithoutMigrationsNotPossible
-	}
-
+func (db *Database) sortMigrations(dbMigrations *[]migrate.Migration) {
 	sorted := slices.IsSortedFunc(*dbMigrations, func(a, b migrate.Migration) int {
 		return a.Compare(&b)
 	})
@@ -72,6 +66,40 @@ func (db *Database) MigrateToTargetVersion(dbMigrations *[]migrate.Migration, ta
 			return a.Compare(&b)
 		})
 	}
+}
+
+func (db *Database) applyMigration(mig migrate.Migration) error {
+	var insertSchemaVersion = `INSERT INTO schema_versions (version, installed_at) VALUES (?, ?)`
+
+	logDbMigrate.Debug("Migrating to version %d", mig.Version)
+
+	migFile, err := mig.ReadMigration()
+	if err != nil {
+		logDbMigrate.Error("Failed to read migration %d from file %s", mig.Version, mig.Path)
+	}
+
+	// Ignore SQL Injection warning.
+	// bearer:disable go_gosec_sql_concat_sqli
+	if _, err := db.rawDb.Exec(migFile); err != nil {
+		logDbMigrate.Error("Failed to run migration %d: %v", mig.Version, err.Error())
+		return err
+	}
+
+	if _, err := db.rawDb.Exec(insertSchemaVersion, mig.Version, time.Now().Unix()); err != nil {
+		logDbMigrate.Error("Failed to insert schema version: %v", err.Error())
+		return err
+	}
+	logDbMigrate.Debug("Successfully applied migration %d", mig.Version)
+	db.currentSchema = mig.Version
+	return nil
+}
+
+func (db *Database) MigrateToTargetVersion(dbMigrations *[]migrate.Migration, targetVersion int) error {
+	if dbMigrations == nil {
+		return ErrMigrationWithoutMigrationsNotPossible
+	}
+
+	db.sortMigrations(dbMigrations)
 
 	hasMig := slices.ContainsFunc(*dbMigrations, func(mig migrate.Migration) bool {
 		return mig.Version == targetVersion
@@ -83,27 +111,9 @@ func (db *Database) MigrateToTargetVersion(dbMigrations *[]migrate.Migration, ta
 	for i := range *dbMigrations {
 		mig := (*dbMigrations)[i]
 		if db.currentSchema < mig.Version && mig.Version <= targetVersion {
-			logDbMigrate.Debug("Migrating to version %d", mig.Version)
-
-			migFile, err := mig.ReadMigration()
-			if err != nil {
-				logDbMigrate.Error("Failed to read migration %d from file %s", mig.Version, mig.Path)
-			}
-
-			// Ignore SQL Injection warning.
-			// An attacker would need to modify migrations, either before or after compilation, and then cause the modified executable to run with a fitting database.
-			// bearer:disable go_gosec_sql_concat_sqli
-			if _, err := db.rawDb.Exec(migFile); err != nil {
-				logDbMigrate.Error("Failed to run migration %d: %v", mig.Version, err.Error())
+			if err := db.applyMigration(mig); err != nil {
 				return err
 			}
-
-			if _, err := db.rawDb.Exec(insertSchemaVersion, mig.Version, time.Now().Unix()); err != nil {
-				logDbMigrate.Error("Failed to insert schema version: %v", err.Error())
-				return err
-			}
-			logDbMigrate.Debug("Successfully applied migration %d", mig.Version)
-			db.currentSchema = mig.Version
 		}
 	}
 

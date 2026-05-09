@@ -83,6 +83,7 @@ func contains(s, substr string) bool {
 }
 
 func TestNewAuthMiddleware(t *testing.T) {
+	const syncsRoute = "/syncs"
 	db, _ := NewTemporaryDatabase(true)
 	defer db.Close()
 
@@ -96,7 +97,7 @@ func TestNewAuthMiddleware(t *testing.T) {
 
 	app := fiber.New()
 	app.Use(koapp.NewAuthMiddleware())
-	app.Get("/syncs", func(c fiber.Ctx) error {
+	app.Get(syncsRoute, func(c fiber.Ctx) error {
 		return c.SendString("OK")
 	})
 	app.Get("/public", func(c fiber.Ctx) error {
@@ -104,7 +105,7 @@ func TestNewAuthMiddleware(t *testing.T) {
 	})
 
 	// 1. Missing auth on protected route
-	req := httptest.NewRequest(http.MethodGet, "/syncs", nil)
+	req := httptest.NewRequest(http.MethodGet, syncsRoute, nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Errorf("Expected 401 for protected route without auth, got %v", resp.StatusCode)
@@ -119,7 +120,7 @@ func TestNewAuthMiddleware(t *testing.T) {
 
 	// 3. Auth with Bearer Token
 	token, _ := koapp.Crypt.CreateToken(user.Id, user.Username)
-	req = httptest.NewRequest(http.MethodGet, "/syncs", nil)
+	req = httptest.NewRequest(http.MethodGet, syncsRoute, nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 	resp, _ = app.Test(req)
 	if resp.StatusCode != http.StatusOK {
@@ -127,7 +128,7 @@ func TestNewAuthMiddleware(t *testing.T) {
 	}
 
 	// 4. Auth with headers
-	req = httptest.NewRequest(http.MethodGet, "/syncs", nil)
+	req = httptest.NewRequest(http.MethodGet, syncsRoute, nil)
 	req.Header.Set("x-auth-user", user.Username)
 	req.Header.Set("x-auth-key", "md5password")
 	resp, _ = app.Test(req)
@@ -136,11 +137,29 @@ func TestNewAuthMiddleware(t *testing.T) {
 	}
 
 	// 5. Auth with invalid headers
-	req = httptest.NewRequest(http.MethodGet, "/syncs", nil)
+	req = httptest.NewRequest(http.MethodGet, syncsRoute, nil)
 	req.Header.Set("x-auth-user", user.Username)
 	req.Header.Set("x-auth-key", "wrongpassword")
 	resp, _ = app.Test(req)
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Errorf("Expected 401 with invalid password, got %v", resp.StatusCode)
+	}
+
+	// 6. AllowFail route
+	app.Get("/api/ws", func(c fiber.Ctx) error {
+		return c.SendString("WS")
+	})
+	req = httptest.NewRequest(http.MethodGet, "/api/ws", nil)
+	resp, _ = app.Test(req)
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected 200 for allowFail route without auth, got %v", resp.StatusCode)
+	}
+
+	// 7. Invalid Bearer Token
+	req = httptest.NewRequest(http.MethodGet, syncsRoute, nil)
+	req.Header.Set("Authorization", "Bearer invalidtoken")
+	resp, _ = app.Test(req)
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("Expected 401 with invalid token, got %v", resp.StatusCode)
 	}
 }

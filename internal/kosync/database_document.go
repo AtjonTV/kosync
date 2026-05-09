@@ -26,7 +26,7 @@ func (db *Database) FindDocumentById(ownerId, documentId string) (*Document, boo
             last_read_on_device_id,
             last_read_at
         FROM documents
-        WHERE id = ? and owner_id = ?;
+        WHERE id = ? and owner_id = ? AND deleted_at IS NULL;
     `
 	rows, err := db.rawDb.Query(findOneDocument, documentId, ownerId)
 	if err != nil {
@@ -67,7 +67,7 @@ func (db *Database) AllDocumentsOfUser(ownerId string) ([]Document, error) {
             last_read_on_device_id,
             last_read_at
         FROM documents
-        WHERE owner_id = ?;
+        WHERE owner_id = ? AND deleted_at IS NULL;
     `
 	rows, err := db.rawDb.Query(findAllDocuments, ownerId)
 	if err != nil {
@@ -101,7 +101,7 @@ func (db *Database) GetDocumentHistory(ownerId, documentId string) ([]Document, 
             last_read_on_device_id,
             last_read_at
         FROM document_history
-        WHERE document_id = ? and owner_id = ?;
+        WHERE document_id = ? and owner_id = ? AND deleted_at IS NULL;
     `
 	rows, err := db.rawDb.Query(findDocumentHistory, documentId, ownerId)
 	if err != nil {
@@ -151,7 +151,8 @@ func (db *Database) CreateOrUpdateDocument(doc *Document) error {
                        last_read_on_device = $6,
                        last_read_on_device_id = $7,
                        last_read_at = if($8 = unixepoch(), unixepoch('subsec')*1000, $8),
-                       updated_at = (unixepoch('subsec')*1000);
+                       updated_at = (unixepoch('subsec')*1000),
+                       deleted_at = null;
     `
 	_, err = t.Exec(
 		updateDocument,
@@ -176,6 +177,40 @@ func (db *Database) CreateOrUpdateDocument(doc *Document) error {
 	}
 	logDbDoc.Debug("Successfully updated document")
 	return t.Commit()
+}
+
+func (db *Database) DeleteDocumentHistoryItem(ownerId, documentId string, lastReadAt int64) error {
+	logDbDoc.Debug("DeleteDocumentHistoryItem(ownerId='%s', documentId='%s', lastReadAt=%d)", ownerId, documentId, lastReadAt)
+	var deleteHistoryItem = `
+        UPDATE document_history
+        SET deleted_at = (unixepoch('subsec')*1000)
+        WHERE document_id = ? AND owner_id = ? AND last_read_at = ?;
+    `
+	_, err := db.rawDb.Exec(deleteHistoryItem, documentId, ownerId, lastReadAt)
+	if err != nil {
+		logDbDoc.Error("Failed to delete history item of document '%s' of user '%s': %v", documentId, ownerId, err.Error())
+		return err
+	}
+
+	logDbDoc.Debug("Successfully deleted history item")
+	return nil
+}
+
+func (db *Database) DeleteDocumentById(ownerId, documentId string) error {
+	logDbDoc.Debug("DeleteDocumentById(ownerId='%s', documentId='%s')", ownerId, documentId)
+	var deleteDocument = `
+        UPDATE documents
+        SET deleted_at = (unixepoch('subsec')*1000)
+        WHERE id = ? AND owner_id = ?;
+    `
+	_, err := db.rawDb.Exec(deleteDocument, documentId, ownerId)
+	if err != nil {
+		logDbDoc.Error("Failed to delete document '%s' of user '%s': %v", documentId, ownerId, err.Error())
+		return err
+	}
+
+	logDbDoc.Debug("Successfully deleted document")
+	return nil
 }
 
 func (db *Database) prepareHistoryCreationInTransaction(tx *sql.Tx, doc *Document) error {

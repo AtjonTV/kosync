@@ -7,21 +7,21 @@ interface JMPMessage {
 }
 
 // Define callback types
-type JmpRpcCallback = (data: any, errors?: string[]) => void;
-type JmpPubSubCallback = (data: any, errors?: string[]) => void;
+type JmpRpcCallback = (data: any, typeHint: string, errors?: string[]) => void;
+type JmpPubSubCallback = (data: any, typeHint: string, errors?: string[]) => void;
 type JmpOnConnectedCallback = () => void;
 
 // Client class
 class JMPClient {
   private socket: WebSocket | null = null;
-  private rpcCallbacks: Map<string, JmpRpcCallback> = new Map();
-  private pubSubCallbacks: Map<string, JmpPubSubCallback> = new Map();
+  private readonly rpcCallbacks: Map<string, JmpRpcCallback> = new Map();
+  private readonly pubSubCallbacks: Map<string, JmpPubSubCallback> = new Map();
 
-  private static JmpVersion = "1";
-  private static JmpProtoRpc = "rpc";
-  private static JmpProtoPubSub = "pubsub";
+  private static readonly JmpVersion = "1";
+  private static readonly JmpProtoRpc = "rpc";
+  private static readonly JmpProtoPubSub = "pubsub";
 
-  constructor(private websocketUrl: string, private debugLog?: boolean) {}
+  constructor(private readonly websocketUrl: string, private readonly debugLog?: boolean) {}
 
   // Connect to WebSocket
   public connect(onConnected?: JmpOnConnectedCallback): void {
@@ -55,12 +55,12 @@ class JMPClient {
     if (message.proto === JMPClient.JmpProtoRpc) {
       const callback = this.rpcCallbacks.get(message.payload.method);
       if (callback) {
-        callback(message.payload.data, message.payload.errors);
+        callback(message.payload.data, message.payload.type_hint, message.payload.errors);
       }
     } else if (message.proto === JMPClient.JmpProtoPubSub) {
       const callback = this.pubSubCallbacks.get(message.payload.for_topic);
       if (callback) {
-        callback(message.payload.data, message.payload.errors);
+        callback(message.payload.data, message.payload.type_hint, message.payload.errors);
       }
     }
   }
