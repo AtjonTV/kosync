@@ -25,7 +25,7 @@ func TestSyncsPostProgress(t *testing.T) {
 
 	koapp := &Kosync{
 		Db:     db,
-		Config: &Config{EnableWebSocketApi: false},
+		Config: &Config{DisableWebSocketApi: true},
 	}
 
 	app := fiber.New()

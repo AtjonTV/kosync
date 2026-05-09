@@ -56,7 +56,7 @@ func (app *Kosync) ApiPutDocument(c fiber.Ctx) error {
 		return err
 	}
 
-	if app.Config.EnableWebSocketApi {
+	if !app.Config.DisableWebSocketApi {
 		userIdVal := c.Locals(CtxContextUserId)
 		if userIdVal != nil {
 			go func(userId, docId string) {
@@ -94,7 +94,7 @@ func (app *Kosync) ApiDeleteDocument(c fiber.Ctx) error {
 		return err
 	}
 
-	if app.Config.EnableWebSocketApi {
+	if !app.Config.DisableWebSocketApi {
 		go func(documentId string) {
 			type DocumentDeletion struct {
 				DocumentId string `json:"document_id"`
@@ -135,7 +135,7 @@ func (app *Kosync) ApiDeleteDocumentHistory(c fiber.Ctx) error {
 		return err
 	}
 
-	if app.Config.EnableWebSocketApi {
+	if !app.Config.DisableWebSocketApi {
 		go func(userId, documentId string, lastReadAt int64) {
 			type HistoryDeletion struct {
 				DocumentId string `json:"document_id"`

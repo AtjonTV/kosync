@@ -203,7 +203,7 @@ func Run() {
 	app.Get("/api/auth.basic", koapp.ApiAuthBasic)
 	app.Get("/api/auth.jwt", koapp.ApiAuthForToken)
 
-	if koapp.Config.EnableWebSocketApi {
+	if !koapp.Config.DisableWebSocketApi {
 		koapp.ConfigureJmp()
 
 		app.Get("/api/ws", koapp.HandleOpenWebsocket)

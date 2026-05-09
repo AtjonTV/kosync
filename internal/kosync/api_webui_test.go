@@ -25,7 +25,7 @@ func TestApiDeleteDocument(t *testing.T) {
 
 	koapp := &Kosync{
 		Db:     db,
-		Config: &Config{EnableWebSocketApi: false},
+		Config: &Config{DisableWebSocketApi: true},
 	}
 
 	doc := &Document{
@@ -112,7 +112,7 @@ func TestApiPutDocument(t *testing.T) {
 
 	koapp := &Kosync{
 		Db:     db,
-		Config: &Config{EnableWebSocketApi: false},
+		Config: &Config{DisableWebSocketApi: true},
 	}
 
 	app := fiber.New()
@@ -165,7 +165,7 @@ func TestApiDeleteDocumentHistory(t *testing.T) {
 
 	koapp := &Kosync{
 		Db:     db,
-		Config: &Config{EnableWebSocketApi: false},
+		Config: &Config{DisableWebSocketApi: true},
 	}
 
 	app := fiber.New()
