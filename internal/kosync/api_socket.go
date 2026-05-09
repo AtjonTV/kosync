@@ -38,91 +38,12 @@ const JmpContextRequestId = "request_id"
 const JmpContextDisconnect = "disconnect"
 
 func (app *Kosync) ConfigureJmp() {
-	_ = app.Jmp.RegisterRpc("documents.all", func(ctx *jmp.Context, rpc *jmp.RpcRequestPayload) jmp.Result {
-		result, e := app.apiGetUserDocuments(ctx.GetString(CtxContextUserName))
-		if e != nil {
-			return jmp.NewErrorResultFromErr(e)
-		}
-		return jmp.NewOkResult("Array[DocumentWithHistory]", result)
-	})
+	_ = app.Jmp.RegisterRpc("documents.all", app.RpcDocumentsAll)
+	_ = app.Jmp.RegisterRpc("documents.update", app.RpcDocumentsUpdate)
+	_ = app.Jmp.RegisterRpc("documents.delete", app.RpcDocumentsDelete)
+	_ = app.Jmp.RegisterRpc("documents.history.delete", app.RpcDocumentsHistoryDelete)
 
-	_ = app.Jmp.RegisterRpc("documents.update", func(ctx *jmp.Context, rpc *jmp.RpcRequestPayload) jmp.Result {
-		rpcDoc, found := rpc.Arguments["document"]
-		if !found {
-			return jmp.NewErrorResult([]string{"RPC call is missing the argument 'document'"})
-		}
-
-		doc := DocumentFromMap(rpcDoc.(map[string]interface{}))
-
-		err := app.Db.CreateOrUpdateDocument(&doc)
-		if err != nil {
-			return jmp.NewErrorResultFromErr(err)
-		}
-
-		updatedDoc, _, e := app.Db.FindDocumentById(ctx.GetString(CtxContextUserId), doc.Id)
-		if e != nil {
-			return jmp.NewErrorResultFromErr(e)
-		}
-
-		go func() {
-			_ = app.PubSubAnnounce(ctx.GetString(CtxContextUserId), PubSubTopicUserDocuments, updatedDoc, "Document")
-		}()
-
-		return jmp.NewOkResult("Document", updatedDoc)
-	})
-
-	_ = app.Jmp.RegisterRpc("documents.delete", func(ctx *jmp.Context, rpc *jmp.RpcRequestPayload) jmp.Result {
-		rpcDocId, found := rpc.Arguments["document_id"]
-		if !found {
-			return jmp.NewErrorResult([]string{"RPC call is missing the argument 'document_id'"})
-		}
-
-		err := app.Db.DeleteDocumentById(ctx.GetString(CtxContextUserId), rpcDocId.(string))
-		if err != nil {
-			return jmp.NewErrorResultFromErr(err)
-		}
-
-		go func(userId, documentId string) {
-			type DocumentDeletion struct {
-				DocumentId string `json:"document_id"`
-			}
-			_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, DocumentDeletion{DocumentId: documentId}, "DocumentDeletion")
-		}(ctx.GetString(CtxContextUserId), rpcDocId.(string))
-
-		return jmp.NewOkResult(jmp.TypeString, "ok")
-	})
-
-	_ = app.Jmp.RegisterRpc("documents.history.delete", func(ctx *jmp.Context, payload *jmp.RpcRequestPayload) jmp.Result {
-		rpcDocId, found := payload.Arguments["document_id"]
-		if !found {
-			return jmp.NewErrorResult([]string{"RPC call is missing the argument 'document_id'"})
-		}
-
-		rpcDocTime, found := payload.Arguments["last_read_at"]
-		if !found {
-			return jmp.NewErrorResult([]string{"RPC call is missing the argument 'last_read_at'"})
-		}
-
-		err := app.Db.DeleteDocumentHistoryItem(ctx.GetString(CtxContextUserId), rpcDocId.(string), rpcDocTime.(int64))
-		if err != nil {
-			return jmp.NewErrorResultFromErr(err)
-		}
-
-		go func(userId, documentId string, lastReadAt int64) {
-			type HistoryDeletion struct {
-				DocumentId string `json:"document_id"`
-				LastReadAt int64  `json:"last_read_at"`
-			}
-			_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, HistoryDeletion{DocumentId: documentId, LastReadAt: lastReadAt}, "HistoryDeletion")
-		}(ctx.GetString(CtxContextUserId), rpcDocId.(string), rpcDocTime.(int64))
-
-		return jmp.NewOkResult(jmp.TypeString, "ok")
-	})
-
-	_ = app.Jmp.RegisterRpc("disconnect", func(ctx *jmp.Context, rpc *jmp.RpcRequestPayload) jmp.Result {
-		ctx.Data[JmpContextDisconnect] = true
-		return jmp.NewOkResult(jmp.TypeString, "goodbye.")
-	})
+	_ = app.Jmp.RegisterRpc("disconnect", app.RpcDisconnect)
 
 	_ = app.Jmp.RegisterKnownTopic("user.documents")
 	_ = app.Jmp.RegisterPubSubWriter("RawSocket", func(ctx *jmp.Context, msg *jmp.Message) {
@@ -254,4 +175,90 @@ func (app *Kosync) PubSubAnnounce(userId string, topic PubSubTopic, data interfa
 		return err
 	}
 	return nil
+}
+
+func (app *Kosync) RpcDocumentsAll(ctx *jmp.Context, rpc *jmp.RpcRequestPayload) jmp.Result {
+	result, e := app.apiGetUserDocuments(ctx.GetString(CtxContextUserName))
+	if e != nil {
+		return jmp.NewErrorResultFromErr(e)
+	}
+	return jmp.NewOkResult("Array[DocumentWithHistory]", result)
+}
+
+func (app *Kosync) RpcDocumentsUpdate(ctx *jmp.Context, rpc *jmp.RpcRequestPayload) jmp.Result {
+	rpcDoc, found := rpc.Arguments["document"]
+	if !found {
+		return jmp.NewErrorResult([]string{"RPC call is missing the argument 'document'"})
+	}
+
+	doc := DocumentFromMap(rpcDoc.(map[string]interface{}))
+
+	err := app.Db.CreateOrUpdateDocument(&doc)
+	if err != nil {
+		return jmp.NewErrorResultFromErr(err)
+	}
+
+	updatedDoc, _, e := app.Db.FindDocumentById(ctx.GetString(CtxContextUserId), doc.Id)
+	if e != nil {
+		return jmp.NewErrorResultFromErr(e)
+	}
+
+	go func() {
+		_ = app.PubSubAnnounce(ctx.GetString(CtxContextUserId), PubSubTopicUserDocuments, updatedDoc, "Document")
+	}()
+
+	return jmp.NewOkResult("Document", updatedDoc)
+}
+
+func (app *Kosync) RpcDocumentsDelete(ctx *jmp.Context, rpc *jmp.RpcRequestPayload) jmp.Result {
+	rpcDocId, found := rpc.Arguments["document_id"]
+	if !found {
+		return jmp.NewErrorResult([]string{"RPC call is missing the argument 'document_id'"})
+	}
+
+	err := app.Db.DeleteDocumentById(ctx.GetString(CtxContextUserId), rpcDocId.(string))
+	if err != nil {
+		return jmp.NewErrorResultFromErr(err)
+	}
+
+	go func(userId, documentId string) {
+		type DocumentDeletion struct {
+			DocumentId string `json:"document_id"`
+		}
+		_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, DocumentDeletion{DocumentId: documentId}, "DocumentDeletion")
+	}(ctx.GetString(CtxContextUserId), rpcDocId.(string))
+
+	return jmp.NewOkResult(jmp.TypeString, "ok")
+}
+
+func (app *Kosync) RpcDocumentsHistoryDelete(ctx *jmp.Context, payload *jmp.RpcRequestPayload) jmp.Result {
+	rpcDocId, found := payload.Arguments["document_id"]
+	if !found {
+		return jmp.NewErrorResult([]string{"RPC call is missing the argument 'document_id'"})
+	}
+
+	rpcDocTime, found := payload.Arguments["last_read_at"]
+	if !found {
+		return jmp.NewErrorResult([]string{"RPC call is missing the argument 'last_read_at'"})
+	}
+
+	err := app.Db.DeleteDocumentHistoryItem(ctx.GetString(CtxContextUserId), rpcDocId.(string), rpcDocTime.(int64))
+	if err != nil {
+		return jmp.NewErrorResultFromErr(err)
+	}
+
+	go func(userId, documentId string, lastReadAt int64) {
+		type HistoryDeletion struct {
+			DocumentId string `json:"document_id"`
+			LastReadAt int64  `json:"last_read_at"`
+		}
+		_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, HistoryDeletion{DocumentId: documentId, LastReadAt: lastReadAt}, "HistoryDeletion")
+	}(ctx.GetString(CtxContextUserId), rpcDocId.(string), rpcDocTime.(int64))
+
+	return jmp.NewOkResult(jmp.TypeString, "ok")
+}
+
+func (app *Kosync) RpcDisconnect(ctx *jmp.Context, rpc *jmp.RpcRequestPayload) jmp.Result {
+	ctx.Data[JmpContextDisconnect] = true
+	return jmp.NewOkResult(jmp.TypeString, "goodbye.")
 }
