@@ -232,8 +232,9 @@ func (s *JMP) PubSubAnnounceWithMatcher(topic string, data any, typeHint string,
 
 func (s *JMP) InvalidatePubSubSubscriptionForRequestId(uniqueRequestId int64) {
 	for _, topic := range *s.knownTopics {
-		slices.DeleteFunc(*s.pubSubListeners[topic], func(sub PubSubSubscription) bool {
+		newList := slices.DeleteFunc(*s.pubSubListeners[topic], func(sub PubSubSubscription) bool {
 			return sub.Ctx.UniqueRequestorId == uniqueRequestId
 		})
+		*s.pubSubListeners[topic] = newList
 	}
 }
