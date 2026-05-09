@@ -208,7 +208,7 @@ func Run() {
 
 		app.Get("/api/ws", koapp.HandleOpenWebsocket)
 		app.Get("/api/ws/:id", websocket.New(koapp.HandleWebsocket, websocket.Config{
-			Subprotocols: []string{"kosync.rpc", "kosync.pubsub"},
+			Subprotocols: []string{"jmp"},
 		}))
 	}
 

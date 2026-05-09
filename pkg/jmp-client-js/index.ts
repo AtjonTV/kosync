@@ -25,7 +25,7 @@ class JMPClient {
 
   // Connect to WebSocket
   public connect(onConnected?: JmpOnConnectedCallback): void {
-    this.socket = new WebSocket(this.websocketUrl);
+    this.socket = new WebSocket(this.websocketUrl, ["jmp"]);
     this.socket.onopen = () => {
       if (this.debugLog)
         console.log('Connected to JMP server');
