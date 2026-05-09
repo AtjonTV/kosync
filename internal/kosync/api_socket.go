@@ -262,7 +262,7 @@ func (app *Kosync) RpcDocumentsHistoryDelete(ctx *jmp.Context, payload *jmp.RpcR
 	return jmp.NewOkResult(jmp.TypeString, "ok")
 }
 
-func (app *Kosync) RpcDisconnect(ctx *jmp.Context, rpc *jmp.RpcRequestPayload) jmp.Result {
+func (app *Kosync) RpcDisconnect(ctx *jmp.Context, _ *jmp.RpcRequestPayload) jmp.Result {
 	ctx.Data[JmpContextDisconnect] = true
 	return jmp.NewOkResult(jmp.TypeString, "goodbye.")
 }
