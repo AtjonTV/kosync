@@ -60,7 +60,8 @@ export const useSyncStore = defineStore('sync', () => {
         for (const docIndex in sync.value.documents) {
           const orig = sync.value.documents[docIndex];
           if (orig?.id === doc.id) {
-            const origCopy = structuredClone(orig);
+            // Use JSON stringify and parse because structuredClone does not work on Proxy objects
+            const origCopy = JSON.parse(JSON.stringify(orig));
             delete (origCopy as any).history;
             let newHistory: Document[] = [];
             if (orig.history) {
