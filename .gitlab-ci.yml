@@ -3,7 +3,6 @@ stages:
   - test
   - build
   - analyze
-  - package
 
 variables:
   GO_VERSION: 1.26.0-alpine3.23
