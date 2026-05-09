@@ -48,7 +48,7 @@ func (app *Kosync) ConfigureJmp() {
 	_ = app.Jmp.RegisterKnownTopic("user.documents")
 	_ = app.Jmp.RegisterPubSubWriter("RawSocket", func(ctx *jmp.Context, msg *jmp.Message) {
 		soc := ctx.RawSocket.(*websocket.Conn)
-		LogDebug("Sending pubsub message to client with IP '%s'", soc.IP())
+		LogDebug("Sending pubsub message to client (IP '%s') for Request '%d'", soc.IP(), ctx.UniqueRequestorId)
 		err := soc.WriteJSON(msg)
 		if err != nil {
 			LogError("Failed to send message to raw socket: %v", err.Error())
