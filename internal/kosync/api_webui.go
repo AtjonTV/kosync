@@ -136,16 +136,13 @@ func (app *Kosync) ApiDeleteDocumentHistory(c fiber.Ctx) error {
 	}
 
 	if app.Config.EnableWebSocketApi {
-		// Announce update to refresh history in UI
-		go func(userId string) {
-			go func(documentId string, lastReadAt int64) {
-				type HistoryDeletion struct {
-					DocumentId string `json:"document_id"`
-					LastReadAt int64  `json:"last_read_at"`
-				}
-				_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, HistoryDeletion{DocumentId: documentId, LastReadAt: lastReadAt}, "HistoryDeletion")
-			}(documentId, lastReadAt)
-		}(userId)
+		go func(userId, documentId string, lastReadAt int64) {
+			type HistoryDeletion struct {
+				DocumentId string `json:"document_id"`
+				LastReadAt int64  `json:"last_read_at"`
+			}
+			_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, HistoryDeletion{DocumentId: documentId, LastReadAt: lastReadAt}, "HistoryDeletion")
+		}(userId, documentId, lastReadAt)
 	}
 
 	logApiWeb.Debug("Successfully deleted history item for document '%s'", documentId)
