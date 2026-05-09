@@ -71,6 +71,54 @@ func (app *Kosync) ConfigureJmp() {
 		return jmp.NewOkResult("Document", updatedDoc)
 	})
 
+	_ = app.Jmp.RegisterRpc("documents.delete", func(ctx *jmp.Context, rpc *jmp.RpcRequestPayload) jmp.Result {
+		rpcDocId, found := rpc.Arguments["document_id"]
+		if !found {
+			return jmp.NewErrorResult([]string{"RPC call is missing the argument 'document_id'"})
+		}
+
+		err := app.Db.DeleteDocumentById(ctx.GetString(CtxContextUserId), rpcDocId.(string))
+		if err != nil {
+			return jmp.NewErrorResultFromErr(err)
+		}
+
+		go func(userId, documentId string) {
+			type DocumentDeletion struct {
+				DocumentId string `json:"document_id"`
+			}
+			_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, DocumentDeletion{DocumentId: documentId}, "DocumentDeletion")
+		}(ctx.GetString(CtxContextUserId), rpcDocId.(string))
+
+		return jmp.NewOkResult(jmp.TypeString, "ok")
+	})
+
+	_ = app.Jmp.RegisterRpc("documents.history.delete", func(ctx *jmp.Context, payload *jmp.RpcRequestPayload) jmp.Result {
+		rpcDocId, found := payload.Arguments["document_id"]
+		if !found {
+			return jmp.NewErrorResult([]string{"RPC call is missing the argument 'document_id'"})
+		}
+
+		rpcDocTime, found := payload.Arguments["last_read_at"]
+		if !found {
+			return jmp.NewErrorResult([]string{"RPC call is missing the argument 'last_read_at'"})
+		}
+
+		err := app.Db.DeleteDocumentHistoryItem(ctx.GetString(CtxContextUserId), rpcDocId.(string), rpcDocTime.(int64))
+		if err != nil {
+			return jmp.NewErrorResultFromErr(err)
+		}
+
+		go func(userId, documentId string, lastReadAt int64) {
+			type HistoryDeletion struct {
+				DocumentId string `json:"document_id"`
+				LastReadAt int64  `json:"last_read_at"`
+			}
+			_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, HistoryDeletion{DocumentId: documentId, LastReadAt: lastReadAt}, "HistoryDeletion")
+		}(ctx.GetString(CtxContextUserId), rpcDocId.(string), rpcDocTime.(int64))
+
+		return jmp.NewOkResult(jmp.TypeString, "ok")
+	})
+
 	_ = app.Jmp.RegisterRpc("disconnect", func(ctx *jmp.Context, rpc *jmp.RpcRequestPayload) jmp.Result {
 		ctx.Data[JmpContextDisconnect] = true
 		return jmp.NewOkResult(jmp.TypeString, "goodbye.")
