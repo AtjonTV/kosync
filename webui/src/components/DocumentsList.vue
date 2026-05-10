@@ -101,8 +101,8 @@ const deleteDocument = (data: any) => {
         </Column>
         <Column header="Actions" style="width: 5rem">
             <template #body="slotProps">
-                <Button icon="pi pi-history" variant="text" rounded @click="openHistory(slotProps.data)" />
-                <Button icon="pi pi-trash" severity="danger" variant="text" rounded @click="deleteDocument(slotProps.data)" />
+                <Button icon="pi pi-history" variant="text" rounded @click="openHistory(slotProps.data)" title="View History" />
+                <Button icon="pi pi-trash" severity="danger" variant="text" rounded @click="deleteDocument(slotProps.data)" title="Delete" />
             </template>
         </Column>
       </DataTable>

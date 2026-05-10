@@ -72,8 +72,8 @@ const restoreHistoryItem = (doc: any, historyItem: any) => {
       <Column header="Actions" style="width: 6rem">
         <template #body="historySlotProps">
           <div class="flex gap-2">
-            <Button icon="pi pi-refresh" severity="info" variant="text" rounded @click="restoreHistoryItem(document, historySlotProps.data)" />
-            <Button icon="pi pi-trash" severity="danger" variant="text" rounded @click="deleteHistoryItem(document, historySlotProps.data)" />
+            <Button icon="pi pi-refresh" severity="info" variant="text" rounded @click="restoreHistoryItem(document, historySlotProps.data)" title="Restore" />
+            <Button icon="pi pi-trash" severity="danger" variant="text" rounded @click="deleteHistoryItem(document, historySlotProps.data)" title="Delete" />
           </div>
         </template>
       </Column>
