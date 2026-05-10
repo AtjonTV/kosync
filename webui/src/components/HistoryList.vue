@@ -39,6 +39,7 @@ const deleteHistoryItem = (doc: any, historyItem: any) => {
     <DataTable
       :value="document.history"
       paginator :rows="10" :rowsPerPageOptions="[10, 25, 50, 100]"
+      sortField="last_read_at" :sortOrder="-1"
       scrollable tableStyle="min-width: 50rem"
     >
       <Column field="progress" header="Reading progress" :sortable="true">
