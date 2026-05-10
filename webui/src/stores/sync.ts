@@ -122,5 +122,19 @@ export const useSyncStore = defineStore('sync', () => {
     await doSync(true);
   }
 
-  return { sync, doSync, doPubSubSync, clear, deleteHistoryItem }
+  async function restoreHistoryItem(documentId: string, lastReadAt: number) {
+    const {error} = await fetchApi(`/api/documents.history.restore?id=${documentId}&last_read_at=${lastReadAt}`, {
+      method: "POST"
+    });
+
+    if (error) {
+      console.error("Failed to restore history item:", error);
+      return;
+    }
+
+    // Refresh data
+    await doSync(true);
+  }
+
+  return { sync, doSync, doPubSubSync, clear, deleteHistoryItem, restoreHistoryItem }
 })
