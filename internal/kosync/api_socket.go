@@ -42,6 +42,7 @@ func (app *Kosync) ConfigureJmp() {
 	_ = app.Jmp.RegisterRpc("documents.update", app.RpcDocumentsUpdate)
 	_ = app.Jmp.RegisterRpc("documents.delete", app.RpcDocumentsDelete)
 	_ = app.Jmp.RegisterRpc("documents.history.delete", app.RpcDocumentsHistoryDelete)
+	_ = app.Jmp.RegisterRpc("documents.history.restore", app.RpcDocumentsHistoryRestore)
 
 	_ = app.Jmp.RegisterRpc("disconnect", app.RpcDisconnect)
 
@@ -263,6 +264,33 @@ func (app *Kosync) RpcDocumentsHistoryDelete(ctx *jmp.Context, payload *jmp.RpcR
 			LastReadAt int64  `json:"last_read_at"`
 		}
 		_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, HistoryDeletion{DocumentId: documentId, LastReadAt: lastReadAt}, "HistoryDeletion")
+	}(ctx.GetString(CtxContextUserId), rpcDocId.(string), rpcDocTime.(int64))
+
+	return jmp.NewOkResult(jmp.TypeString, "ok")
+}
+
+func (app *Kosync) RpcDocumentsHistoryRestore(ctx *jmp.Context, payload *jmp.RpcRequestPayload) jmp.Result {
+	rpcDocId, found := payload.Arguments["document_id"]
+	if !found {
+		return jmp.NewErrorResult([]string{"RPC call is missing the argument 'document_id'"})
+	}
+
+	rpcDocTime, found := payload.Arguments["last_read_at"]
+	if !found {
+		return jmp.NewErrorResult([]string{"RPC call is missing the argument 'last_read_at'"})
+	}
+
+	err := app.Db.RestoreDocumentHistoryItem(ctx.GetString(CtxContextUserId), rpcDocId.(string), rpcDocTime.(int64))
+	if err != nil {
+		return jmp.NewErrorResultFromErr(err)
+	}
+
+	go func(userId, documentId string, lastReadAt int64) {
+		type HistoryRestore struct {
+			DocumentId string `json:"document_id"`
+			LastReadAt int64  `json:"last_read_at"`
+		}
+		_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, HistoryRestore{DocumentId: documentId, LastReadAt: lastReadAt}, "HistoryRestore")
 	}(ctx.GetString(CtxContextUserId), rpcDocId.(string), rpcDocTime.(int64))
 
 	return jmp.NewOkResult(jmp.TypeString, "ok")
