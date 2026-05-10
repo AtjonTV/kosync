@@ -200,6 +200,7 @@ func Run() {
 	app.Put("/api/documents.update", koapp.ApiPutDocument)
 	app.Delete("/api/documents.delete", koapp.ApiDeleteDocument)
 	app.Delete("/api/documents.history.delete", koapp.ApiDeleteDocumentHistory)
+	app.Post("/api/documents.history.restore", koapp.ApiRestoreDocumentHistory)
 	app.Get("/api/auth.basic", koapp.ApiAuthBasic)
 	app.Get("/api/auth.jwt", koapp.ApiAuthForToken)
 

@@ -52,6 +52,7 @@ func (app *Kosync) NewAuthMiddleware() fiber.Handler {
 		"/api/documents.update",
 		"/api/documents.delete",
 		"/api/documents.history.delete",
+		"/api/documents.history.restore",
 		"/api/auth.jwt",
 		"/api/ws",
 	}

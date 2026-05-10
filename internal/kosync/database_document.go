@@ -196,6 +196,46 @@ func (db *Database) DeleteDocumentHistoryItem(ownerId, documentId string, lastRe
 	return nil
 }
 
+func (db *Database) RestoreDocumentHistoryItem(ownerId, documentId string, lastReadAt int64) error {
+	logDbDoc.Debug("RestoreDocumentHistoryItem(ownerId='%s', documentId='%s', lastReadAt=%d)", ownerId, documentId, lastReadAt)
+
+	var query = `
+        SELECT
+            document_id,
+            owner_id,
+            title,
+            current_location,
+            progress,
+            last_read_on_device,
+            last_read_on_device_id,
+            last_read_at
+        FROM document_history
+        WHERE document_id = ? AND owner_id = ? AND last_read_at = ? AND deleted_at IS NULL;
+    `
+	rows, err := db.rawDb.Query(query, documentId, ownerId, lastReadAt)
+	if err != nil {
+		logDbDoc.Error("Failed to find history item: %v", err.Error())
+		return err
+	}
+	defer func(rows *sql.Rows) {
+		_ = rows.Close()
+	}(rows)
+
+	docs, err := scanDocumentsFromRows(rows)
+	if err != nil {
+		logDbDoc.Error("Failed to scan document: %v", err.Error())
+		return err
+	}
+
+	if len(*docs) == 0 {
+		logDbDoc.Error("History item not found")
+		return errors.New("history item not found")
+	}
+
+	doc := (*docs)[0]
+	return db.CreateOrUpdateDocument(&doc)
+}
+
 func (db *Database) DeleteDocumentById(ownerId, documentId string) error {
 	logDbDoc.Debug("DeleteDocumentById(ownerId='%s', documentId='%s')", ownerId, documentId)
 	var deleteDocument = `
