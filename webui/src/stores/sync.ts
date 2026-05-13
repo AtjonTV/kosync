@@ -2,7 +2,7 @@ import {type Ref, ref} from 'vue'
 import { defineStore } from 'pinia'
 import JMPClient from "jmp-client-js";
 import type {Document, DocumentWithHistory} from "@/models/document.ts";
-import {fetchApi, getWebSocketUrl} from "@/api.ts";
+import {getWebSocketUrl} from "@/api.ts";
 
 export type SyncState = {
   lastSync: number,
@@ -18,38 +18,51 @@ export const useSyncStore = defineStore('sync', () => {
     documents: [] as DocumentWithHistory[],
   })
 
+  const client = ref<JMPClient | null>(null);
+  let connectingPromise: Promise<JMPClient> | null = null;
+
+  async function getClient(): Promise<JMPClient> {
+      if (client.value) return client.value;
+      if (connectingPromise) return connectingPromise;
+
+      connectingPromise = (async () => {
+          try {
+              const socketUri = getWebSocketUrl();
+              if (!socketUri) throw new Error("No websocket URL");
+
+              const newClient = new JMPClient(socketUri, true);
+              await new Promise((resolve) => newClient.connect(resolve as any));
+              client.value = newClient;
+              return newClient;
+          } finally {
+              connectingPromise = null;
+          }
+      })();
+
+      return connectingPromise;
+  }
+
   async function doSync(forceRefresh = false) {
     const now = Date.now();
     if (!forceRefresh && (now - sync.value.lastSync < 10_000)) return;
 
-    const {data: documents, error} = await fetchApi<DocumentWithHistory[]>("/api/documents.all", {
-      method: "GET"
-    });
+    try {
+      const c = await getClient();
+      const documents = await c.rpc("documents.all", {});
 
-    if (error && error === "Unauthorized") {
-      throw error;
+      if (documents !== null) {
+        sync.value = {lastSync: now, documents: documents as DocumentWithHistory[]};
+      }
+
+      sessionStorage.setItem('syncState', btoa(JSON.stringify(sync.value)))
+    } catch (e) {
+      console.error("Sync failed:", e);
     }
-
-    if (documents !== null) {
-      sync.value = {lastSync: now, documents};
-    }
-
-    sessionStorage.setItem('syncState', btoa(JSON.stringify(sync.value)))
   }
 
   async function doPubSubSync() {
-    const socketUri = getWebSocketUrl();
-    if (socketUri === null) {
-      console.log("PubSub is only possible if a user is logged in, skipping.");
-      return;
-    }
-
-    const client = new JMPClient(socketUri);
-    client.connect(() => {
-      client.subscribe("user.documents");
-    });
-
-    client.registerPubSubCallback("user.documents", (data, typeHint, errors) => {
+    const c = await getClient();
+    c.subscribe("user.documents", (data, typeHint, errors) => {
       if (errors && errors.length > 0) {
         console.log(errors);
         return;
@@ -109,32 +122,44 @@ export const useSyncStore = defineStore('sync', () => {
   }
 
   async function deleteHistoryItem(documentId: string, lastReadAt: number) {
-    const {error} = await fetchApi(`/api/documents.history.delete?id=${documentId}&last_read_at=${lastReadAt}`, {
-      method: "DELETE"
-    });
-
-    if (error) {
-      console.error("Failed to delete history item:", error);
+    try {
+      const c = await getClient();
+      await c.rpc("documents.history.delete", {document_id: documentId, last_read_at: lastReadAt});
+    } catch (e) {
+      console.error("Failed to delete history item:", e);
       return;
     }
-
-    // Refresh data
-    await doSync(true);
   }
 
   async function restoreHistoryItem(documentId: string, lastReadAt: number) {
-    const {error} = await fetchApi(`/api/documents.history.restore?id=${documentId}&last_read_at=${lastReadAt}`, {
-      method: "POST"
-    });
-
-    if (error) {
-      console.error("Failed to restore history item:", error);
+    try {
+      const c = await getClient();
+      await c.rpc("documents.history.restore", {document_id: documentId, last_read_at: lastReadAt});
+    } catch (e) {
+      console.error("Failed to restore history item:", e);
       return;
     }
-
-    // Refresh data
-    await doSync(true);
   }
 
-  return { sync, doSync, doPubSubSync, clear, deleteHistoryItem, restoreHistoryItem }
+  async function updateDocument(data: any) {
+    try {
+      const c = await getClient();
+      await c.rpc("documents.update", {document: data});
+    } catch (e) {
+      console.error("Failed to update document:", e);
+      return;
+    }
+  }
+
+  async function deleteDocument(documentId: string) {
+    try {
+      const c = await getClient();
+      await c.rpc("documents.delete", {document_id: documentId});
+    } catch (e) {
+      console.error("Failed to delete document:", e);
+      return;
+    }
+  }
+
+  return { sync, doSync, doPubSubSync, clear, deleteHistoryItem, restoreHistoryItem, updateDocument, deleteDocument }
 })

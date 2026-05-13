@@ -27,19 +27,14 @@ const openHistory = (doc: any) => {
 };
 
 const onEditComplete = async (event: any) => {
-    const result = await fetchApi("/api/documents.update", {
-        method: "PUT",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(event.newData)
-    });
-    if (result.error !== null) alert("Failed to update document: " + result.error)
+  await syncStore.updateDocument(event.newData);
 
-    let {data, newValue, field} = event;
-    if (newValue.trim().length > 0) {
-        data[field] = newValue;
-    } else {
-        event.preventDefault();
-    }
+  let {data, newValue, field} = event;
+  if (newValue.trim().length > 0) {
+      data[field] = newValue;
+  } else {
+      event.preventDefault();
+  }
 }
 
 const deleteDocument = (data: any) => {
@@ -57,14 +52,7 @@ const deleteDocument = (data: any) => {
             severity: 'danger'
         },
         accept: async () => {
-            const result = await fetchApi(`/api/documents.delete?id=${data.id}`, {
-                method: "DELETE"
-            });
-            if (result.error !== null) {
-                alert("Failed to delete document: " + result.error)
-            } else {
-                await syncStore.doSync(true);
-            }
+            syncStore.deleteDocument(data.id)
         }
     });
 };
