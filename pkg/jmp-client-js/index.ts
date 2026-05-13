@@ -4,6 +4,7 @@ interface JMPMessage {
   proto: string;
   content: string;
   payload: any;
+  sequence?: number;
 }
 
 // Define callback types
@@ -80,7 +81,7 @@ class JMPClient {
   }
 
   // Send RPC request
-  public rpc(type: string, data: any): void {
+  public rpc(type: string, data: any, sequence?: number): void {
     if (this.socket?.readyState !== WebSocket.OPEN) {
       console.error("JMP Socket is not yet ready to send messages!");
       return;
@@ -92,7 +93,8 @@ class JMPClient {
       payload: {
         method: type,
         arguments: data
-      }
+      },
+      sequence
     };
     if (this.debugLog)
       console.log("JMP RPC: ", JSON.stringify(message))

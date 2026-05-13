@@ -83,6 +83,7 @@ func (s *JMP) handleRpc(ctx *Context, msg *Message) (*Message, error) {
 			ForRpc: payload.Method,
 			Result: result,
 		},
+		Sequence: msg.Sequence,
 	}
 	return &response, nil
 }
@@ -150,6 +151,7 @@ func (s *JMP) handlePubSubSubscription(ctx *Context, msg *Message) (*Message, er
 				},
 			},
 		},
+		Sequence: msg.Sequence,
 	}
 	return &response, nil
 }

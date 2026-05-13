@@ -8,6 +8,7 @@ Each message must be a JSON Object with all the following fields:
 - `proto: string`: Name of Sub-Protocol. One of `rpc` or `pubsub`
 - `content: string`: Protocol content-type hint. One of (rpc.call, rpc.result, pubsub.subscribe, pubsub.subscription, pubsub.announce)
 - `payload: object`: Payload data of the specified protocol content-type.
+- `sequence: number`: (Optional) Client-given sequence number. (The server will respond with the same sequence number)
 
 ### RPC
 RPC Request Payload
