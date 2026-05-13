@@ -140,7 +140,7 @@ func (s *JMP) handlePubSubSubscription(ctx *Context, msg *Message) (*Message, er
 
 	response := Message{
 		Version: Version,
-		Proto:   ProtoRpc,
+		Proto:   ProtoPubSub,
 		Content: PubSubscription,
 		Payload: PubSubResponsePayload{
 			ForTopic: payload.Topic,
@@ -151,7 +151,6 @@ func (s *JMP) handlePubSubSubscription(ctx *Context, msg *Message) (*Message, er
 				},
 			},
 		},
-		Sequence: msg.Sequence,
 	}
 	return &response, nil
 }
