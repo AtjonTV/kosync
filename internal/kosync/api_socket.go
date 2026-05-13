@@ -222,12 +222,12 @@ func (app *Kosync) RpcDocumentsUpdate(ctx *jmp.Context, rpc *jmp.RpcRequestPaylo
 }
 
 func (app *Kosync) RpcDocumentsDelete(ctx *jmp.Context, rpc *jmp.RpcRequestPayload) jmp.Result {
-	rpcDocId, found := rpc.Arguments["document_id"]
-	if !found {
-		return jmp.NewErrorResult([]string{"RPC call is missing the argument 'document_id'"})
+	rpcDocId, err := getRpcArgumentString(rpc.Arguments, "document_id")
+	if err != nil {
+		return jmp.NewErrorResult([]string{err.Error()})
 	}
 
-	err := app.Db.DeleteDocumentById(ctx.GetString(CtxContextUserId), rpcDocId.(string))
+	err = app.Db.DeleteDocumentById(ctx.GetString(CtxContextUserId), rpcDocId)
 	if err != nil {
 		return jmp.NewErrorResultFromErr(err)
 	}
@@ -237,23 +237,23 @@ func (app *Kosync) RpcDocumentsDelete(ctx *jmp.Context, rpc *jmp.RpcRequestPaylo
 			DocumentId string `json:"document_id"`
 		}
 		_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, DocumentDeletion{DocumentId: documentId}, "DocumentDeletion")
-	}(ctx.GetString(CtxContextUserId), rpcDocId.(string))
+	}(ctx.GetString(CtxContextUserId), rpcDocId)
 
 	return jmp.NewOkResult(jmp.TypeString, "ok")
 }
 
 func (app *Kosync) RpcDocumentsHistoryDelete(ctx *jmp.Context, payload *jmp.RpcRequestPayload) jmp.Result {
-	rpcDocId, found := payload.Arguments["document_id"]
-	if !found {
-		return jmp.NewErrorResult([]string{"RPC call is missing the argument 'document_id'"})
+	rpcDocId, err := getRpcArgumentString(payload.Arguments, "document_id")
+	if err != nil {
+		return jmp.NewErrorResult([]string{err.Error()})
 	}
 
-	rpcDocTime, found := payload.Arguments["last_read_at"]
-	if !found {
-		return jmp.NewErrorResult([]string{"RPC call is missing the argument 'last_read_at'"})
+	lastReadAt, err := getRpcArgumentInt64(payload.Arguments, "last_read_at")
+	if err != nil {
+		return jmp.NewErrorResult([]string{err.Error()})
 	}
 
-	err := app.Db.DeleteDocumentHistoryItem(ctx.GetString(CtxContextUserId), rpcDocId.(string), rpcDocTime.(int64))
+	err = app.Db.DeleteDocumentHistoryItem(ctx.GetString(CtxContextUserId), rpcDocId, lastReadAt)
 	if err != nil {
 		return jmp.NewErrorResultFromErr(err)
 	}
@@ -264,23 +264,23 @@ func (app *Kosync) RpcDocumentsHistoryDelete(ctx *jmp.Context, payload *jmp.RpcR
 			LastReadAt int64  `json:"last_read_at"`
 		}
 		_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, HistoryDeletion{DocumentId: documentId, LastReadAt: lastReadAt}, "HistoryDeletion")
-	}(ctx.GetString(CtxContextUserId), rpcDocId.(string), rpcDocTime.(int64))
+	}(ctx.GetString(CtxContextUserId), rpcDocId, lastReadAt)
 
 	return jmp.NewOkResult(jmp.TypeString, "ok")
 }
 
 func (app *Kosync) RpcDocumentsHistoryRestore(ctx *jmp.Context, payload *jmp.RpcRequestPayload) jmp.Result {
-	rpcDocId, found := payload.Arguments["document_id"]
-	if !found {
-		return jmp.NewErrorResult([]string{"RPC call is missing the argument 'document_id'"})
+	rpcDocId, err := getRpcArgumentString(payload.Arguments, "document_id")
+	if err != nil {
+		return jmp.NewErrorResult([]string{err.Error()})
 	}
 
-	rpcDocTime, found := payload.Arguments["last_read_at"]
-	if !found {
-		return jmp.NewErrorResult([]string{"RPC call is missing the argument 'last_read_at'"})
+	lastReadAt, err := getRpcArgumentInt64(payload.Arguments, "last_read_at")
+	if err != nil {
+		return jmp.NewErrorResult([]string{err.Error()})
 	}
 
-	err := app.Db.RestoreDocumentHistoryItem(ctx.GetString(CtxContextUserId), rpcDocId.(string), rpcDocTime.(int64))
+	err = app.Db.RestoreDocumentHistoryItem(ctx.GetString(CtxContextUserId), rpcDocId, lastReadAt)
 	if err != nil {
 		return jmp.NewErrorResultFromErr(err)
 	}
@@ -291,7 +291,7 @@ func (app *Kosync) RpcDocumentsHistoryRestore(ctx *jmp.Context, payload *jmp.Rpc
 			LastReadAt int64  `json:"last_read_at"`
 		}
 		_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, HistoryRestore{DocumentId: documentId, LastReadAt: lastReadAt}, "HistoryRestore")
-	}(ctx.GetString(CtxContextUserId), rpcDocId.(string), rpcDocTime.(int64))
+	}(ctx.GetString(CtxContextUserId), rpcDocId, lastReadAt)
 
 	return jmp.NewOkResult(jmp.TypeString, "ok")
 }
