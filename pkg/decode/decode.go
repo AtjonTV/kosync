@@ -98,6 +98,11 @@ func StructRaw(dest *any, aliasTag string, valueFunc func(field *reflect.StructF
 			continue
 		}
 
+		// Ignore everything after a comma (needed when a field has ",omitempty")
+		if strings.Contains(alias, ",") {
+			alias = strings.Split(alias, ",")[0]
+		}
+
 		// Get the value from the valueFunc
 		val, found := valueFunc(&fieldType, &alias)
 		if !found {
