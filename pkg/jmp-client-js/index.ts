@@ -17,6 +17,8 @@ class JMPClient {
   private socket: WebSocket | null = null;
   private readonly rpcCallbacks: Map<string, JmpRpcCallback> = new Map();
   private readonly pubSubCallbacks: Map<string, JmpPubSubCallback> = new Map();
+  private pendingRequests: Map<number, { resolve: (data: any) => void, reject: (reason: any) => void }> = new Map();
+  private nextSequence = 1;
 
   private static readonly JmpVersion = "1";
   private static readonly JmpProtoRpc = "rpc";
@@ -54,6 +56,18 @@ class JMPClient {
     const message: JMPMessage = JSON.parse(data);
 
     if (message.proto === JMPClient.JmpProtoRpc) {
+      if (message.sequence !== undefined && this.pendingRequests.has(message.sequence)) {
+        const { resolve, reject } = this.pendingRequests.get(message.sequence)!;
+        this.pendingRequests.delete(message.sequence);
+
+        if (message.payload.errors && message.payload.errors.length > 0) {
+          reject(message.payload.errors);
+        } else {
+          resolve(message.payload.data);
+        }
+        return;
+      }
+
       const callback = this.rpcCallbacks.get(message.payload.method);
       if (callback) {
         callback(message.payload.data, message.payload.type_hint, message.payload.errors);
@@ -66,46 +80,15 @@ class JMPClient {
     }
   }
 
-  // Register RPC callback
-  public registerRPCCallback(method: string, callback: JmpRpcCallback): void {
-    if (this.debugLog)
-      console.log(`JMP callback for RPC ${method} registered`)
-    this.rpcCallbacks.set(method, callback);
-  }
+  // Subscribe to a topic
+  public subscribe(topic: string, callback: JmpPubSubCallback): void {
+    if (this.socket?.readyState !== WebSocket.OPEN) {
+      console.error("JMP Socket is not yet ready to send messages!");
+      return;
+    }
 
-  // Register PubSub callback
-  public registerPubSubCallback(topic: string, callback: JmpPubSubCallback): void {
-    if (this.debugLog)
-      console.log(`JMP callback for PubSub Topic ${topic} registered`)
     this.pubSubCallbacks.set(topic, callback);
-  }
 
-  // Send RPC request
-  public rpc(type: string, data: any, sequence?: number): void {
-    if (this.socket?.readyState !== WebSocket.OPEN) {
-      console.error("JMP Socket is not yet ready to send messages!");
-      return;
-    }
-    const message: JMPMessage = {
-      jmp: JMPClient.JmpVersion,
-      proto: JMPClient.JmpProtoRpc,
-      content: 'rpc.call',
-      payload: {
-        method: type,
-        arguments: data
-      },
-      sequence
-    };
-    if (this.debugLog)
-      console.log("JMP RPC: ", JSON.stringify(message))
-    this.socket.send(JSON.stringify(message));
-  }
-
-  public subscribe(topic: string): void {
-    if (this.socket?.readyState !== WebSocket.OPEN) {
-      console.error("JMP Socket is not yet ready to send messages!");
-      return;
-    }
     const message: JMPMessage = {
       jmp: JMPClient.JmpVersion,
       proto: JMPClient.JmpProtoPubSub,
@@ -117,6 +100,31 @@ class JMPClient {
     if (this.debugLog)
       console.log("JMP Subscribe: ", JSON.stringify(message))
     this.socket.send(JSON.stringify(message));
+  }
+
+  // Send RPC request
+  public rpc(method: string, data: any): Promise<any> {
+    const seq = this.nextSequence++;
+    return new Promise((resolve, reject) => {
+      if (this.socket?.readyState !== WebSocket.OPEN) {
+        reject("JMP Socket is not yet ready to send messages!");
+        return;
+      }
+      this.pendingRequests.set(seq, { resolve, reject });
+      const message: JMPMessage = {
+        jmp: JMPClient.JmpVersion,
+        proto: JMPClient.JmpProtoRpc,
+        content: 'rpc.call',
+        payload: {
+          method: method,
+          arguments: data
+        },
+        sequence: seq
+      };
+      if (this.debugLog)
+        console.log("JMP RPC: ", JSON.stringify(message))
+      this.socket.send(JSON.stringify(message));
+    });
   }
 
   // Close connection

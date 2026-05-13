@@ -43,6 +43,7 @@ For transparency, below is a table with the files and how such an Agent interact
 | pkg/decode/decode.go                       | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/crypt_test.go              | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | pkg/jmp-client-js/index.ts                 | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| pkg/jmp-client-js/README.md                | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/config_test.go             | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/database_document_test.go  | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/middleware.go              | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
