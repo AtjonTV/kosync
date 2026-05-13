@@ -50,7 +50,7 @@ const restoreHistoryItem = (doc: any, historyItem: any) => {
 </script>
 
 <template>
-  <div v-if="document && document.history !== null">
+  <div v-if="document && document.history !== null && document.history.length > 0">
     <DataTable
       :value="document.history"
       paginator :rows="10" :rowsPerPageOptions="[10, 25, 50, 100]"
