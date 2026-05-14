@@ -22,7 +22,7 @@ export const useSyncStore = defineStore('sync', () => {
   let connectingPromise: Promise<JMPClient> | null = null;
 
   async function getClient(): Promise<JMPClient> {
-      if (client.value) return client.value;
+      if (client.value) return client.value as JMPClient;
       if (connectingPromise) return connectingPromise;
 
       connectingPromise = (async () => {
