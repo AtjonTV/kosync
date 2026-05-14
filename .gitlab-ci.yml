@@ -58,6 +58,19 @@ tests:
       - coverage.out
       - test-report.json
 
+webui-tests:
+  stage: test
+  image: oven/bun:${BUN_VERSION}-alpine
+  before_script:
+    - cd webui && bun install
+  script:
+    - bun run test --coverage
+  coverage: '/^All files\s*\|\s*([\d.]+)/'
+  artifacts:
+    when: always
+    paths:
+      - webui/coverage/
+
 compile:
   stage: build
   before_script:

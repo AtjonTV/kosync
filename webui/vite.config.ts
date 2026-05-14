@@ -33,5 +33,9 @@ export default defineConfig({
         url: 'http://localhost/',
       },
     },
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov'],
+    },
   },
 })
