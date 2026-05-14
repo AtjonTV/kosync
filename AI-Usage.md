@@ -53,6 +53,11 @@ For transparency, below is a table with the files and how such an Agent interact
 | webui/src/App.vue                          | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | .junie/AGENTS.md                           | Written partially  | JetBrains Junie (Google Gemini 3 Flash) |
 | CHANGELOG.md                               | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| webui/vite.config.ts                       | Modified           | JetBrains Junie (claude-sonnet-4-6)     |
+| webui/src/tests/setup.ts                   | Written completely | JetBrains Junie (claude-sonnet-4-6)     |
+| webui/src/tests/api.test.ts                | Written completely | JetBrains Junie (claude-sonnet-4-6)     |
+| webui/src/tests/stores/user.test.ts        | Written completely | JetBrains Junie (claude-sonnet-4-6)     |
+| webui/src/tests/stores/sync.test.ts        | Written completely | JetBrains Junie (claude-sonnet-4-6)     |
 
 The table is maintained on a best-effort basis and may not be exhaustive.  
 Each file is only listed once.
