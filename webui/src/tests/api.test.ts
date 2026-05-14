@@ -5,7 +5,6 @@
 //
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { setActivePinia, createPinia } from 'pinia'
 import { fetchApi, getWebSocketUrl } from '@/api.ts'
 import { useUserStore } from '@/stores/user.ts'
 

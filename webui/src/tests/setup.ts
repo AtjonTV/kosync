@@ -5,6 +5,7 @@
 //
 
 import { setActivePinia, createPinia } from 'pinia'
+import { vi, beforeEach, afterEach } from "vitest";
 
 // Global test setup: reset Pinia and storage before each test
 beforeEach(() => {
