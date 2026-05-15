@@ -197,6 +197,7 @@ func Run() {
 	app.Get("/syncs/progress/:document", koapp.SyncsGetProgress)
 
 	app.Get("/api/documents.all", koapp.ApiGetDocumentsAll)
+	app.Get("/api/statistics.read", koapp.StatisticsRead)
 	app.Put("/api/documents.update", koapp.ApiPutDocument)
 	app.Delete("/api/documents.delete", koapp.ApiDeleteDocument)
 	app.Delete("/api/documents.history.delete", koapp.ApiDeleteDocumentHistory)

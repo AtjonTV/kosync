@@ -39,6 +39,7 @@ const JmpContextDisconnect = "disconnect"
 
 func (app *Kosync) ConfigureJmp() {
 	_ = app.Jmp.RegisterRpc("documents.all", app.RpcDocumentsAll)
+	_ = app.Jmp.RegisterRpc("statistics.read", app.RpcStatisticsRead)
 	_ = app.Jmp.RegisterRpc("documents.update", app.RpcDocumentsUpdate)
 	_ = app.Jmp.RegisterRpc("documents.delete", app.RpcDocumentsDelete)
 	_ = app.Jmp.RegisterRpc("documents.history.delete", app.RpcDocumentsHistoryDelete)
