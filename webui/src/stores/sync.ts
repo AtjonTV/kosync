@@ -2,6 +2,7 @@ import {type Ref, ref} from 'vue'
 import { defineStore } from 'pinia'
 import JMPClient from "jmp-client-js";
 import type {Document, DocumentWithHistory} from "@/models/document.ts";
+import type {ReadStatistics} from "@/models/statistics.ts";
 import {getWebSocketUrl} from "@/api.ts";
 
 export type SyncState = {
@@ -161,5 +162,16 @@ export const useSyncStore = defineStore('sync', () => {
     }
   }
 
-  return { sync, doSync, doPubSubSync, clear, deleteHistoryItem, restoreHistoryItem, updateDocument, deleteDocument }
+  async function getReadStatistics(days?: number): Promise<ReadStatistics[]> {
+    try {
+      const c = await getClient();
+      const stats = await c.rpc("statistics.read", days !== undefined ? {days} : {});
+      return (stats ?? []) as ReadStatistics[];
+    } catch (e) {
+      console.error("Failed to fetch statistics:", e);
+      return [];
+    }
+  }
+
+  return { sync, doSync, doPubSubSync, clear, deleteHistoryItem, restoreHistoryItem, updateDocument, deleteDocument, getReadStatistics }
 })

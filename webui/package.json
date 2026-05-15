@@ -24,6 +24,7 @@
     "@primeuix/themes": "2.0.3",
     "@tailwindcss/vite": "4.3.0",
     "blueimp-md5": "2.19.0",
+    "chart.js": "^4.5.1",
     "jmp-client-js": "../pkg/jmp-client-js",
     "pinia": "3.0.4",
     "primeicons": "7.0.0",

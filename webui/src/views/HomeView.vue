@@ -1,5 +1,11 @@
+//
+// File:        src/views/HomeView.vue
+// Project:     https://git.obth.eu/atjontv/kosync
+// Copyright:   © 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
+//
 <script setup lang="ts">
 import DocumentsList from "@/components/DocumentsList.vue";
+import ReadStatisticsChart from "@/components/ReadStatisticsChart.vue";
 import LoginModal from "@/components/LoginModal.vue";
 import {useUserStore} from "@/stores/user.ts";
 import {useSyncStore} from "@/stores/sync.ts";
@@ -58,6 +64,7 @@ const doLogout = async () => {
         </div>
       </template>
       <template #content>
+        <ReadStatisticsChart v-if="isLoggedIn" />
         <DocumentsList v-if="isLoggedIn" customTitle="My documents" />
         <div v-else class="text-center p-8">
            <p>Please login to see your documents.</p>

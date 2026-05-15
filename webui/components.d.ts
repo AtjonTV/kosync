@@ -22,6 +22,7 @@ declare module 'vue' {
     InputText: typeof import('primevue/inputtext')['default']
     LoginModal: typeof import('./src/components/LoginModal.vue')['default']
     ProgressSpinner: typeof import('primevue/progressspinner')['default']
+    ReadStatisticsChart: typeof import('./src/components/ReadStatisticsChart.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
   }
