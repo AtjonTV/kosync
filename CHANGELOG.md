@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Read percentage increase chart in WebUI
+- `CODE_STYLE.md` defining Go and TypeScript/Vue coding standards
 - Document and History deletion (Backend and WebUI)
 - Login Modal, replacing the HTTP-Basic-Auth that caused issues on Firefox for Android
 - JMP (JSON Messaging Protocol) for WebUI communication (replacing the KOsync Socket API)
