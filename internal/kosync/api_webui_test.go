@@ -144,6 +144,60 @@ func TestApiPutDocument(t *testing.T) {
 	}
 }
 
+func TestApiPutDocumentOwnershipEnforcement(t *testing.T) {
+	db, err := NewTemporaryDatabase(true)
+	if err != nil {
+		t.Fatalf("Failed to create database: %v", err)
+	}
+	defer db.Close()
+
+	user1, _ := db.CreateUser("user1", "pass")
+	user2, _ := db.CreateUser("user2", "pass")
+
+	koapp := &Kosync{
+		Db:     db,
+		Config: &Config{DisableWebSocketApi: true},
+	}
+
+	app := fiber.New()
+	app.Put("/api/documents.update", func(c fiber.Ctx) error {
+		// Simulate User 2 being logged in
+		c.Locals(CtxContextUserName, user2.Username)
+		c.Locals(CtxContextUserId, user2.Id)
+		return koapp.ApiPutDocument(c)
+	})
+
+	// Malicious request: User 2 tries to update a document and claims it belongs to User 1
+	doc := Document{
+		Id:      "doc1",
+		OwnerId: user1.Id, // Target User 1
+		Title:   "Pwned",
+	}
+	body, _ := json.Marshal(doc)
+
+	req := httptest.NewRequest(http.MethodPut, "/api/documents.update", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ := app.Test(req)
+
+	if resp.StatusCode != http.StatusNoContent {
+		t.Errorf("Expected 204, got %v", resp.StatusCode)
+	}
+
+	// Verify that the document was saved for USER 2, not USER 1
+	_, found1, _ := db.FindDocumentById(user1.Id, "doc1")
+	if found1 {
+		t.Errorf("Document should NOT have been created for User 1")
+	}
+
+	savedDoc2, found2, _ := db.FindDocumentById(user2.Id, "doc1")
+	if !found2 {
+		t.Fatalf("Document should have been created for User 2")
+	}
+	if savedDoc2.OwnerId != user2.Id {
+		t.Errorf("Expected OwnerId %s, got %s", user2.Id, savedDoc2.OwnerId)
+	}
+}
+
 func TestApiDeleteDocumentHistory(t *testing.T) {
 	db, err := NewTemporaryDatabase(true)
 	if err != nil {

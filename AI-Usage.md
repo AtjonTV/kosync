@@ -69,6 +69,10 @@ For transparency, below is a table with the files and how such an Agent interact
 | webui/src/models/statistics.ts               | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
 | webui/src/components/ReadStatisticsChart.vue | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/migrations/sql/103-unify_timestamps.sql | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
+| internal/kosync/database_document_test.go    | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
+| internal/kosync/api_webui.go                 | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| internal/kosync/api_socket.go                | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| internal/kosync/api_socket_test.go           | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 
 The table is maintained on a best-effort basis and may not be exhaustive.  
 Each file is only listed once.

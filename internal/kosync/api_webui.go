@@ -49,6 +49,8 @@ func (app *Kosync) ApiPutDocument(c fiber.Ctx) error {
 		logApiWeb.Error("Failed to parse request body: %v", err.Error())
 		return err
 	}
+	// Security fix: Ensure user can only update their own documents
+	document.OwnerId = user.Id
 	logApiWeb.Debug("User '%s' sent document '%s' update", user.Username, document.Id)
 
 	if err := app.Db.CreateOrUpdateDocument(&document); err != nil {

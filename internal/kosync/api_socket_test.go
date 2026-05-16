@@ -74,19 +74,19 @@ func TestHandleOpenWebsocket(t *testing.T) {
 func TestRpcDocumentsDelete(t *testing.T) {
 	db, err := NewTemporaryDatabase(true)
 	if err != nil {
-		t.Fatalf(testDbCreateError, err)
+		t.Fatalf(testDbCreateErr, err)
 	}
 	defer func(db *Database) {
 		_ = db.Close()
 	}(db)
 
-	app := &Kosync{Db: db, Jmp: jmp.New()}
+	app := &Kosync{Db: db, Jmp: jmp.New(), Config: &Config{DisableWebSocketApi: true}}
 
 	// Create doc
 	doc := &Document{Id: "d1", OwnerId: "u1"}
 	err = db.CreateOrUpdateDocument(doc)
 	if err != nil {
-		t.Fatalf(testDocCreateErr, err)
+		t.Fatalf("Failed to create document: %v", err)
 	}
 
 	ctx := jmp.NewContext()
@@ -114,13 +114,13 @@ func TestRpcDocumentsDelete(t *testing.T) {
 func TestRpcDocumentsHistoryDelete(t *testing.T) {
 	db, err := NewTemporaryDatabase(true)
 	if err != nil {
-		t.Fatalf(testDbCreateError, err)
+		t.Fatalf(testDbCreateErr, err)
 	}
 	defer func(db *Database) {
 		_ = db.Close()
 	}(db)
 
-	app := &Kosync{Db: db, Jmp: jmp.New()}
+	app := &Kosync{Db: db, Jmp: jmp.New(), Config: &Config{DisableWebSocketApi: true}}
 
 	// Create doc with history
 	doc := &Document{Id: "d1", OwnerId: "u1"}
@@ -168,13 +168,13 @@ func TestRpcDocumentsHistoryDelete(t *testing.T) {
 func TestRpcDocumentsHistoryDelete_Float64(t *testing.T) {
 	db, err := NewTemporaryDatabase(true)
 	if err != nil {
-		t.Fatalf(testDbCreateError, err)
+		t.Fatalf(testDbCreateErr, err)
 	}
 	defer func(db *Database) {
 		_ = db.Close()
 	}(db)
 
-	app := &Kosync{Db: db, Jmp: jmp.New()}
+	app := &Kosync{Db: db, Jmp: jmp.New(), Config: &Config{DisableWebSocketApi: true}}
 
 	// Create doc with history
 	doc := &Document{Id: "d1", OwnerId: "u1"}
@@ -216,5 +216,50 @@ func TestRpcDocumentsHistoryDelete_Float64(t *testing.T) {
 	}
 	if len(history) != 0 {
 		t.Errorf("Expected 0 history items, got %d", len(history))
+	}
+}
+
+func TestRpcDocumentsUpdateOwnershipEnforcement(t *testing.T) {
+	db, err := NewTemporaryDatabase(true)
+	if err != nil {
+		t.Fatalf(testDbCreateErr, err)
+	}
+	defer func(db *Database) {
+		_ = db.Close()
+	}(db)
+
+	app := &Kosync{Db: db, Jmp: jmp.New(), Config: &Config{DisableWebSocketApi: true}}
+
+	ctx := jmp.NewContext()
+	ctx.Data[CtxContextUserId] = "u2" // User 2 is logged in
+
+	// Malicious RPC: User 2 tries to update a document for User 1
+	rpc := &jmp.RpcRequestPayload{
+		Arguments: map[string]any{
+			"document": map[string]any{
+				"id":       "doc1",
+				"owner_id": "u1", // Claims it belongs to User 1
+				"title":    "Pwned",
+			},
+		},
+	}
+
+	res := app.RpcDocumentsUpdate(ctx, rpc)
+	if len(res.Errors) > 0 {
+		t.Errorf("Expected success, got errors: %v", res.Errors)
+	}
+
+	// Verify that the document was saved for USER 2, not USER 1
+	_, found1, _ := db.FindDocumentById("u1", "doc1")
+	if found1 {
+		t.Errorf("Document should NOT have been created for User 1")
+	}
+
+	savedDoc2, found2, _ := db.FindDocumentById("u2", "doc1")
+	if !found2 {
+		t.Errorf("Document should have been created for User 2")
+	}
+	if savedDoc2.OwnerId != "u2" {
+		t.Errorf("Expected OwnerId u2, got %s", savedDoc2.OwnerId)
 	}
 }

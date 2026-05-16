@@ -205,6 +205,8 @@ func (app *Kosync) RpcDocumentsUpdate(ctx *jmp.Context, rpc *jmp.RpcRequestPaylo
 	}
 
 	doc := DocumentFromMap(rpcDoc.(map[string]interface{}))
+	// Security fix: Ensure user can only update their own documents
+	doc.OwnerId = ctx.GetString(CtxContextUserId)
 
 	err := app.Db.CreateOrUpdateDocument(&doc)
 	if err != nil {
