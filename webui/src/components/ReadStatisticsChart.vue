@@ -34,6 +34,14 @@ const chartData = computed(() => {
         backgroundColor: 'rgba(59, 130, 246, 0.2)',
         tension: 0.4,
         yAxisID: 'y1'
+      },
+      {
+        label: 'Reading Time (min)',
+        data: stats.map(s => Math.round((s.reading_time || 0) / 60 * 10) / 10),
+        fill: false,
+        borderColor: '#f59e0b',
+        tension: 0.4,
+        yAxisID: 'y2'
       }
     ]
   };
@@ -110,6 +118,23 @@ const setChartOptions = () => {
         title: {
           display: true,
           text: 'Progress Increase (%)',
+          color: textColor
+        }
+      },
+      y2: {
+        type: 'linear',
+        display: true,
+        position: 'right',
+        ticks: {
+          color: textColorSecondary
+        },
+        grid: {
+          drawOnChartArea: false,
+          color: surfaceBorder
+        },
+        title: {
+          display: true,
+          text: 'Reading Time (min)',
           color: textColor
         }
       }

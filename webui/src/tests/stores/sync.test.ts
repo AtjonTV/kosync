@@ -245,7 +245,7 @@ describe('useSyncStore', () => {
 
   describe('doPubSubSync - statistics updates', () => {
     it('updates statistics on Array[ReadStatistics] typeHint', async () => {
-      const stats = [{ date: '2025-01-01', count: 5, progress_increase: 10 }]
+      const stats = [{ date: '2025-01-01', count: 5, progress_increase: 10, reading_time: 300 }]
 
       let capturedCallback: Function | null = null
       mockSubscribe.mockImplementation((topic: string, cb: Function) => {
@@ -260,8 +260,8 @@ describe('useSyncStore', () => {
     })
 
     it('updates a single statistics entry on ReadStatistics typeHint', async () => {
-      const original = { date: '2025-01-01', count: 5, progress_increase: 10 }
-      const updated = { date: '2025-01-01', count: 6, progress_increase: 12 }
+      const original = { date: '2025-01-01', count: 5, progress_increase: 10, reading_time: 300 }
+      const updated = { date: '2025-01-01', count: 6, progress_increase: 12, reading_time: 360 }
 
       let capturedCallback: Function | null = null
       mockSubscribe.mockImplementation((topic: string, cb: Function) => {
@@ -278,8 +278,8 @@ describe('useSyncStore', () => {
     })
 
     it('adds a new statistics entry on ReadStatistics typeHint', async () => {
-      const existing = { date: '2025-01-01', count: 5, progress_increase: 10 }
-      const newEntry = { date: '2025-01-02', count: 1, progress_increase: 2 }
+      const existing = { date: '2025-01-01', count: 5, progress_increase: 10, reading_time: 300 }
+      const newEntry = { date: '2025-01-02', count: 1, progress_increase: 2, reading_time: 60 }
 
       let capturedCallback: Function | null = null
       mockSubscribe.mockImplementation((topic: string, cb: Function) => {

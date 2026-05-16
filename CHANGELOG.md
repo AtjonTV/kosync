@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
-- Read statistics chart in WebUI
+- Read statistics chart (updates, progress increase, and reading time) in WebUI
 - Real-time statistics updates via PubSub
 - `CODE_STYLE.md` defining Go and TypeScript/Vue coding standards
 - Document and History deletion (Backend and WebUI)

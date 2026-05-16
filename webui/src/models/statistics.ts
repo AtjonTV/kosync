@@ -8,4 +8,5 @@ export type ReadStatistics = {
     date: string;
     update_count: number;
     progress_increase: number;
+    reading_time: number;
 }

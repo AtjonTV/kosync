@@ -62,12 +62,12 @@ For transparency, below is a table with the files and how such an Agent interact
 | webui/src/tests/stores/sync.test.ts          | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | .gitlab-ci.yml                               | Modified           | JetBrains Junie (claude-sonnet-4-6)     |
 | CODE_STYLE.md                                | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
-| internal/kosync/models_statistics.go         | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
-| internal/kosync/database_statistics.go       | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
+| internal/kosync/models_statistics.go         | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| internal/kosync/database_statistics.go       | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/api_statistics.go            | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/database_statistics_test.go  | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
-| webui/src/models/statistics.ts               | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
-| webui/src/components/ReadStatisticsChart.vue | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
+| webui/src/models/statistics.ts               | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| webui/src/components/ReadStatisticsChart.vue | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/migrations/sql/103-unify_timestamps.sql | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/database_document_test.go    | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/api_webui.go                 | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
