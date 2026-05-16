@@ -150,7 +150,7 @@ onMounted(loadData);
     <template #title>
       <div class="flex justify-between items-center">
         <span class="text-xl font-semibold">Reading Statistics (Last {{showDays}} Days)</span>
-        <SelectButton v-model="showDays" :options="[7, 14, 30]" :unselectable="false" />
+        <SelectButton v-model="showDays" :options="[7, 14, 30, 60]" :unselectable="false" />
       </div>
     </template>
     <template #content>
