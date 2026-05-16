@@ -65,6 +65,7 @@ func (app *Kosync) ApiPutDocument(c fiber.Ctx) error {
 					return
 				}
 				_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, updatedDoc, "Document")
+				app.PubSubAnnounceStatistics(userId, int64(updatedDoc.LastReadAt))
 			}(userIdVal.(string), document.Id)
 		}
 	}

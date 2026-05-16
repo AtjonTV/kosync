@@ -7,9 +7,11 @@
 package kosync
 
 import (
+	"strconv"
+	"time"
+
 	"git.obth.eu/atjontv/kosync/pkg/jmp"
 	"github.com/gofiber/fiber/v3"
-	"strconv"
 )
 
 var logApiStats = NewKlog("api/statistics")
@@ -46,5 +48,20 @@ func (app *Kosync) RpcStatisticsRead(ctx *jmp.Context, payload *jmp.RpcRequestPa
 		logApiStats.Error("Failed to fetch read statistics (RPC): %v", err.Error())
 		return jmp.NewErrorResult([]string{err.Error()})
 	}
-	return jmp.NewOkResult("ReadStatistics", stats)
+	return jmp.NewOkResult("Array[ReadStatistics]", stats)
+}
+
+func (app *Kosync) PubSubAnnounceStatistics(userId string, timestamp int64) {
+	if app.Config.DisableWebSocketApi {
+		return
+	}
+	// Unit is 100 microseconds (1/10000s)
+	date := time.Unix(timestamp/10000, (timestamp%10000)*100000).UTC().Format("2006-01-02")
+	logApiStats.Debug("Announcing read statistics for user '%s' on date '%s'", userId, date)
+	stats, err := app.Db.GetReadStatisticsByDay(userId, date)
+	if err != nil {
+		logApiStats.Error("Failed to fetch read statistics for announcement: %v", err.Error())
+		return
+	}
+	_ = app.PubSubAnnounce(userId, PubSubTopicUserStatistics, stats, "ReadStatistics")
 }

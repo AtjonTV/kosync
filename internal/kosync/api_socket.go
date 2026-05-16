@@ -48,6 +48,7 @@ func (app *Kosync) ConfigureJmp() {
 	_ = app.Jmp.RegisterRpc("disconnect", app.RpcDisconnect)
 
 	_ = app.Jmp.RegisterKnownTopic("user.documents")
+	_ = app.Jmp.RegisterKnownTopic("user.statistics")
 	_ = app.Jmp.RegisterPubSubWriter("RawSocket", func(ctx *jmp.Context, msg *jmp.Message) {
 		soc := ctx.RawSocket.(*websocket.Conn)
 		LogDebug("Sending pubsub message to client (IP '%s') for Request '%d'", soc.IP(), ctx.UniqueRequestorId)
@@ -217,6 +218,7 @@ func (app *Kosync) RpcDocumentsUpdate(ctx *jmp.Context, rpc *jmp.RpcRequestPaylo
 
 	go func() {
 		_ = app.PubSubAnnounce(ctx.GetString(CtxContextUserId), PubSubTopicUserDocuments, updatedDoc, "Document")
+		app.PubSubAnnounceStatistics(ctx.GetString(CtxContextUserId), int64(updatedDoc.LastReadAt))
 	}()
 
 	return jmp.NewOkResult("Document", updatedDoc)

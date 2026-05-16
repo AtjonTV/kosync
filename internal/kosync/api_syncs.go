@@ -34,6 +34,7 @@ func (app *Kosync) SyncsPostProgress(c fiber.Ctx) error {
 				return
 			}
 			_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, updatedDoc, "Document")
+			app.PubSubAnnounceStatistics(userId, int64(updatedDoc.LastReadAt))
 		}(doc.OwnerId)
 	}
 
