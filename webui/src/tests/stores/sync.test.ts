@@ -185,8 +185,8 @@ describe('useSyncStore', () => {
       const updated = makeDocument({ id: 'doc-1', progress: 0.8, history: [] })
 
       let capturedCallback: Function | null = null
-      mockSubscribe.mockImplementation((_topic: string, cb: Function) => {
-        capturedCallback = cb
+      mockSubscribe.mockImplementation((topic: string, cb: Function) => {
+        if (topic === 'user.documents') capturedCallback = cb
       })
 
       const store = useSyncStore()
@@ -199,8 +199,8 @@ describe('useSyncStore', () => {
 
     it('removes a document from the list on DocumentDeletion typeHint', async () => {
       let capturedCallback: Function | null = null
-      mockSubscribe.mockImplementation((_topic: string, cb: Function) => {
-        capturedCallback = cb
+      mockSubscribe.mockImplementation((topic: string, cb: Function) => {
+        if (topic === 'user.documents') capturedCallback = cb
       })
 
       const store = useSyncStore()
@@ -216,8 +216,8 @@ describe('useSyncStore', () => {
       const doc = makeDocument({ id: 'doc-1', history: [historyEntry] })
 
       let capturedCallback: Function | null = null
-      mockSubscribe.mockImplementation((_topic: string, cb: Function) => {
-        capturedCallback = cb
+      mockSubscribe.mockImplementation((topic: string, cb: Function) => {
+        if (topic === 'user.documents') capturedCallback = cb
       })
 
       const store = useSyncStore()
@@ -230,8 +230,8 @@ describe('useSyncStore', () => {
 
     it('does nothing when errors are present in the callback', async () => {
       let capturedCallback: Function | null = null
-      mockSubscribe.mockImplementation((_topic: string, cb: Function) => {
-        capturedCallback = cb
+      mockSubscribe.mockImplementation((topic: string, cb: Function) => {
+        if (topic === 'user.documents') capturedCallback = cb
       })
 
       const store = useSyncStore()
@@ -240,6 +240,59 @@ describe('useSyncStore', () => {
       capturedCallback!(null, 'Document', ['some error'])
 
       expect(store.sync.documents[0]?.progress).toBe(0.3)
+    })
+  })
+
+  describe('doPubSubSync - statistics updates', () => {
+    it('updates statistics on Array[ReadStatistics] typeHint', async () => {
+      const stats = [{ date: '2025-01-01', count: 5, progress_increase: 10 }]
+
+      let capturedCallback: Function | null = null
+      mockSubscribe.mockImplementation((topic: string, cb: Function) => {
+        if (topic === 'user.statistics') capturedCallback = cb
+      })
+
+      const store = useSyncStore()
+      await store.doPubSubSync()
+      capturedCallback!(stats, 'Array[ReadStatistics]', null)
+
+      expect(store.sync.statistics).toEqual(stats)
+    })
+
+    it('updates a single statistics entry on ReadStatistics typeHint', async () => {
+      const original = { date: '2025-01-01', count: 5, progress_increase: 10 }
+      const updated = { date: '2025-01-01', count: 6, progress_increase: 12 }
+
+      let capturedCallback: Function | null = null
+      mockSubscribe.mockImplementation((topic: string, cb: Function) => {
+        if (topic === 'user.statistics') capturedCallback = cb
+      })
+
+      const store = useSyncStore()
+      store.sync.statistics = [original]
+      await store.doPubSubSync()
+      capturedCallback!(updated, 'ReadStatistics', null)
+
+      expect(store.sync.statistics).toHaveLength(1)
+      expect(store.sync.statistics[0]).toEqual(updated)
+    })
+
+    it('adds a new statistics entry on ReadStatistics typeHint', async () => {
+      const existing = { date: '2025-01-01', count: 5, progress_increase: 10 }
+      const newEntry = { date: '2025-01-02', count: 1, progress_increase: 2 }
+
+      let capturedCallback: Function | null = null
+      mockSubscribe.mockImplementation((topic: string, cb: Function) => {
+        if (topic === 'user.statistics') capturedCallback = cb
+      })
+
+      const store = useSyncStore()
+      store.sync.statistics = [existing]
+      await store.doPubSubSync()
+      capturedCallback!(newEntry, 'ReadStatistics', null)
+
+      expect(store.sync.statistics).toHaveLength(2)
+      expect(store.sync.statistics[1]).toEqual(newEntry)
     })
   })
 })
