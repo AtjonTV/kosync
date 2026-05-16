@@ -2,6 +2,11 @@
 
 KOsync is a progress sync server for KOReader written in Go.
 
+<img src=".assets/webui-dark.png" width="640px" alt="Screenshot of the WebUI in dark-mode showing the reading statistics and documents table"/>
+<details>
+<img src=".assets/webui-light.png" width="640px" alt="Screenshot of the WebUI in light-mode showing the reading statistics and documents table"/>
+</details>
+
 ## Why?
 
 The [official KOReader progress sync server](https://github.com/koreader/koreader-sync-server) is written in Lua using OpenResty.  
