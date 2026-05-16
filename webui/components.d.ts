@@ -25,5 +25,6 @@ declare module 'vue' {
     ReadStatisticsChart: typeof import('./src/components/ReadStatisticsChart.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SelectButton: typeof import('primevue/selectbutton')['default']
   }
 }

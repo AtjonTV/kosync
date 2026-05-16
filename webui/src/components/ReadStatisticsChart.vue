@@ -4,20 +4,18 @@
 // Copyright:   © 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
 //
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import Chart from 'primevue/chart';
 import { useSyncStore } from '@/stores/sync';
 
 const syncStore = useSyncStore();
-const chartData = ref();
-const chartOptions = ref();
+const showDays = ref(14);
 
-const showDays = 14;
+const chartData = computed(() => {
+  const stats = syncStore.sync.statistics.slice(-showDays.value);
+  if (!stats || stats.length === 0) return null;
 
-const loadData = async () => {
-  const stats = await syncStore.getReadStatistics(showDays);
-
-  chartData.value = {
+  return {
     labels: stats.map(s => s.date),
     datasets: [
       {
@@ -39,9 +37,22 @@ const loadData = async () => {
       }
     ]
   };
+});
+const chartOptions = ref();
 
+const loadData = async () => {
+  if (syncStore.sync.statistics.length === 0) {
+    await syncStore.doSync();
+  }
   chartOptions.value = setChartOptions();
 };
+
+watch(showDays, async (newVal) => {
+  if (syncStore.sync.statistics.length < newVal) {
+    const stats = await syncStore.getReadStatistics(newVal);
+    syncStore.sync.statistics = stats;
+  }
+});
 
 const setChartOptions = () => {
   const documentStyle = getComputedStyle(document.documentElement);
@@ -112,11 +123,17 @@ onMounted(loadData);
 <template>
   <Card class="mb-8">
     <template #title>
-      <span class="text-xl font-semibold">Reading Statistics (Last {{showDays}} Days)</span>
+      <div class="flex justify-between items-center">
+        <span class="text-xl font-semibold">Reading Statistics (Last {{showDays}} Days)</span>
+        <SelectButton v-model="showDays" :options="[7, 14, 30]" :unselectable="false" />
+      </div>
     </template>
     <template #content>
       <div class="h-64">
-        <Chart type="line" :data="chartData" :options="chartOptions" class="h-full w-full" />
+        <Chart v-if="chartData" type="line" :data="chartData" :options="chartOptions" class="h-full w-full" />
+        <div v-else class="flex items-center justify-center h-full">
+          <span>Loading statistics...</span>
+        </div>
       </div>
     </template>
   </Card>

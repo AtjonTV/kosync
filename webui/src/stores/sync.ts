@@ -8,6 +8,7 @@ import {getWebSocketUrl} from "@/api.ts";
 export type SyncState = {
   lastSync: number,
   documents: DocumentWithHistory[],
+  statistics: ReadStatistics[],
 }
 
 export const useSyncStore = defineStore('sync', () => {
@@ -17,6 +18,7 @@ export const useSyncStore = defineStore('sync', () => {
   const sync: Ref<SyncState> = ref(syncState ?? {
     lastSync: -1,
     documents: [] as DocumentWithHistory[],
+    statistics: [] as ReadStatistics[],
   })
 
   const client = ref<JMPClient | null>(null);
@@ -50,9 +52,14 @@ export const useSyncStore = defineStore('sync', () => {
     try {
       const c = await getClient();
       const documents = await c.rpc("documents.all", {});
+      const statistics = await c.rpc("statistics.read", {days: 14});
 
-      if (documents !== null) {
-        sync.value = {lastSync: now, documents: documents as DocumentWithHistory[]};
+      if (documents !== null && statistics !== null) {
+        sync.value = {
+          lastSync: now,
+          documents: documents as DocumentWithHistory[],
+          statistics: statistics as ReadStatistics[]
+        };
       }
 
       sessionStorage.setItem('syncState', btoa(JSON.stringify(sync.value)))
@@ -115,11 +122,36 @@ export const useSyncStore = defineStore('sync', () => {
       // Note: Do not set lastSync, so that the next page-refresh causes a full sync
       sessionStorage.setItem('syncState', btoa(JSON.stringify(sync.value)))
     });
+
+    c.subscribe("user.statistics", (data, typeHint, errors) => {
+      if (errors && errors.length > 0) {
+        console.log(errors);
+        return;
+      }
+
+      if (typeHint === "Array[ReadStatistics]") {
+        sync.value.statistics = data as ReadStatistics[];
+      } else if (typeHint === "ReadStatistics") {
+        const stat = data as ReadStatistics;
+        const index = sync.value.statistics.findIndex(s => s.date === stat.date);
+        if (index !== -1) {
+          sync.value.statistics[index] = stat;
+        } else {
+          sync.value.statistics.push(stat);
+          sync.value.statistics.sort((a, b) => a.date.localeCompare(b.date));
+          if (sync.value.statistics.length > 31) {
+            sync.value.statistics = sync.value.statistics.slice(-31);
+          }
+        }
+      }
+
+      sessionStorage.setItem('syncState', btoa(JSON.stringify(sync.value)))
+    });
   }
 
   function clear() {
     sessionStorage.removeItem('syncState')
-    sync.value = {lastSync: -1, documents: []}
+    sync.value = {lastSync: -1, documents: [], statistics: []}
   }
 
   async function deleteHistoryItem(documentId: string, lastReadAt: number) {
