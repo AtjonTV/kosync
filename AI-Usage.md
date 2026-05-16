@@ -30,6 +30,8 @@ For transparency, below is a table with the files and how such an Agent interact
 | webui/README.md                              | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | webui/package.json                           | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/database_document.go         | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| internal/kosync/api_syncs.go                  | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| internal/kosync/websocket.go                 | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/api_socket_test.go           | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/api_webui.go                 | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/kosync.go                    | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
