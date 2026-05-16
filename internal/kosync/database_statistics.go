@@ -47,7 +47,21 @@ func (db *Database) GetReadStatistics(ownerId string, days int) ([]ReadStatistic
                 (SELECT MAX(a.progress) FROM all_states a WHERE a.document_id = s.document_id AND a.owner_id = ? AND a.last_read_at < s.first_update_of_day) as prev_max_progress
             FROM daily_stats_raw s
         ),
-        stats AS (
+        reading_time_deltas AS (
+            SELECT
+                date(last_read_at/10000.0, 'unixepoch') as day,
+                last_read_at - LAG(last_read_at) OVER (PARTITION BY owner_id, date(last_read_at/10000.0, 'unixepoch') ORDER BY last_read_at) as delta
+            FROM all_states
+            WHERE owner_id = ?
+        ),
+        reading_time_stats AS (
+            SELECT
+                day,
+                SUM(CASE WHEN delta > 0 AND delta < 3000000 THEN delta ELSE 0 END) / 10000.0 as reading_time_seconds
+            FROM reading_time_deltas
+            GROUP BY day
+        ),
+        daily_increase_sums AS (
             SELECT
                 day,
                 SUM(update_count) as total_updates,
@@ -58,14 +72,16 @@ func (db *Database) GetReadStatistics(ownerId string, days int) ([]ReadStatistic
         SELECT
             d.date,
             COALESCE(s.total_updates, 0),
-            COALESCE(s.total_increase, 0)
+            COALESCE(s.total_increase, 0),
+            CAST(COALESCE(r.reading_time_seconds, 0) AS INTEGER)
         FROM days d
-        LEFT JOIN stats s ON s.day = d.date
+        LEFT JOIN daily_increase_sums s ON s.day = d.date
+        LEFT JOIN reading_time_stats r ON r.day = d.date
         ORDER BY d.date ASC;
     `
 
 	daysParam := fmt.Sprintf("-%d days", days-1)
-	rows, err := db.rawDb.Query(query, daysParam, ownerId, ownerId)
+	rows, err := db.rawDb.Query(query, daysParam, ownerId, ownerId, ownerId)
 	if err != nil {
 		logDbStats.Error("Failed to fetch read statistics: %v", err.Error())
 		return nil, err
@@ -78,7 +94,7 @@ func (db *Database) GetReadStatistics(ownerId string, days int) ([]ReadStatistic
 	for rows.Next() {
 		var stat ReadStatistics
 		var increase float32
-		if err := rows.Scan(&stat.Date, &stat.UpdateCount, &increase); err != nil {
+		if err := rows.Scan(&stat.Date, &stat.UpdateCount, &increase, &stat.ReadingTime); err != nil {
 			logDbStats.Error("Failed to scan read statistics: %v", err.Error())
 			return nil, err
 		}
@@ -118,24 +134,40 @@ func (db *Database) GetReadStatisticsByDay(ownerId string, day string) (*ReadSta
                 s.max_progress,
                 (SELECT MAX(a.progress) FROM all_states a WHERE a.document_id = s.document_id AND a.owner_id = ? AND a.last_read_at < s.first_update_of_day) as prev_max_progress
             FROM daily_stats_raw s
+        ),
+        reading_time_deltas AS (
+            SELECT
+                date(last_read_at/10000.0, 'unixepoch') as day,
+                last_read_at - LAG(last_read_at) OVER (PARTITION BY owner_id, date(last_read_at/10000.0, 'unixepoch') ORDER BY last_read_at) as delta
+            FROM all_states
+            WHERE owner_id = ? AND date(last_read_at/10000.0, 'unixepoch') = ?
+        ),
+        reading_time_stats AS (
+            SELECT
+                day,
+                SUM(CASE WHEN delta > 0 AND delta < 3000000 THEN delta ELSE 0 END) / 10000.0 as reading_time_seconds
+            FROM reading_time_deltas
+            GROUP BY day
         )
         SELECT
-            day,
-            SUM(update_count) as total_updates,
-            SUM(max_progress - COALESCE(prev_max_progress, 0)) as total_increase
-        FROM daily_increase
-        GROUP BY day;
+            i.day,
+            SUM(i.update_count) as total_updates,
+            SUM(i.max_progress - COALESCE(i.prev_max_progress, 0)) as total_increase,
+            CAST(COALESCE(MAX(r.reading_time_seconds), 0) AS INTEGER)
+        FROM daily_increase i
+        LEFT JOIN reading_time_stats r ON r.day = i.day
+        GROUP BY i.day;
     `
 
-	row := db.rawDb.QueryRow(query, ownerId, day, ownerId)
+	row := db.rawDb.QueryRow(query, ownerId, day, ownerId, ownerId, day)
 	var stat ReadStatistics
 	stat.Date = day
 	var increase float32
-	err := row.Scan(&stat.Date, &stat.UpdateCount, &increase)
+	err := row.Scan(&stat.Date, &stat.UpdateCount, &increase, &stat.ReadingTime)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			// No updates for this day, return 0s
-			return &ReadStatistics{Date: day, UpdateCount: 0, ProgressIncrease: 0}, nil
+			return &ReadStatistics{Date: day, UpdateCount: 0, ProgressIncrease: 0, ReadingTime: 0}, nil
 		}
 		logDbStats.Error("Failed to fetch read statistics for day: %v", err.Error())
 		return nil, err

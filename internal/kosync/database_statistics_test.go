@@ -93,6 +93,71 @@ func TestGetReadStatistics(t *testing.T) {
 	if todayStats.ProgressIncrease < 24.9 || todayStats.ProgressIncrease > 25.1 {
 		t.Fatalf("Expected ~25.0%% progress increase, got %f", todayStats.ProgressIncrease)
 	}
+
+	// Reading time:
+	// Update 1: at 'now'
+	// Update 2: at 'now + 10000' (+1 second)
+	// Delta = 10000 units = 1 second.
+	// Since 1 second < 300 seconds, ReadingTime should be 1.
+	if todayStats.ReadingTime != 1 {
+		t.Fatalf("Expected 1 second of reading time, got %d", todayStats.ReadingTime)
+	}
+}
+
+func TestGetReadStatistics_ReadingTime(t *testing.T) {
+	db, err := NewTemporaryDatabase(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	user, err := db.CreateUser("testuser", "testpass")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	now := float64(time.Now().UnixMicro() / 100.0)
+
+	doc := &Document{
+		Id:                 "doc1",
+		OwnerId:            user.Id,
+		Title:              "Document 1",
+		Progress:           0.1,
+		LastReadAt:         now,
+		LastReadOnDevice:   "Device 1",
+		LastReadOnDeviceId: "d1",
+	}
+	_ = db.CreateOrUpdateDocument(doc)
+
+	// Update 1: +2 minutes (120s) -> should be counted
+	doc.Progress = 0.2
+	doc.LastReadAt = now + 120*10000
+	_ = db.CreateOrUpdateDocument(doc)
+
+	// Update 2: +3 minutes (180s) from prev -> should be counted
+	doc.Progress = 0.3
+	doc.LastReadAt = now + (120+180)*10000
+	_ = db.CreateOrUpdateDocument(doc)
+
+	// Update 3: +6 minutes (360s) from prev -> should NOT be counted (long break)
+	doc.Progress = 0.4
+	doc.LastReadAt = now + (120+180+360)*10000
+	_ = db.CreateOrUpdateDocument(doc)
+
+	// Update 4: +1 minute (60s) from Update 3 -> should be counted
+	doc.Progress = 0.5
+	doc.LastReadAt = now + (120+180+360+60)*10000
+	_ = db.CreateOrUpdateDocument(doc)
+
+	// Total expected reading time: 120 + 180 + 60 = 360 seconds.
+	stats, _ := db.GetReadStatistics(user.Id, 1)
+	if len(stats) == 0 {
+		t.Fatal("Expected at least one stat entry")
+	}
+	today := stats[0]
+	if today.ReadingTime != 360 {
+		t.Fatalf("Expected 360 seconds of reading time, got %d", today.ReadingTime)
+	}
 }
 
 func TestGetReadStatisticsByDay(t *testing.T) {
