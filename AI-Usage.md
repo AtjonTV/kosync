@@ -73,8 +73,10 @@ For transparency, below is a table with the files and how such an Agent interact
 | internal/kosync/api_webui.go                 | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/api_socket.go                | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/api_socket_test.go           | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| webui/src/components/TopBar.vue              | Written completely | JetBrains Junie (gemini-3.1-pro-preview)|
+| webui/src/components/DashboardMetrics.vue    | Written completely | JetBrains Junie (gemini-3.1-pro-preview)|
 
-The table is maintained on a best-effort basis and may not be exhaustive.  
+The table is maintained on a best-effort basis and may not be exhaustive.
 Each file is only listed once.
 
 ## Commit Annotation
