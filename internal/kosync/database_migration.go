@@ -85,7 +85,7 @@ func (db *Database) applyMigration(mig migrate.Migration) error {
 		return err
 	}
 
-	if _, err := db.rawDb.Exec(insertSchemaVersion, mig.Version, time.Now().Unix()); err != nil {
+	if _, err := db.rawDb.Exec(insertSchemaVersion, mig.Version, time.Now().UnixMicro()/100); err != nil {
 		logDbMigrate.Error("Failed to insert schema version: %v", err.Error())
 		return err
 	}

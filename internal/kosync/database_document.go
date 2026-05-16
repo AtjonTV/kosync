@@ -142,7 +142,7 @@ func (db *Database) CreateOrUpdateDocument(doc *Document) error {
 	}
 	var updateDocument = `
         INSERT INTO documents (id, owner_id, title, current_location, progress, last_read_on_device, last_read_on_device_id, last_read_at, created_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, (unixepoch('subsec')*1000))
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, (unixepoch('subsec')*10000))
         ON CONFLICT (id, owner_id) DO
             UPDATE SET
                        title = if(length($3), $3, title),
@@ -150,8 +150,8 @@ func (db *Database) CreateOrUpdateDocument(doc *Document) error {
                        progress = $5,
                        last_read_on_device = $6,
                        last_read_on_device_id = $7,
-                       last_read_at = if($8 = unixepoch(), unixepoch('subsec')*1000, $8),
-                       updated_at = (unixepoch('subsec')*1000),
+                       last_read_at = if($8 = unixepoch(), unixepoch('subsec')*10000, $8),
+                       updated_at = (unixepoch('subsec')*10000),
                        deleted_at = null;
     `
 	_, err = t.Exec(
@@ -183,7 +183,7 @@ func (db *Database) DeleteDocumentHistoryItem(ownerId, documentId string, lastRe
 	logDbDoc.Debug("DeleteDocumentHistoryItem(ownerId='%s', documentId='%s', lastReadAt=%d)", ownerId, documentId, lastReadAt)
 	var deleteHistoryItem = `
         UPDATE document_history
-        SET deleted_at = (unixepoch('subsec')*1000)
+        SET deleted_at = (unixepoch('subsec')*10000)
         WHERE document_id = ? AND owner_id = ? AND last_read_at = ?;
     `
 	_, err := db.rawDb.Exec(deleteHistoryItem, documentId, ownerId, lastReadAt)
@@ -240,7 +240,7 @@ func (db *Database) DeleteDocumentById(ownerId, documentId string) error {
 	logDbDoc.Debug("DeleteDocumentById(ownerId='%s', documentId='%s')", ownerId, documentId)
 	var deleteDocument = `
         UPDATE documents
-        SET deleted_at = (unixepoch('subsec')*1000)
+        SET deleted_at = (unixepoch('subsec')*10000)
         WHERE id = ? AND owner_id = ?;
     `
 	_, err := db.rawDb.Exec(deleteDocument, documentId, ownerId)
@@ -275,7 +275,7 @@ func (db *Database) prepareHistoryCreationInTransaction(tx *sql.Tx, doc *Documen
             progress,
             last_read_on_device,
             last_read_on_device_id,
-            (unixepoch('subsec')*1000) as created_at
+            (unixepoch('subsec')*10000) as created_at
         FROM documents
         WHERE id = ? AND owner_id = ?;
     `

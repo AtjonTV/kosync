@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `AI-Usage.md` for transparency regarding AI usage
 
 ### Changed
+- Unified all database timestamps to 100 microsecond units for consistency and sub-second precision
 - WebUI: Migrated from KOsync Socket API to JMP using `jmp-client-js`
 - Updated Fiber to v3.2.0
 - Updated Go to 1.26.0
