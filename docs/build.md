@@ -34,7 +34,7 @@ See the output of `go run build.go -help` for additional options.
 ### Dynamic Executable (`go install`)
 Compilation requires the Go Toolchain.
 
-Run `go install -tags netgo git.obth.eu/atjontv/kosync@latest` to install the latest version (you can also replace `@latest` with a version tag like `@v2026.03.0`).
+Run `go install -tags netgo git.obth.eu/atjontv/kosync@latest` to install the latest version (you can also replace `@latest` with a version tag like `@v26.05.0`).
 The binary `kosync` will be placed in `$GOPATH/bin`, which is usually `$HOME/go/bin`.
 
 This method will **NOT** contain the WebUI because `go generate` will not be run.
@@ -45,7 +45,7 @@ Run this command in the project root directory: `docker buildx build -f deployme
 
 This will build a docker image with the WebUI included. To use the WebUI you either have to override the entrypoint to add `--webui` or set `the `ENABLE_WEBUI` environment variable.
 
-Each tagged release will have a pre-build image at `docker.obth.eu/atjontv/kosync:latest` (you can replace `latest` with a version tag like `2026.03.0` so you know what version you pulled).
+Each tagged release will have a pre-build image at `docker.obth.eu/atjontv/kosync:latest` (you can replace `latest` with a version tag like `26.05.0` so you know what version you pulled).
 
 ## Deploy
 
