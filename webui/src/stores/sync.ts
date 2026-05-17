@@ -45,14 +45,14 @@ export const useSyncStore = defineStore('sync', () => {
       return connectingPromise;
   }
 
-  async function doSync(forceRefresh = false) {
+  async function doSync(forceRefresh = false, days = 14) {
     const now = Date.now();
     if (!forceRefresh && (now - sync.value.lastSync < 10_000)) return;
 
     try {
       const c = await getClient();
       const documents = await c.rpc("documents.all", {});
-      const statistics = await c.rpc("statistics.read", {days: 14});
+      const statistics = await c.rpc("statistics.read", {days});
 
       if (documents !== null && statistics !== null) {
         sync.value = {
@@ -139,8 +139,8 @@ export const useSyncStore = defineStore('sync', () => {
         } else {
           sync.value.statistics.push(stat);
           sync.value.statistics.sort((a, b) => a.date.localeCompare(b.date));
-          if (sync.value.statistics.length > 31) {
-            sync.value.statistics = sync.value.statistics.slice(-31);
+          if (sync.value.statistics.length > 61) {
+            sync.value.statistics = sync.value.statistics.slice(-61);
           }
         }
       }

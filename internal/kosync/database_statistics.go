@@ -50,7 +50,7 @@ func (db *Database) GetReadStatistics(ownerId string, days int) ([]ReadStatistic
         reading_time_deltas AS (
             SELECT
                 date(last_read_at/10000.0, 'unixepoch') as day,
-                last_read_at - LAG(last_read_at) OVER (PARTITION BY owner_id, date(last_read_at/10000.0, 'unixepoch') ORDER BY last_read_at) as delta
+                last_read_at - LAG(last_read_at) OVER (PARTITION BY date(last_read_at/10000.0, 'unixepoch') ORDER BY last_read_at) as delta
             FROM all_states
             WHERE owner_id = ?
         ),
@@ -138,7 +138,7 @@ func (db *Database) GetReadStatisticsByDay(ownerId string, day string) (*ReadSta
         reading_time_deltas AS (
             SELECT
                 date(last_read_at/10000.0, 'unixepoch') as day,
-                last_read_at - LAG(last_read_at) OVER (PARTITION BY owner_id, date(last_read_at/10000.0, 'unixepoch') ORDER BY last_read_at) as delta
+                last_read_at - LAG(last_read_at) OVER (PARTITION BY date(last_read_at/10000.0, 'unixepoch') ORDER BY last_read_at) as delta
             FROM all_states
             WHERE owner_id = ? AND date(last_read_at/10000.0, 'unixepoch') = ?
         ),

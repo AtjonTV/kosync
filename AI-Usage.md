@@ -7,7 +7,6 @@ For transparency, below is a table with the files and how such an Agent interact
 |---------------------------------------------------------|--------------------|------------------------------------------|
 | pkg/jmp-client-js                                       | Writen completely  | OpenCode (Ministral 3 - 3B Ollama)       |
 | webui/src/api.ts                                        | Modified           | OpenCode (Ministral 3 - 3B Ollama)       |
-| webui/src/stores/sync.ts                                | Modified           | JetBrains Junie (Google Gemini 3 Flash)  |
 | internal/kosync/migrations_test.go                      | Modified           | OpenCode (Ministral 3 - 3B Ollama)       |
 | internal/kosync/crypto_test.go                          | Written partially  | OpenCode (Ministral 3 - 3B Ollama)       |
 | internal/kosync/database_document_test.go               | Written partially  | OpenCode (Ministral 3 - 3B Ollama)       |
@@ -61,20 +60,22 @@ For transparency, below is a table with the files and how such an Agent interact
 | webui/src/tests/stores/sync.test.ts                     | Modified           | JetBrains Junie (Google Gemini 3 Flash)  |
 | .gitlab-ci.yml                                          | Modified           | JetBrains Junie (claude-sonnet-4-6)      |
 | internal/kosync/models_statistics.go                    | Modified           | JetBrains Junie (Google Gemini 3 Flash)  |
-| internal/kosync/database_statistics.go                  | Modified           | JetBrains Junie (Google Gemini 3 Flash)  |
-| internal/kosync/api_statistics.go                       | Modified           | JetBrains Junie (Google Gemini 3 Flash)  |
 | internal/kosync/database_statistics_test.go             | Modified           | JetBrains Junie (Google Gemini 3 Flash)  |
 | webui/src/models/statistics.ts                          | Modified           | JetBrains Junie (Google Gemini 3 Flash)  |
-| webui/src/components/ReadStatisticsChart.vue            | Modified           | JetBrains Junie (Google Gemini 3 Flash)  |
 | internal/kosync/migrations/sql/103-unify_timestamps.sql | Written completely | JetBrains Junie (Google Gemini 3 Flash)  |
 | internal/kosync/database_document_test.go               | Written completely | JetBrains Junie (Google Gemini 3 Flash)  |
 | internal/kosync/api_webui.go                            | Modified           | JetBrains Junie (Google Gemini 3 Flash)  |
-| internal/kosync/api_socket.go                           | Modified           | JetBrains Junie (Google Gemini 3 Flash)  |
 | internal/kosync/api_socket_test.go                      | Modified           | JetBrains Junie (Google Gemini 3 Flash)  |
 | webui/src/components/TopBar.vue                         | Written completely | JetBrains Junie (gemini-3.1-pro-preview) |
 | webui/src/components/DashboardMetrics.vue               | Written completely | JetBrains Junie (gemini-3.1-pro-preview) |
 | CONTRIBUTING.md                                         | Written completely | JetBrains Junie (gemini-3.1-pro-preview) |
 | pkg/jmp/jmp.go                                          | Modified           | JetBrains Junie (gemini-3.1-pro-preview) |
+| pkg/jmp/types.go                                        | Modified           | JetBrains Junie (claude-sonnet-4-6) |
+| internal/kosync/api_statistics.go                       | Modified           | JetBrains Junie (claude-sonnet-4-6) |
+| webui/src/stores/sync.ts                                | Modified           | JetBrains Junie (claude-sonnet-4-6) |
+| internal/kosync/database_statistics.go                  | Modified           | JetBrains Junie (claude-sonnet-4-6) |
+| internal/kosync/api_socket.go                           | Modified           | JetBrains Junie (claude-sonnet-4-6) |
+| webui/src/components/ReadStatisticsChart.vue            | Modified           | JetBrains Junie (claude-sonnet-4-6) |
 
 The table is maintained on a best-effort basis and may not be exhaustive.
 Each file is only listed once.

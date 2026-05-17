@@ -39,7 +39,7 @@ type Message struct {
 	Proto    string  `json:"proto"`              // Proto is the JMP Sub-Protocol (rpc or pubsub)
 	Content  string  `json:"content"`            // Content is a Protocol-specific type identifier (like rpc.call)
 	Payload  Payload `json:"payload"`            // Payload is the request or response payload
-	Sequence float64 `json:"sequence,omitempty"` // Sequence is a client given and server repeated message sequence number
+	Sequence int64 `json:"sequence,omitempty"` // Sequence is a client given and server repeated message sequence number
 }
 
 func MessageFromMap(data map[string]any) (*Message, error) {

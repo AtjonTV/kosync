@@ -57,8 +57,7 @@ const loadData = async () => {
 
 watch(showDays, async (newVal) => {
   if (syncStore.sync.statistics.length < newVal) {
-    const stats = await syncStore.getReadStatistics(newVal);
-    syncStore.sync.statistics = stats;
+    await syncStore.doSync(true, newVal);
   }
 });
 

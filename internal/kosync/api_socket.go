@@ -89,7 +89,7 @@ func (app *Kosync) authenticateWebsocket(c *websocket.Conn) (string, *User, bool
 func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 	LogDebug("HandleWebsocket")
 
-	if strings.ToLower(c.Subprotocol()) != "jmp" {
+	if c.Subprotocol() != "jmp" {
 		_ = c.WriteMessage(websocket.TextMessage, []byte("You do not seem to support JMP (JSON Message Protocol). Please use a WebSocket Client with JMP support: https://git.obth.eu/atjontv/kosync/-/blob/main/pkg/jmp/README.md"))
 		_ = c.Close()
 		return

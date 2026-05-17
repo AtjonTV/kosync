@@ -52,7 +52,7 @@ func (app *Kosync) RpcStatisticsRead(ctx *jmp.Context, payload *jmp.RpcRequestPa
 }
 
 func (app *Kosync) PubSubAnnounceStatistics(userId string, timestamp int64) {
-	if app.Config != nil && app.Config.DisableWebSocketApi {
+	if app.Config == nil || app.Config.DisableWebSocketApi {
 		return
 	}
 	// Unit is 100 microseconds (1/10000s)
