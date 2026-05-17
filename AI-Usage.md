@@ -74,6 +74,7 @@ For transparency, below is a table with the files and how such an Agent interact
 | webui/src/components/TopBar.vue                         | Written completely | JetBrains Junie (gemini-3.1-pro-preview) |
 | webui/src/components/DashboardMetrics.vue               | Written completely | JetBrains Junie (gemini-3.1-pro-preview) |
 | CONTRIBUTING.md                                         | Written completely | JetBrains Junie (gemini-3.1-pro-preview) |
+| pkg/jmp/jmp.go                                          | Modified           | JetBrains Junie (gemini-3.1-pro-preview) |
 
 The table is maintained on a best-effort basis and may not be exhaustive.
 Each file is only listed once.

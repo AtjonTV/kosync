@@ -204,7 +204,11 @@ func (app *Kosync) RpcDocumentsUpdate(ctx *jmp.Context, rpc *jmp.RpcRequestPaylo
 		return jmp.NewErrorResult([]string{"RPC call is missing the argument 'document'"})
 	}
 
-	doc := DocumentFromMap(rpcDoc.(map[string]interface{}))
+	docMap, ok := rpcDoc.(map[string]interface{})
+	if !ok {
+		return jmp.NewErrorResult([]string{"RPC argument 'document' has invalid type"})
+	}
+	doc := DocumentFromMap(docMap)
 	// Security fix: Ensure user can only update their own documents
 	doc.OwnerId = ctx.GetString(CtxContextUserId)
 
