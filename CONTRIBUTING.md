@@ -62,12 +62,16 @@ go tool cover -html=coverage.out
 Every source file (Go, TypeScript, Vue, etc.) **MUST** include the following header:
 ```go
 //
-// File:        path/to/file.ext
+// File:        ${path}
 // Project:     https://git.obth.eu/atjontv/kosync
-// Copyright:   © 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
+// Copyright:   © ${year} ${legal_name}. Licensed under the EUPL-1.2 or later
 //
 ```
 *(Note: Ensure the file path is correct for each file and that the year and legal name are filled in.)*
+
+**Updating Copyrights:**
+- When editing a file for the first time, you must add another copyright line below the last existing one (see template above)
+- When editing a file again, you must check if your copyright year needs updating (e.g., from "2026" to "2026-2027").
 
 ### 3.2 Go Conventions
 - Use standard `gofmt` for formatting with **Tabs** for indentation.
