@@ -7,6 +7,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Deprecated
+
+### Removed
+
+### Fixed
+
+### Security
+
+---
+
+## [26.05.0] - 2026-05-17
+
+### Added
 - Read statistics chart (updates, progress increase, and reading time) in WebUI
 - Real-time statistics updates via PubSub
 - `CODE_STYLE.md` defining Go and TypeScript/Vue coding standards
@@ -25,18 +41,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Extracted generic bits into resuable packages in `pkg/`
 - Improved test coverage
 
-### Deprecated
-
-### Removed
-
 ### Fixed
 - WebUI: Fix broken default sort
 - Type conversion bugs in JMP API
 
 ### Security
 - Fixed document ownership vulnerability where any user could create, update, or delete other users' documents
-
----
 
 ## [2026.06.0] - 2026-02-17
 
@@ -149,7 +159,8 @@ Do **NOT** update from before `2026.05.0` to this version (`2026.06.0`), otherwi
 
 Initial Release
 
-[Unreleased]: https://git.obth.eu/atjontv/kosync/compare/v2026.06.0...main
+[Unreleased]: https://git.obth.eu/atjontv/kosync/compare/v26.05.0...main
+[26.05.0]: https://git.obth.eu/atjontv/kosync/compare/v2026.05.0...v26.05.0
 [2026.06.0]: https://git.obth.eu/atjontv/kosync/compare/v2026.05.0...v2026.06.0
 [2026.05.0]: https://git.obth.eu/atjontv/kosync/compare/v2026.04.1...v2026.05.0
 [2026.04.1]: https://git.obth.eu/atjontv/kosync/compare/v2026.04.0...v2026.04.1
