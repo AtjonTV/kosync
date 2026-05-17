@@ -81,6 +81,8 @@ const toggleTheme = () => {
         isDarkMode.value = true;
     }
 };
+
+defineExpose({ openLogin });
 </script>
 
 <template>

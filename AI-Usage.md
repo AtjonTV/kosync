@@ -26,7 +26,7 @@ For transparency, below is a table with the files and how such an Agent interact
 | internal/kosync/models.go                    | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | webui/src/components/LoginModal.vue          | Written completely | JetBrains Junie (Google Gemini 3 Flash) |
 | webui/src/stores/user.ts                     | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
-| webui/src/views/HomeView.vue                 | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
+| webui/src/views/HomeView.vue                 | Modified           | JetBrains Junie (Google Gemini 3.1 Pro) |
 | webui/README.md                              | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | webui/package.json                           | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
 | internal/kosync/database_document.go         | Modified           | JetBrains Junie (Google Gemini 3 Flash) |
