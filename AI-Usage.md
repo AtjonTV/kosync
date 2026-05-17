@@ -18,7 +18,6 @@ For transparency, below is a table with the files and how such an Agent interact
 | internal/kosync/database_backup_test.go                 | Written completely | JetBrains Junie (Google Gemini 3 Flash)  |
 | internal/kosync/database_user_test.go                   | Modified           | JetBrains Junie (Google Gemini 3 Flash)  |
 | internal/kosync/log_test.go                             | Written completely | JetBrains Junie (Google Gemini 3 Flash)  |
-| TESTS.md                                                | Written completely | JetBrains Junie (Google Gemini 3 Flash)  |
 | internal/kosync/models_test.go                          | Written completely | JetBrains Junie (Google Gemini 3 Flash)  |
 | pkg/jmp/types_test.go                                   | Written completely | JetBrains Junie (Google Gemini 3 Flash)  |
 | internal/kosync/api_auth_test.go                        | Written completely | JetBrains Junie (Google Gemini 3 Flash)  |
@@ -61,7 +60,6 @@ For transparency, below is a table with the files and how such an Agent interact
 | webui/src/tests/stores/user.test.ts                     | Written completely | JetBrains Junie (claude-sonnet-4-6)      |
 | webui/src/tests/stores/sync.test.ts                     | Modified           | JetBrains Junie (Google Gemini 3 Flash)  |
 | .gitlab-ci.yml                                          | Modified           | JetBrains Junie (claude-sonnet-4-6)      |
-| CODE_STYLE.md                                           | Written completely | JetBrains Junie (Google Gemini 3 Flash)  |
 | internal/kosync/models_statistics.go                    | Modified           | JetBrains Junie (Google Gemini 3 Flash)  |
 | internal/kosync/database_statistics.go                  | Modified           | JetBrains Junie (Google Gemini 3 Flash)  |
 | internal/kosync/api_statistics.go                       | Modified           | JetBrains Junie (Google Gemini 3 Flash)  |
@@ -75,6 +73,7 @@ For transparency, below is a table with the files and how such an Agent interact
 | internal/kosync/api_socket_test.go                      | Modified           | JetBrains Junie (Google Gemini 3 Flash)  |
 | webui/src/components/TopBar.vue                         | Written completely | JetBrains Junie (gemini-3.1-pro-preview) |
 | webui/src/components/DashboardMetrics.vue               | Written completely | JetBrains Junie (gemini-3.1-pro-preview) |
+| CONTRIBUTING.md                                         | Written completely | JetBrains Junie (gemini-3.1-pro-preview) |
 
 The table is maintained on a best-effort basis and may not be exhaustive.
 Each file is only listed once.
