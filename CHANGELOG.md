@@ -160,7 +160,7 @@ Do **NOT** update from before `2026.05.0` to this version (`2026.06.0`), otherwi
 Initial Release
 
 [Unreleased]: https://git.obth.eu/atjontv/kosync/compare/v26.05.0...main
-[26.05.0]: https://git.obth.eu/atjontv/kosync/compare/v2026.05.0...v26.05.0
+[26.05.0]: https://git.obth.eu/atjontv/kosync/compare/v2026.06.0...v26.05.0
 [2026.06.0]: https://git.obth.eu/atjontv/kosync/compare/v2026.05.0...v2026.06.0
 [2026.05.0]: https://git.obth.eu/atjontv/kosync/compare/v2026.04.1...v2026.05.0
 [2026.04.1]: https://git.obth.eu/atjontv/kosync/compare/v2026.04.0...v2026.04.1
