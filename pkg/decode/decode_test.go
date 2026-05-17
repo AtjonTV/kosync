@@ -16,10 +16,29 @@ type SampleStruct struct {
 	BoolField   bool   `env:"TEST_BOOL" default:"true"`
 }
 
+type FloatStruct struct {
+	FloatField float32 `json:"float_field"`
+}
+
 var data = map[string]any{
 	"TEST_STR":  "Other Test",
 	"TEST_INT":  42,
 	"TEST_BOOL": false,
+}
+
+func TestStructFromMap_Float32(t *testing.T) {
+	var s = FloatStruct{}
+	data := map[string]any{
+		"float_field": float64(1.23),
+	}
+	err := StructFromMap(&s, "json", data)
+	if err != nil {
+		t.Fatalf("Failed to decode struct: %v", err)
+	}
+	// Use a small tolerance for float comparison
+	if s.FloatField < 1.229 || s.FloatField > 1.231 {
+		t.Errorf("Expected ~1.23, got '%f'", s.FloatField)
+	}
 }
 
 func TestStructFromMap(t *testing.T) {

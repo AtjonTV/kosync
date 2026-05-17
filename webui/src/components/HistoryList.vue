@@ -32,11 +32,31 @@ const deleteHistoryItem = (doc: any, historyItem: any) => {
         }
     });
 };
+
+const restoreHistoryItem = (doc: any, historyItem: any) => {
+    confirm.require({
+        message: `Are you sure you want to restore the document to the state from "${new Date(historyItem.last_read_at/10).toISOString()}"?`,
+        header: 'Confirmation',
+        icon: 'pi pi-refresh',
+        acceptProps: {
+            label: 'Restore',
+            severity: 'primary'
+        },
+        accept: async () => {
+            await syncStore.restoreHistoryItem(doc.id, historyItem.last_read_at);
+        }
+    });
+};
 </script>
 
 <template>
-  <div v-if="document && document.history !== null">
-    <DataTable :value="document.history" scrollable tableStyle="min-width: 50rem">
+  <div v-if="document && document.history !== null && document.history.length > 0">
+    <DataTable
+      :value="document.history"
+      paginator :rows="10" :rowsPerPageOptions="[10, 25, 50, 100]"
+      sortField="last_read_at" :sortOrder="-1"
+      scrollable tableStyle="min-width: 50rem"
+    >
       <Column field="progress" header="Reading progress" :sortable="true">
         <template #body="slotProps">
           {{ Number(slotProps.data.progress*100).toFixed(2) }}%
@@ -49,9 +69,12 @@ const deleteHistoryItem = (doc: any, historyItem: any) => {
           {{ new Date(slotProps.data.last_read_at/10).toISOString() }}
         </template>
       </Column>
-      <Column header="Actions" style="width: 3rem">
+      <Column header="Actions" style="width: 6rem">
         <template #body="historySlotProps">
-          <Button icon="pi pi-trash" severity="danger" variant="text" rounded @click="deleteHistoryItem(document, historySlotProps.data)" />
+          <div class="flex gap-2">
+            <Button icon="pi pi-refresh" severity="info" variant="text" rounded @click="restoreHistoryItem(document, historySlotProps.data)" title="Restore" />
+            <Button icon="pi pi-trash" severity="danger" variant="text" rounded @click="deleteHistoryItem(document, historySlotProps.data)" title="Delete" />
+          </div>
         </template>
       </Column>
     </DataTable>

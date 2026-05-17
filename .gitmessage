@@ -6,34 +6,34 @@
 
 # Write a short summary of the changes you have made on the first line.
 
-# Add additional context, that cannot be infered from the first line, as multiple
+# Add additional context, that cannot be inferred from the first line, as multiple
 # lines after a newline. Include as much information as needed to let others understand
-# the puropose of this commit but without adding too much unrelated bloat.
-# For example, explain acronyms when they are not obviouse for fairly new users.
+# the purpose of this commit but without adding too much unrelated bloat.
+# For example, explain acronyms when they are not obvious for fairly new users.
 # But refrain from explaining well-known acronyms.
-# The acronym "JMP" (JSON Message Protocol) needs an explination, but "JSON" does not.
+# The acronym "JMP" (JSON Message Protocol) needs an explanation, but "JSON" does not.
 
 
 ## AI Agents
 # Specify when AI Agents, LLMs or similar where used to create parts or the whole commit.
 # When using JetBrains Junie with default settings, uncomment the two lines below.
 #
-#AI-Agent: JetBrains Junie (@junie-agent)
+#AI-Agent: JetBrains Junie (v1588/IntelliJ IDEA Ultimate)
 #AI-Model: Google Gemini 3 Flash (gemini-3-flash-preview)
 #
 # Otherwise, fill the following in and uncomment them:
 #
-#AI-Agent: Company Product (Optional-Marketing)
+#AI-Agent: Company Product (Version/Environment)
 #AI-Model: Company Model Version (model-api-identifier)
 #
 # Why AI-Agent?
 # This allows others to know and understand what tool you used.
-# If you use Claude Code, the text "Anthropic Claude Code (@claude)" lets others know that.
-# Example for OpenCode: "Anomaly OpenCode (@opencode-agent[bot])".
+# If you use Claude Code in a Terminal, the text "Anthropic Claude Code (v2.1.141/CLI)" lets others know that.
+# Example for OpenCode in VS Code: "Anomaly OpenCode (v1.14.48/Visual Studio Code)".
 #
 # Why AI-Model?
 # Since nearly every Agent supports multiple models and each model behaving differently,
-# knowing the model becomes imporant. The API Identifier helps others select the same model.
+# knowing the model becomes important. The API Identifier helps others select the same model.
 # If you use Sonnet 4.6, the text "Anthropic Claude Sonnet 4.6 (claude-sonnet-4-6)" gives that information.
 # Example for Gemini 3: "Google Gemini 3 Flash (gemini-3-flash-preview)"
 #

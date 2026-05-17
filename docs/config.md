@@ -11,7 +11,7 @@ Here is a list of configuration variables currently supported:
 - `LOG_FILE`: Path to the log file. Default `./kosync.log`
 - `DEBUG_LOG`: Enable debug logging. Default `false`
 - `ENABLE_WEBUI`: Enable the web UI if available¹. Default `false`
-- `ENABLE_WEBSOCKET_API`: Enable the experimental WebSocket API. Default `false`
+- `DISABLE_WEBSOCKET_API`: Disable the WebSocket API. Default `false`
 - `ENABLE_TRUSTED_PROXIES`: Enable support for trusted proxies. Default `false`
 - `TRUSTED_PROXIES`: Comma separated list of trusted proxies. Default `""`
 - `PROXY_IP_VALIDATION`: Enable IP validation for trusted proxies. Default `false`
@@ -32,7 +32,6 @@ DISABLE_REGISTRATION=false
 
 # Enable the web UI so users can view their progress
 ENABLE_WEBUI=true
-ENABLE_WEBSOCKET_API=true
 # Stay logged in for 24 hours
 JWT_DURATION=86400
 

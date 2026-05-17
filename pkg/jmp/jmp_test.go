@@ -101,10 +101,11 @@ func TestJMP_HandleMessage_Rpc(t *testing.T) {
 	})
 
 	msg := &Message{
-		Version: Version,
-		Proto:   ProtoRpc,
-		Content: RpcCall,
-		Payload: map[string]any{"method": "hello"},
+		Version:  Version,
+		Proto:    ProtoRpc,
+		Content:  RpcCall,
+		Payload:  map[string]any{"method": "hello"},
+		Sequence: 2,
 	}
 
 	ctx := NewContext()
@@ -122,6 +123,10 @@ func TestJMP_HandleMessage_Rpc(t *testing.T) {
 	payload := resp.Payload.(RpcResponsePayload)
 	if payload.Result.Data != "hello Junie" {
 		t.Errorf("Expected 'hello Junie', got %v", payload.Result.Data)
+	}
+
+	if resp.Sequence != msg.Sequence {
+		t.Fatal("Sequence number does not match")
 	}
 }
 

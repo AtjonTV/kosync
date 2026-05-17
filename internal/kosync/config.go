@@ -23,8 +23,8 @@ type Config struct {
 	LogFile   string `env:"LOG_FILE" default:"./kosync.log"`
 	DebugLog  bool   `env:"DEBUG_LOG" default:"false"`
 
-	EnableWebUi        bool `env:"ENABLE_WEBUI" default:"false"`
-	EnableWebSocketApi bool `env:"ENABLE_WEBSOCKET_API" default:"false"`
+	EnableWebUi         bool `env:"ENABLE_WEBUI" default:"false"`
+	DisableWebSocketApi bool `env:"DISABLE_WEBSOCKET_API" default:"false"`
 
 	EnableTrustedProxies bool   `env:"ENABLE_TRUSTED_PROXIES" default:"false"`
 	TrustedProxies       string `env:"TRUSTED_PROXIES" default:""`

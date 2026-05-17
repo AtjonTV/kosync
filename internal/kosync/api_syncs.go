@@ -27,13 +27,14 @@ func (app *Kosync) SyncsPostProgress(c fiber.Ctx) error {
 		logApiSyncs.Error("Failed to save document progress: %v", err.Error())
 		return err
 	}
-	if app.Config.EnableWebSocketApi {
+	if !app.Config.DisableWebSocketApi {
 		go func(userId string) {
 			updatedDoc, found, err := app.Db.FindDocumentById(userId, doc.Id)
 			if err != nil || !found {
 				return
 			}
 			_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, updatedDoc, "Document")
+			app.PubSubAnnounceStatistics(userId, int64(updatedDoc.LastReadAt))
 		}(doc.OwnerId)
 	}
 

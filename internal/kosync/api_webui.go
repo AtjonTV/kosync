@@ -49,6 +49,8 @@ func (app *Kosync) ApiPutDocument(c fiber.Ctx) error {
 		logApiWeb.Error("Failed to parse request body: %v", err.Error())
 		return err
 	}
+	// Security fix: Ensure user can only update their own documents
+	document.OwnerId = user.Id
 	logApiWeb.Debug("User '%s' sent document '%s' update", user.Username, document.Id)
 
 	if err := app.Db.CreateOrUpdateDocument(&document); err != nil {
@@ -56,7 +58,7 @@ func (app *Kosync) ApiPutDocument(c fiber.Ctx) error {
 		return err
 	}
 
-	if app.Config.EnableWebSocketApi {
+	if !app.Config.DisableWebSocketApi {
 		userIdVal := c.Locals(CtxContextUserId)
 		if userIdVal != nil {
 			go func(userId, docId string) {
@@ -65,6 +67,7 @@ func (app *Kosync) ApiPutDocument(c fiber.Ctx) error {
 					return
 				}
 				_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, updatedDoc, "Document")
+				app.PubSubAnnounceStatistics(userId, int64(updatedDoc.LastReadAt))
 			}(userIdVal.(string), document.Id)
 		}
 	}
@@ -94,7 +97,7 @@ func (app *Kosync) ApiDeleteDocument(c fiber.Ctx) error {
 		return err
 	}
 
-	if app.Config.EnableWebSocketApi {
+	if !app.Config.DisableWebSocketApi {
 		go func(documentId string) {
 			type DocumentDeletion struct {
 				DocumentId string `json:"document_id"`
@@ -135,20 +138,59 @@ func (app *Kosync) ApiDeleteDocumentHistory(c fiber.Ctx) error {
 		return err
 	}
 
-	if app.Config.EnableWebSocketApi {
-		// Announce update to refresh history in UI
-		go func(userId string) {
-			go func(documentId string, lastReadAt int64) {
-				type HistoryDeletion struct {
-					DocumentId string `json:"document_id"`
-					LastReadAt int64  `json:"last_read_at"`
-				}
-				_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, HistoryDeletion{DocumentId: documentId, LastReadAt: lastReadAt}, "HistoryDeletion")
-			}(documentId, lastReadAt)
-		}(userId)
+	if !app.Config.DisableWebSocketApi {
+		go func(userId, documentId string, lastReadAt int64) {
+			type HistoryDeletion struct {
+				DocumentId string `json:"document_id"`
+				LastReadAt int64  `json:"last_read_at"`
+			}
+			_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, HistoryDeletion{DocumentId: documentId, LastReadAt: lastReadAt}, "HistoryDeletion")
+		}(userId, documentId, lastReadAt)
 	}
 
 	logApiWeb.Debug("Successfully deleted history item for document '%s'", documentId)
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
+func (app *Kosync) ApiRestoreDocumentHistory(c fiber.Ctx) error {
+	logApiWeb.Debug("ApiRestoreDocumentHistory")
+	documentId := c.Query("id")
+	lastReadAtStr := c.Query("last_read_at")
+	if documentId == "" || lastReadAtStr == "" {
+		logApiWeb.Error("Missing document id or last_read_at in query")
+		return fiber.ErrBadRequest
+	}
+
+	lastReadAt, err := strconv.ParseInt(lastReadAtStr, 10, 64)
+	if err != nil {
+		logApiWeb.Error("Failed to parse last_read_at: %v", err.Error())
+		return fiber.ErrBadRequest
+	}
+
+	userIdVal := c.Locals(CtxContextUserId)
+	if userIdVal == nil {
+		logApiWeb.Error("User ID not found in context")
+		return fiber.ErrUnauthorized
+	}
+	userId := userIdVal.(string)
+	logApiWeb.Debug("User '%s' requested restoration of history item for document '%s' at %d", userId, documentId, lastReadAt)
+
+	if err := app.Db.RestoreDocumentHistoryItem(userId, documentId, lastReadAt); err != nil {
+		logApiWeb.Error("Failed to restore history item: %v", err.Error())
+		return err
+	}
+
+	if !app.Config.DisableWebSocketApi {
+		go func(userId, documentId string, lastReadAt int64) {
+			type HistoryRestore struct {
+				DocumentId string `json:"document_id"`
+				LastReadAt int64  `json:"last_read_at"`
+			}
+			_ = app.PubSubAnnounce(userId, PubSubTopicUserDocuments, HistoryRestore{DocumentId: documentId, LastReadAt: lastReadAt}, "HistoryRestore")
+		}(userId, documentId, lastReadAt)
+	}
+
+	logApiWeb.Debug("Successfully restored history item for document '%s'", documentId)
 	return c.SendStatus(fiber.StatusNoContent)
 }
 

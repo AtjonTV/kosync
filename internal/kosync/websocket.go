@@ -11,12 +11,14 @@ type PubSubTopic int
 const (
 	PubSubTopicUnknown PubSubTopic = iota
 	PubSubTopicUserDocuments
+	PubSubTopicUserStatistics
 	PubSubTopicsCount
 )
 
 var PubSubTopicStrings = map[PubSubTopic]string{
 	PubSubTopicUnknown:       "",
 	PubSubTopicUserDocuments: "user.documents",
+	PubSubTopicUserStatistics: "user.statistics",
 }
 
 // comptime assert PubSubTopicStrings has same length as PubSubTopicsCount

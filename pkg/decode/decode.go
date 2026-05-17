@@ -98,6 +98,11 @@ func StructRaw(dest *any, aliasTag string, valueFunc func(field *reflect.StructF
 			continue
 		}
 
+		// Ignore everything after a comma (needed when a field has ",omitempty")
+		if strings.Contains(alias, ",") {
+			alias = strings.Split(alias, ",")[0]
+		}
+
 		// Get the value from the valueFunc
 		val, found := valueFunc(&fieldType, &alias)
 		if !found {
@@ -110,7 +115,14 @@ func StructRaw(dest *any, aliasTag string, valueFunc func(field *reflect.StructF
 		}
 
 		// Set the field value to val
-		field.Set(reflect.ValueOf(val))
+		v := reflect.ValueOf(val)
+		if v.Type().AssignableTo(field.Type()) {
+			field.Set(v)
+		} else if v.Type().ConvertibleTo(field.Type()) {
+			field.Set(v.Convert(field.Type()))
+		} else {
+			field.Set(v)
+		}
 	}
 	return nil
 }

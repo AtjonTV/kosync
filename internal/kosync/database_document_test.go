@@ -361,8 +361,7 @@ func TestSoftDeleteDocumentHistory(t *testing.T) {
 	}
 	historyItem := history[0]
 
-	// Verify we can delete it (this will fail compilation until we add the method)
-	// We'll use the last_read_at as identifier for the history item since document_id + owner_id + last_read_at is a typical way to identify them
+	// Verify we can delete it
 	err = db.DeleteDocumentHistoryItem(ownerId, docId, int64(historyItem.LastReadAt))
 	if err != nil {
 		t.Fatalf("Failed to delete history item: %v", err)
@@ -434,5 +433,133 @@ func TestCreateOrUpdateDocument_TransactionFail(t *testing.T) {
 	err := db.CreateOrUpdateDocument(&Document{Id: "test", OwnerId: "user"})
 	if err == nil {
 		t.Error("Expected error when database is closed")
+	}
+}
+
+func TestDocumentOwnership(t *testing.T) {
+	db, err := NewTemporaryDatabase(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	// Create two users
+	user1, err := db.CreateUser("user1", "pass1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	user2, err := db.CreateUser("user2", "pass2")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// User 1 creates a document
+	doc1 := &Document{
+		Id:       "doc-shared-id",
+		OwnerId:  user1.Id,
+		Title:    "User 1's Book",
+		Progress: 0.1,
+	}
+	if err := db.CreateOrUpdateDocument(doc1); err != nil {
+		t.Fatal(err)
+	}
+
+	// User 2 creates a document with the SAME document ID but their own OwnerId
+	doc2 := &Document{
+		Id:       "doc-shared-id",
+		OwnerId:  user2.Id,
+		Title:    "User 2's Book",
+		Progress: 0.5,
+	}
+	if err := db.CreateOrUpdateDocument(doc2); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify both exist independently
+	foundDoc1, found1, err := db.FindDocumentById(user1.Id, "doc-shared-id")
+	if err != nil || !found1 {
+		t.Fatalf("Document 1 not found: %v", err)
+	}
+	if foundDoc1.Title != "User 1's Book" {
+		t.Errorf("Expected User 1's Book, got %s", foundDoc1.Title)
+	}
+
+	foundDoc2, found2, err := db.FindDocumentById(user2.Id, "doc-shared-id")
+	if err != nil || !found2 {
+		t.Fatalf("Document 2 not found: %v", err)
+	}
+	if foundDoc2.Title != "User 2's Book" {
+		t.Errorf("Expected User 2's Book, got %s", foundDoc2.Title)
+	}
+
+	// User 1 deletes their document
+	if err := db.DeleteDocumentById(user1.Id, "doc-shared-id"); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify User 1's document is gone (soft-deleted)
+	_, found1, _ = db.FindDocumentById(user1.Id, "doc-shared-id")
+	if found1 {
+		t.Error("User 1's document should be deleted")
+	}
+
+	// Verify User 2's document STILL EXISTS
+	_, found2, _ = db.FindDocumentById(user2.Id, "doc-shared-id")
+	if !found2 {
+		t.Error("User 2's document should still exist")
+	}
+}
+
+func TestDeleteDocumentHistoryOwnership(t *testing.T) {
+	db, err := NewTemporaryDatabase(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	user1, _ := db.CreateUser("user1", "pass1")
+	user2, _ := db.CreateUser("user2", "pass2")
+
+	// Create documents and history for both
+	doc1 := &Document{Id: "doc1", OwnerId: user1.Id, Title: "U1", Progress: 0.1, LastReadAt: 1000}
+	_ = db.CreateOrUpdateDocument(doc1)
+	doc1.Progress = 0.2
+	doc1.LastReadAt = 2000
+	_ = db.CreateOrUpdateDocument(doc1) // Creates history at 1000
+
+	doc2 := &Document{Id: "doc1", OwnerId: user2.Id, Title: "U2", Progress: 0.5, LastReadAt: 1000}
+	_ = db.CreateOrUpdateDocument(doc2)
+	doc2.Progress = 0.6
+	doc2.LastReadAt = 2000
+	_ = db.CreateOrUpdateDocument(doc2) // Creates history at 1000
+
+	// User 1 tries to delete User 2's history item by providing user1.Id but doc2's details
+	// (since they share Id "doc1" and timestamp 1000)
+	if err := db.DeleteDocumentHistoryItem(user1.Id, "doc1", 1000); err != nil {
+		t.Fatal(err)
+	}
+
+	// Check if User 1's history is deleted
+	history1, _ := db.AllDocumentsOfUserWithHistory(user1.Id)
+	foundH1 := false
+	for _, h := range (*history1)[0].History {
+		if h.LastReadAt == 1000 {
+			foundH1 = true
+		}
+	}
+	if foundH1 {
+		t.Error("User 1's history item should be deleted")
+	}
+
+	// Check if User 2's history is STILL THERE
+	history2, _ := db.AllDocumentsOfUserWithHistory(user2.Id)
+	foundH2 := false
+	for _, h := range (*history2)[0].History {
+		if h.LastReadAt == 1000 {
+			foundH2 = true
+		}
+	}
+	if !foundH2 {
+		t.Error("User 2's history item should NOT be deleted")
 	}
 }

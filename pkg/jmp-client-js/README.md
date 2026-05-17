@@ -33,19 +33,16 @@ client.connect();
 
 ### Subscribe to a Topic
 ```typescript
-client.subscribe("user.documents");
-```
-
-### Register Callbacks
-```typescript
-client.registerPubSubCallback("user.documents", (data) => {
+client.subscribe("user.documents", (data) => {
   console.log("Received data:", data);
 });
 ```
 
 ### Send RPC Requests
 ```typescript
-client.rpc("getData", { arg1: "value" });
+client.rpc("getData", { arg1: "value" }).then((data) => {
+  console.log("Response:", data);
+});
 ```
 
 ## Protocol Reference
@@ -95,8 +92,7 @@ import { getWebSocketUrl } from '@/api.ts';
 
 const client = new JMPClient(getWebSocketUrl());
 client.connect();
-client.subscribe("user.documents");
-client.registerPubSubCallback("user.documents", (data) => {
+client.subscribe("user.documents", (data) => {
   // Update sync.value as needed
 });
 ```

@@ -22,7 +22,7 @@ func TestDocumentToKoProgressWithTime(t *testing.T) {
 		Progress:           50.0,
 		LastReadOnDevice:   "device1",
 		LastReadOnDeviceId: "device1-id",
-		LastReadAt:         1609459200000000000,
+		LastReadAt:         16094592000000,
 	}
 	result := DocumentToKoProgressWithTime(d)
 	if result.Document != testDocId {
@@ -34,8 +34,8 @@ func TestDocumentToKoProgressWithTime(t *testing.T) {
 	if result.Device != "device1" {
 		t.Errorf("Expected device 'device1', got %s", result.Device)
 	}
-	if result.Timestamp != 1609459200000000000 {
-		t.Errorf("Expected timestamp %d, got %f", 1609459200000000000, result.Timestamp)
+	if result.Timestamp != 16094592000000 {
+		t.Errorf("Expected timestamp %d, got %f", 16094592000000, result.Timestamp)
 	}
 }
 func TestKoProgressToDocument(t *testing.T) {

@@ -7,6 +7,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Read statistics chart (updates, progress increase, and reading time) in WebUI
+- Real-time statistics updates via PubSub
+- `CODE_STYLE.md` defining Go and TypeScript/Vue coding standards
 - Document and History deletion (Backend and WebUI)
 - Login Modal, replacing the HTTP-Basic-Auth that caused issues on Firefox for Android
 - JMP (JSON Messaging Protocol) for WebUI communication (replacing the KOsync Socket API)
@@ -14,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `AI-Usage.md` for transparency regarding AI usage
 
 ### Changed
+- Unified all database timestamps to 100 microsecond units for consistency and sub-second precision
 - WebUI: Migrated from KOsync Socket API to JMP using `jmp-client-js`
 - Updated Fiber to v3.2.0
 - Updated Go to 1.26.0
@@ -27,8 +31,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 - WebUI: Fix broken default sort
+- Type conversion bugs in JMP API
 
 ### Security
+- Fixed document ownership vulnerability where any user could create, update, or delete other users' documents
 
 ---
 

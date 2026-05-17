@@ -3,6 +3,16 @@
 # 1) Build stage
 FROM golang:1.26.3-alpine3.23 AS builder
 
+RUN tee > /etc/apk/repositories <<EOF
+## Official Repos
+#https://dl-cdn.alpinelinux.org/alpine/v3.23/main
+#https://dl-cdn.alpinelinux.org/alpine/v3.23/community
+
+## obth.eu LSUS
+https://lsus.obth.eu/alpine/v3.23/main
+https://lsus.obth.eu/alpine/v3.23/community
+EOF
+
 WORKDIR /src
 
 # Install build deps

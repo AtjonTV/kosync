@@ -94,7 +94,7 @@ func (db *Database) CreateUser(username, password string) (*User, error) {
 	}
 
 	insertUser := `INSERT INTO users (id, username, password, created_at) VALUES (?, ?, ?, ?)`
-	_, err = db.rawDb.Exec(insertUser, newId.String(), username, password, time.Now().Unix())
+	_, err = db.rawDb.Exec(insertUser, newId.String(), username, password, time.Now().UnixMicro()/100)
 	if err != nil {
 		logDbUser.Error("Failed to insert new user: %v", err.Error())
 		return nil, err

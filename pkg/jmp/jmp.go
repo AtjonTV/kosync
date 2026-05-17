@@ -6,7 +6,10 @@
 
 package jmp
 
-import "slices"
+import (
+	"slices"
+	"sync"
+)
 
 // Version is the implemented protocol version
 const Version = "1"
@@ -16,6 +19,7 @@ type JMP struct {
 	rpcHandlers     map[string]RpcHandler
 	pubSubWriters   map[string]PubSubWriter
 	pubSubListeners map[string]*[]PubSubSubscription
+	pubSubMu        sync.Mutex
 	knownTopics     *[]string
 }
 
@@ -81,6 +85,7 @@ func (s *JMP) handleRpc(ctx *Context, msg *Message) (*Message, error) {
 			ForRpc: payload.Method,
 			Result: result,
 		},
+		Sequence: msg.Sequence,
 	}
 	return &response, nil
 }
@@ -124,6 +129,7 @@ func (s *JMP) handlePubSubSubscription(ctx *Context, msg *Message) (*Message, er
 		return nil, ErrPubSubContextMissingId
 	}
 
+	s.pubSubMu.Lock()
 	subs, found := s.pubSubListeners[payload.Topic]
 	if !found {
 		subs = new([]PubSubSubscription)
@@ -134,10 +140,11 @@ func (s *JMP) handlePubSubSubscription(ctx *Context, msg *Message) (*Message, er
 		Ctx:   ctx,
 		Topic: payload.Topic,
 	})
+	s.pubSubMu.Unlock()
 
 	response := Message{
 		Version: Version,
-		Proto:   ProtoRpc,
+		Proto:   ProtoPubSub,
 		Content: PubSubscription,
 		Payload: PubSubResponsePayload{
 			ForTopic: payload.Topic,
@@ -173,8 +180,16 @@ func (s *JMP) PubSubAnnounce(topic string, recipient *int64, data any, typeHint 
 		return ErrPubSubTopicUnknown
 	}
 
+	s.pubSubMu.Lock()
 	subs, found := s.pubSubListeners[topic]
-	if !found {
+	var subsCopy []PubSubSubscription
+	if found && subs != nil {
+		subsCopy = make([]PubSubSubscription, len(*subs))
+		copy(subsCopy, *subs)
+	}
+	s.pubSubMu.Unlock()
+
+	if !found || subs == nil {
 		return ErrPubSubNoListenersForTopic
 	}
 
@@ -192,7 +207,7 @@ func (s *JMP) PubSubAnnounce(topic string, recipient *int64, data any, typeHint 
 	}
 
 	for _, write := range s.pubSubWriters {
-		for _, sub := range *subs {
+		for _, sub := range subsCopy {
 			// Note: This nested loop might be slow if there are many writers and subscribers.
 			// Optimization could involve indexing subscribers by recipient ID if performance becomes an issue.
 			if recipient != nil {
@@ -211,11 +226,19 @@ func (s *JMP) PubSubAnnounce(topic string, recipient *int64, data any, typeHint 
 type PubSubRecipientMatcher func(ctx *Context) int64
 
 func (s *JMP) PubSubAnnounceWithMatcher(topic string, data any, typeHint string, matcher PubSubRecipientMatcher) error {
+	s.pubSubMu.Lock()
 	subs, found := s.pubSubListeners[topic]
-	if !found {
+	var subsCopy []PubSubSubscription
+	if found && subs != nil {
+		subsCopy = make([]PubSubSubscription, len(*subs))
+		copy(subsCopy, *subs)
+	}
+	s.pubSubMu.Unlock()
+
+	if !found || subs == nil {
 		return ErrPubSubNoListenersForTopic
 	}
-	for _, sub := range *subs {
+	for _, sub := range subsCopy {
 		recipient := matcher(sub.Ctx)
 		if recipient != 0 {
 			err := s.PubSubAnnounce(topic, &recipient, data, typeHint)
@@ -226,4 +249,18 @@ func (s *JMP) PubSubAnnounceWithMatcher(topic string, data any, typeHint string,
 	}
 
 	return nil
+}
+
+func (s *JMP) InvalidatePubSubSubscriptionForRequestId(uniqueRequestId int64) {
+	s.pubSubMu.Lock()
+	defer s.pubSubMu.Unlock()
+
+	for _, topic := range *s.knownTopics {
+		if subs, ok := s.pubSubListeners[topic]; ok && subs != nil {
+			newList := slices.DeleteFunc(*subs, func(sub PubSubSubscription) bool {
+				return sub.Ctx.UniqueRequestorId == uniqueRequestId
+			})
+			*subs = newList
+		}
+	}
 }

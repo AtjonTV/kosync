@@ -27,7 +27,7 @@ import (
 )
 
 // Version NOTE: Must be the same as "sonar.projectVersion" in ../../sonar-project.properties
-const Version = "2026.06.1-dev.6"
+const Version = "26.05.0-dev.14"
 
 const (
 	CtxContextUserName = "current_user_name"
@@ -197,18 +197,20 @@ func Run() {
 	app.Get("/syncs/progress/:document", koapp.SyncsGetProgress)
 
 	app.Get("/api/documents.all", koapp.ApiGetDocumentsAll)
+	app.Get("/api/statistics.read", koapp.StatisticsRead)
 	app.Put("/api/documents.update", koapp.ApiPutDocument)
 	app.Delete("/api/documents.delete", koapp.ApiDeleteDocument)
 	app.Delete("/api/documents.history.delete", koapp.ApiDeleteDocumentHistory)
+	app.Post("/api/documents.history.restore", koapp.ApiRestoreDocumentHistory)
 	app.Get("/api/auth.basic", koapp.ApiAuthBasic)
 	app.Get("/api/auth.jwt", koapp.ApiAuthForToken)
 
-	if koapp.Config.EnableWebSocketApi {
+	if !koapp.Config.DisableWebSocketApi {
 		koapp.ConfigureJmp()
 
 		app.Get("/api/ws", koapp.HandleOpenWebsocket)
 		app.Get("/api/ws/:id", websocket.New(koapp.HandleWebsocket, websocket.Config{
-			Subprotocols: []string{"kosync.rpc", "kosync.pubsub"},
+			Subprotocols: []string{"jmp"},
 		}))
 	}
 
