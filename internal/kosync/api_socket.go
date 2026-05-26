@@ -64,8 +64,9 @@ func (app *Kosync) authenticateWebsocket(c *websocket.Conn) (string, *User, bool
 	token := c.Params("id")
 	valid, userId := app.Crypt.VerifyToken(token)
 	if !valid {
+		lang := GetLanguageFromWebsocket(c)
 		err := c.WriteJSON(jmp.NewRpcNoticeMessage(jmp.NewRpcResponseFromResult("connect", jmp.NewErrorResult([]string{
-			"Your access token is invalid. Make sure it is supplied like this: /api/ws/{token}",
+			Translate(lang, "err_access_token_invalid"),
 		}))))
 
 		if err != nil {
@@ -124,12 +125,14 @@ func (app *Kosync) HandleWebsocket(c *websocket.Conn) {
 		return
 	}
 
+	lang := GetLanguageFromWebsocket(c)
 	ctx := jmp.Context{
 		UniqueRequestorId: uniqueReqId,
 		Data: map[string]interface{}{
 			JmpContextRequestId: requestId,
 			CtxContextUserId:    userId,
 			CtxContextUserName:  user.Username,
+			CtxContextLanguage:  lang,
 		},
 		RawSocket: c,
 	}
@@ -201,12 +204,14 @@ func (app *Kosync) RpcDocumentsAll(ctx *jmp.Context, rpc *jmp.RpcRequestPayload)
 func (app *Kosync) RpcDocumentsUpdate(ctx *jmp.Context, rpc *jmp.RpcRequestPayload) jmp.Result {
 	rpcDoc, found := rpc.Arguments["document"]
 	if !found {
-		return jmp.NewErrorResult([]string{"RPC call is missing the argument 'document'"})
+		lang := GetLanguage(ctx)
+		return jmp.NewErrorResult([]string{Translate(lang, "err_rpc_missing_document")})
 	}
 
 	docMap, ok := rpcDoc.(map[string]interface{})
 	if !ok {
-		return jmp.NewErrorResult([]string{"RPC argument 'document' has invalid type"})
+		lang := GetLanguage(ctx)
+		return jmp.NewErrorResult([]string{Translate(lang, "err_rpc_invalid_document_type")})
 	}
 	doc := DocumentFromMap(docMap)
 	// Security fix: Ensure user can only update their own documents
@@ -231,7 +236,8 @@ func (app *Kosync) RpcDocumentsUpdate(ctx *jmp.Context, rpc *jmp.RpcRequestPaylo
 }
 
 func (app *Kosync) RpcDocumentsDelete(ctx *jmp.Context, rpc *jmp.RpcRequestPayload) jmp.Result {
-	rpcDocId, err := getRpcArgumentString(rpc.Arguments, "document_id")
+	lang := GetLanguage(ctx)
+	rpcDocId, err := getRpcArgumentString(lang, rpc.Arguments, "document_id")
 	if err != nil {
 		return jmp.NewErrorResult([]string{err.Error()})
 	}
@@ -252,12 +258,13 @@ func (app *Kosync) RpcDocumentsDelete(ctx *jmp.Context, rpc *jmp.RpcRequestPaylo
 }
 
 func (app *Kosync) RpcDocumentsHistoryDelete(ctx *jmp.Context, payload *jmp.RpcRequestPayload) jmp.Result {
-	rpcDocId, err := getRpcArgumentString(payload.Arguments, "document_id")
+	lang := GetLanguage(ctx)
+	rpcDocId, err := getRpcArgumentString(lang, payload.Arguments, "document_id")
 	if err != nil {
 		return jmp.NewErrorResult([]string{err.Error()})
 	}
 
-	lastReadAt, err := getRpcArgumentInt64(payload.Arguments, "last_read_at")
+	lastReadAt, err := getRpcArgumentInt64(lang, payload.Arguments, "last_read_at")
 	if err != nil {
 		return jmp.NewErrorResult([]string{err.Error()})
 	}
@@ -279,12 +286,13 @@ func (app *Kosync) RpcDocumentsHistoryDelete(ctx *jmp.Context, payload *jmp.RpcR
 }
 
 func (app *Kosync) RpcDocumentsHistoryRestore(ctx *jmp.Context, payload *jmp.RpcRequestPayload) jmp.Result {
-	rpcDocId, err := getRpcArgumentString(payload.Arguments, "document_id")
+	lang := GetLanguage(ctx)
+	rpcDocId, err := getRpcArgumentString(lang, payload.Arguments, "document_id")
 	if err != nil {
 		return jmp.NewErrorResult([]string{err.Error()})
 	}
 
-	lastReadAt, err := getRpcArgumentInt64(payload.Arguments, "last_read_at")
+	lastReadAt, err := getRpcArgumentInt64(lang, payload.Arguments, "last_read_at")
 	if err != nil {
 		return jmp.NewErrorResult([]string{err.Error()})
 	}

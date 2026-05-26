@@ -7,6 +7,8 @@
 package kosync
 
 import (
+	"errors"
+
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -36,6 +38,10 @@ func (app *Kosync) UsersCreate(c fiber.Ctx) error {
 	logApiUser.Debug("Trying to process new user signup: '%s'", data.Username)
 	if _, err := app.Db.CreateUser(data.Username, data.Password); err != nil {
 		LogError("Failed to create new user: %v", err.Error())
+		if errors.Is(err, ErrUserAlreadyExists) {
+			lang := GetLanguageFromFiber(c)
+			return fiber.NewError(fiber.StatusConflict, Translate(lang, "err_user_already_exists"))
+		}
 		return err
 	}
 

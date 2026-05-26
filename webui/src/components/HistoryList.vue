@@ -7,24 +7,26 @@
 <script setup lang="ts">
 import {useSyncStore} from "@/stores/sync.ts";
 import { useConfirm } from "primevue/useconfirm";
+import { useI18nStore } from "@/stores/i18n.ts";
 
 const props = defineProps<{document: any}>();
 
 const syncStore = useSyncStore();
 const confirm = useConfirm();
+const i18nStore = useI18nStore();
 
 const deleteHistoryItem = (doc: any, historyItem: any) => {
     confirm.require({
-        message: `Are you sure you want to delete this history item from "${historyItem.last_read_at}"?`,
-        header: 'Confirmation',
+        message: i18nStore.t('delete_history_confirm', new Date(historyItem.last_read_at/10).toISOString()),
+        header: i18nStore.t('confirm_title'),
         icon: 'pi pi-exclamation-triangle',
         rejectProps: {
-            label: 'Cancel',
+            label: i18nStore.t('cancel'),
             severity: 'secondary',
             outlined: true
         },
         acceptProps: {
-            label: 'Delete',
+            label: i18nStore.t('delete'),
             severity: 'danger'
         },
         accept: async () => {
@@ -35,11 +37,11 @@ const deleteHistoryItem = (doc: any, historyItem: any) => {
 
 const restoreHistoryItem = (doc: any, historyItem: any) => {
     confirm.require({
-        message: `Are you sure you want to restore the document to the state from "${new Date(historyItem.last_read_at/10).toISOString()}"?`,
-        header: 'Confirmation',
+        message: i18nStore.t('restore_history_confirm', new Date(historyItem.last_read_at/10).toISOString()),
+        header: i18nStore.t('confirm_title'),
         icon: 'pi pi-refresh',
         acceptProps: {
-            label: 'Restore',
+            label: i18nStore.t('btn_restore'),
             severity: 'primary'
         },
         accept: async () => {
@@ -57,29 +59,29 @@ const restoreHistoryItem = (doc: any, historyItem: any) => {
       sortField="last_read_at" :sortOrder="-1"
       scrollable tableStyle="min-width: 50rem"
     >
-      <Column field="progress" header="Reading progress" :sortable="true">
+      <Column field="progress" :header="$t('col_progress')" :sortable="true">
         <template #body="slotProps">
           {{ Number(slotProps.data.progress*100).toFixed(2) }}%
         </template>
       </Column>
-      <Column field="title" header="Previous Title" :sortable="true"></Column>
-      <Column field="last_read_on_device" header="Device" :sortable="true"></Column>
-      <Column field="last_read_at" header="When" :sortable="true">
+      <Column field="title" :header="$t('col_previous_title')" :sortable="true"></Column>
+      <Column field="last_read_on_device" :header="$t('col_device')" :sortable="true"></Column>
+      <Column field="last_read_at" :header="$t('col_when')" :sortable="true">
         <template #body="slotProps">
           {{ new Date(slotProps.data.last_read_at/10).toISOString() }}
         </template>
       </Column>
-      <Column header="Actions" style="width: 6rem">
+      <Column :header="$t('col_actions')" style="width: 6rem">
         <template #body="historySlotProps">
           <div class="flex gap-2">
-            <Button icon="pi pi-refresh" severity="info" variant="text" rounded @click="restoreHistoryItem(document, historySlotProps.data)" title="Restore" />
-            <Button icon="pi pi-trash" severity="danger" variant="text" rounded @click="deleteHistoryItem(document, historySlotProps.data)" title="Delete" />
+            <Button icon="pi pi-refresh" severity="info" variant="text" rounded @click="restoreHistoryItem(document, historySlotProps.data)" :title="$t('btn_restore')" />
+            <Button icon="pi pi-trash" severity="danger" variant="text" rounded @click="deleteHistoryItem(document, historySlotProps.data)" :title="$t('delete')" />
           </div>
         </template>
       </Column>
     </DataTable>
   </div>
   <div v-else>
-    <p>This document does not have a history.<br>You can try pushing your progress and you might want to check your automatic push setting.</p>
+    <p v-html="$t('no_history_desc')"></p>
   </div>
 </template>

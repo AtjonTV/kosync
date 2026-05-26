@@ -7,8 +7,10 @@
 import { ref, onMounted, computed, watch } from 'vue';
 import Chart from 'primevue/chart';
 import { useSyncStore } from '@/stores/sync';
+import { useI18nStore } from '@/stores/i18n';
 
 const syncStore = useSyncStore();
+const i18nStore = useI18nStore();
 const showDays = ref(14);
 
 const chartData = computed(() => {
@@ -19,7 +21,7 @@ const chartData = computed(() => {
     labels: stats.map(s => s.date),
     datasets: [
       {
-        label: 'Updates',
+        label: i18nStore.t('chart_updates'),
         data: stats.map(s => s.update_count),
         fill: false,
         borderColor: '#10b981',
@@ -27,7 +29,7 @@ const chartData = computed(() => {
         yAxisID: 'y'
       },
       {
-        label: 'Progress Increase (%)',
+        label: i18nStore.t('chart_progress_increase'),
         data: stats.map(s => s.progress_increase),
         fill: true,
         borderColor: '#3b82f6',
@@ -36,7 +38,7 @@ const chartData = computed(() => {
         yAxisID: 'y1'
       },
       {
-        label: 'Reading Time (min)',
+        label: i18nStore.t('chart_reading_time'),
         data: stats.map(s => Math.round((s.reading_time || 0) / 60 * 10) / 10),
         fill: false,
         borderColor: '#f59e0b',
@@ -55,10 +57,11 @@ const loadData = async () => {
   chartOptions.value = setChartOptions();
 };
 
-watch(showDays, async (newVal) => {
+watch([showDays, () => i18nStore.locale], async ([newVal, _]) => {
   if (syncStore.sync.statistics.length < newVal) {
     await syncStore.doSync(true, newVal);
   }
+  chartOptions.value = setChartOptions();
 });
 
 const setChartOptions = () => {
@@ -99,7 +102,7 @@ const setChartOptions = () => {
         },
         title: {
           display: true,
-          text: 'Number of Updates',
+          text: i18nStore.t('chart_number_of_updates'),
           color: textColor
         }
       },
@@ -116,7 +119,7 @@ const setChartOptions = () => {
         },
         title: {
           display: true,
-          text: 'Progress Increase (%)',
+          text: i18nStore.t('chart_progress_increase'),
           color: textColor
         }
       },
@@ -133,7 +136,7 @@ const setChartOptions = () => {
         },
         title: {
           display: true,
-          text: 'Reading Time (min)',
+          text: i18nStore.t('chart_reading_time'),
           color: textColor
         }
       }
@@ -148,7 +151,7 @@ onMounted(loadData);
   <Card class="mb-8">
     <template #title>
       <div class="flex justify-between items-center">
-        <span class="text-xl font-semibold">Reading Statistics (Last {{showDays}} Days)</span>
+        <span class="text-xl font-semibold">{{ $t('chart_title', showDays) }}</span>
         <SelectButton v-model="showDays" :options="[7, 14, 30, 60]" :unselectable="false" />
       </div>
     </template>
@@ -156,7 +159,7 @@ onMounted(loadData);
       <div class="h-64">
         <Chart v-if="chartData" type="line" :data="chartData" :options="chartOptions" class="h-full w-full" />
         <div v-else class="flex items-center justify-center h-full">
-          <span>Loading statistics...</span>
+          <span>{{ $t('chart_loading') }}</span>
         </div>
       </div>
     </template>

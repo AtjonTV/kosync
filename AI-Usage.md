@@ -76,6 +76,12 @@ For transparency, below is a table with the files and how such an Agent interact
 | internal/kosync/database_statistics.go                  | Modified           | JetBrains Junie (claude-sonnet-4-6) |
 | internal/kosync/api_socket.go                           | Modified           | JetBrains Junie (claude-sonnet-4-6) |
 | webui/src/components/ReadStatisticsChart.vue            | Modified           | JetBrains Junie (claude-sonnet-4-6) |
+| internal/kosync/i18n.go                                 | Written completely  | JetBrains Junie (Google Gemini 3.5 Flash) |
+| internal/kosync/i18n_test.go                            | Written completely  | JetBrains Junie (Google Gemini 3.5 Flash) |
+| internal/kosync/rpc_util.go                             | Modified           | JetBrains Junie (Google Gemini 3.5 Flash) |
+| internal/kosync/api_users.go                            | Modified           | JetBrains Junie (Google Gemini 3.5 Flash) |
+| webui/src/stores/i18n.ts                                | Written completely  | JetBrains Junie (Google Gemini 3.5 Flash) |
+| webui/src/tests/stores/i18n.test.ts                     | Written completely  | JetBrains Junie (Google Gemini 3.5 Flash) |
 
 The table is maintained on a best-effort basis and may not be exhaustive.
 Each file is only listed once.

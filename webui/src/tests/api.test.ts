@@ -37,6 +37,7 @@ describe('fetchApi', () => {
     expect(mockFetch).toHaveBeenCalledOnce()
     const callArgs = mockFetch.mock.calls[0]
     expect(callArgs[1].headers['Authorization']).toBe(`Bearer ${VALID_JWT}`)
+    expect(callArgs[1].headers['Accept-Language']).toBe('en')
     vi.unstubAllGlobals()
   })
 
@@ -103,6 +104,7 @@ describe('fetchApi', () => {
 
     const callArgs = mockFetch.mock.calls[0]
     expect(callArgs[1].headers['Authorization']).toBe(`Bearer ${VALID_JWT}`)
+    expect(callArgs[1].headers['Accept-Language']).toBe('en')
     expect(callArgs[1].headers['X-Custom']).toBe('value')
     vi.unstubAllGlobals()
   })
@@ -117,11 +119,12 @@ describe('getWebSocketUrl', () => {
     expect(typeof url).toBe('string')
   })
 
-  it('returns a WebSocket URL containing the access token when logged in', async () => {
+  it('returns a WebSocket URL containing the access token and lang query param when logged in', async () => {
     const store = useUserStore()
     await store.login(VALID_JWT)
     const url = getWebSocketUrl()
     expect(url).toContain(VALID_JWT)
     expect(url).toContain('/api/ws/')
+    expect(url).toContain('?lang=en')
   })
 })

@@ -37,25 +37,25 @@ const onLogout = () => {
       <template v-if="isLoggedIn">
         <DashboardMetrics />
         <ReadStatisticsChart />
-        <DocumentsList customTitle="My documents" />
+        <DocumentsList :customTitle="$t('my_documents')" />
       </template>
       <div v-else class="flex flex-col gap-6 mt-8">
         <div class="text-center p-12 bg-surface-0 dark:bg-surface-900 rounded-xl border border-surface-200 dark:border-surface-700 shadow-sm">
            <i class="pi pi-lock text-4xl text-surface-400 dark:text-surface-500 mb-4"></i>
-           <p class="text-xl text-surface-600 dark:text-surface-400">Please login to see your documents.</p>
+           <p class="text-xl text-surface-600 dark:text-surface-400">{{ $t('login_prompt') }}</p>
         </div>
 
         <div class="p-8 bg-surface-0 dark:bg-surface-900 rounded-xl border border-surface-200 dark:border-surface-700 shadow-sm">
-          <h2 class="text-2xl font-bold mb-4">How to Setup KOReader Sync</h2>
+          <h2 class="text-2xl font-bold mb-4">{{ $t('setup_koreader_title') }}</h2>
           <ol class="list-decimal list-inside space-y-4 text-surface-700 dark:text-surface-300">
-            <li>Set <strong>Custom sync server</strong> to <code>{{ currentSite }}</code></li>
-            <li><strong>Register</strong> a new account.</li>
-            <li>Enable <strong>automatically keep documents in sync</strong>.</li>
-            <li>Set <strong>periodically sync every # pages</strong> to 2.</li>
-            <li>Set <strong>Document matching method</strong> to "Binary".</li>
-            <li>Login on all devices repeating steps 3-5.</li>
-            <li>Login to KOSync <Button label="Login" size="small" @click="topBarRef?.openLogin()" class="ml-2" /></li>
-            <li>Read books.</li>
+            <li v-html="$t('setup_step_1', currentSite)"></li>
+            <li v-html="$t('setup_step_2')"></li>
+            <li v-html="$t('setup_step_3')"></li>
+            <li v-html="$t('setup_step_4')"></li>
+            <li v-html="$t('setup_step_5')"></li>
+            <li>{{ $t('setup_step_6') }}</li>
+            <li>{{ $t('setup_step_7') }} <Button :label="$t('login')" size="small" @click="topBarRef?.openLogin()" class="ml-2" /></li>
+            <li>{{ $t('setup_step_8') }}</li>
           </ol>
         </div>
       </div>

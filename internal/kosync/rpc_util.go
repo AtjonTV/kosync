@@ -6,7 +6,9 @@
 
 package kosync
 
-import "errors"
+import (
+	"fmt"
+)
 
 func getRpcInt64(val any) (int64, bool) {
 	switch v := val.(type) {
@@ -21,26 +23,26 @@ func getRpcInt64(val any) (int64, bool) {
 	}
 }
 
-func getRpcArgumentInt64(arguments map[string]any, key string) (int64, error) {
+func getRpcArgumentInt64(lang Language, arguments map[string]any, key string) (int64, error) {
 	val, found := arguments[key]
 	if !found {
-		return 0, errors.New("RPC call is missing the argument '" + key + "'")
+		return 0, fmt.Errorf(Translate(lang, "err_rpc_missing_argument"), key)
 	}
 	res, ok := getRpcInt64(val)
 	if !ok {
-		return 0, errors.New("RPC call has invalid type for argument '" + key + "'")
+		return 0, fmt.Errorf(Translate(lang, "err_rpc_invalid_argument_type"), key)
 	}
 	return res, nil
 }
 
-func getRpcArgumentString(arguments map[string]any, key string) (string, error) {
+func getRpcArgumentString(lang Language, arguments map[string]any, key string) (string, error) {
 	val, found := arguments[key]
 	if !found {
-		return "", errors.New("RPC call is missing the argument '" + key + "'")
+		return "", fmt.Errorf(Translate(lang, "err_rpc_missing_argument"), key)
 	}
 	res, ok := val.(string)
 	if !ok {
-		return "", errors.New("RPC call has invalid type for argument '" + key + "'")
+		return "", fmt.Errorf(Translate(lang, "err_rpc_invalid_argument_type"), key)
 	}
 	return res, nil
 }

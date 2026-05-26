@@ -31,7 +31,13 @@ const KOsyncPreset = definePreset(Aura, {
     }
 });
 
-app.use(createPinia())
+const pinia = createPinia()
+app.use(pinia)
+
+import { useI18nStore } from '@/stores/i18n.ts'
+const i18nStore = useI18nStore()
+app.config.globalProperties.$t = (key: string, ...args: any[]) => i18nStore.t(key, ...args)
+
 app.use(router)
 app.use(PrimeVue, {
     theme: {

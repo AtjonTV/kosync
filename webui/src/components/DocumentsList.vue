@@ -1,16 +1,18 @@
 <script setup lang="ts">
 
 import {useSyncStore} from "@/stores/sync.ts";
-import {ref} from "vue";
+import {ref, computed} from "vue";
 import {fetchApi} from "@/api.ts";
 import {useUserStore} from "@/stores/user.ts";
 import { useConfirm } from "primevue/useconfirm";
+import { useI18nStore } from "@/stores/i18n.ts";
 import HistoryList from "@/components/HistoryList.vue";
 
 const {customTitle} = defineProps<{customTitle?: string}>()
 
 const userStore = useUserStore();
 const confirm = useConfirm();
+const i18nStore = useI18nStore();
 
 const syncStore = useSyncStore();
 if (await userStore.isLoggedIn()) {
@@ -39,16 +41,16 @@ const onEditComplete = async (event: any) => {
 
 const deleteDocument = (data: any) => {
     confirm.require({
-        message: `Are you sure you want to delete "${data.title || data.id}"?`,
-        header: 'Confirmation',
+        message: i18nStore.t('delete_doc_confirm', data.title || data.id),
+        header: i18nStore.t('confirm_title'),
         icon: 'pi pi-exclamation-triangle',
         rejectProps: {
-            label: 'Cancel',
+            label: i18nStore.t('cancel'),
             severity: 'secondary',
             outlined: true
         },
         acceptProps: {
-            label: 'Delete',
+            label: i18nStore.t('delete'),
             severity: 'danger'
         },
         accept: async () => {
@@ -58,14 +60,17 @@ const deleteDocument = (data: any) => {
 };
 
 const viewMode = ref('Grid');
-const viewOptions = ref(['Grid', 'List']);
+const viewOptions = computed(() => [
+  { label: i18nStore.t('view_grid'), value: 'Grid' },
+  { label: i18nStore.t('view_list'), value: 'List' }
+]);
 </script>
 
 <template>
   <div class="flex flex-col gap-4">
     <div class="flex justify-between items-center">
-      <h1 class="text-3xl">{{ customTitle ?? 'Documents' }}</h1>
-      <SelectButton v-model="viewMode" :options="viewOptions" :allowEmpty="false" />
+      <h1 class="text-3xl">{{ customTitle ?? $t('my_documents') }}</h1>
+      <SelectButton v-model="viewMode" :options="viewOptions" optionLabel="label" optionValue="value" :allowEmpty="false" />
     </div>
 
     <div v-if="viewMode === 'List'">
@@ -78,26 +83,26 @@ const viewOptions = ref(['Grid', 'List']);
           sortField="last_read_at" :sortOrder="-1"
       >
         <Column field="id" header="ID" :sortable="true" style="width: 25%"></Column>
-        <Column field="title" header="Title" :sortable="true" style="width: 25%">
+        <Column field="title" :header="$t('col_title')" :sortable="true" style="width: 25%">
             <template #editor="{data, field}">
                 <InputText v-model="data[field]" :defaultValue="data[field]" autofocus fluid />
             </template>
         </Column>
-        <Column field="progress" header="Reading progress" :sortable="true">
+        <Column field="progress" :header="$t('reading_progress')" :sortable="true">
           <template #body="slotProps">
             {{ Number(slotProps.data.progress*100).toFixed(2) }}%
           </template>
         </Column>
-        <Column field="last_read_on_device" header="Device" :sortable="true"></Column>
-        <Column field="last_read_at" header="Last read" :sortable="true">
+        <Column field="last_read_on_device" :header="$t('col_device')" :sortable="true"></Column>
+        <Column field="last_read_at" :header="$t('col_last_read')" :sortable="true">
           <template #body="slotProps">
             {{ new Date(slotProps.data.last_read_at/10).toISOString() }}
           </template>
         </Column>
-        <Column header="Actions" style="width: 5rem">
+        <Column :header="$t('col_actions')" style="width: 5rem">
             <template #body="slotProps">
-                <Button icon="pi pi-history" variant="text" rounded @click="openHistory(slotProps.data)" title="View History" />
-                <Button icon="pi pi-trash" severity="danger" variant="text" rounded @click="deleteDocument(slotProps.data)" title="Delete" />
+                <Button icon="pi pi-history" variant="text" rounded @click="openHistory(slotProps.data)" :title="$t('btn_show_history')" />
+                <Button icon="pi pi-trash" severity="danger" variant="text" rounded @click="deleteDocument(slotProps.data)" :title="$t('delete')" />
             </template>
         </Column>
       </DataTable>
@@ -112,7 +117,7 @@ const viewOptions = ref(['Grid', 'List']);
             <div class="mt-auto flex flex-col gap-3">
               <div>
                 <div class="flex justify-between text-sm mb-1 text-surface-600 dark:text-surface-400">
-                  <span>Progress</span>
+                  <span>{{ $t('col_progress') }}</span>
                   <span>{{ Number((doc.progress || 0) * 100).toFixed(1) }}%</span>
                 </div>
                 <ProgressBar :value="Number((doc.progress || 0) * 100)" :showValue="false" style="height: 6px"></ProgressBar>
@@ -125,19 +130,19 @@ const viewOptions = ref(['Grid', 'List']);
             </div>
 
             <div class="flex justify-end gap-2 mt-4 pt-4 border-t border-surface-200 dark:border-surface-700">
-              <Button icon="pi pi-history" variant="text" rounded @click="openHistory(doc)" title="View History" />
-              <Button icon="pi pi-trash" severity="danger" variant="text" rounded @click="deleteDocument(doc)" title="Delete" />
+              <Button icon="pi pi-history" variant="text" rounded @click="openHistory(doc)" :title="$t('btn_show_history')" />
+              <Button icon="pi pi-trash" severity="danger" variant="text" rounded @click="deleteDocument(doc)" :title="$t('delete')" />
             </div>
           </div>
         </template>
       </Card>
 
       <div v-if="syncStore.sync.documents.length === 0" class="col-span-full text-center p-8 text-surface-500 dark:text-surface-400">
-        No documents found.
+        {{ $t('no_documents') }}
       </div>
     </div>
 
-    <Dialog v-model:visible="showHistoryDialog" header="History" modal :breakpoints="{ '960px': '75vw', '640px': '90vw' }" :style="{ width: '80rem' }">
+    <Dialog v-model:visible="showHistoryDialog" :header="$t('history_title')" modal :breakpoints="{ '960px': '75vw', '640px': '90vw' }" :style="{ width: '80rem' }">
       <HistoryList :document="selectedDocument" />
     </Dialog>
   </div>

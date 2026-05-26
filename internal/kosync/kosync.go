@@ -144,6 +144,7 @@ func Run() {
 		}
 	}(app)
 
+	app.Use(koapp.NewI18nMiddleware())
 	app.Use(koapp.NewAuthMiddleware())
 
 	if koapp.Config.EnableWebUi {
@@ -186,7 +187,8 @@ func Run() {
 	} else {
 		LogDebug("Starting KOsync without WebUI.")
 		app.Get("/", func(c fiber.Ctx) error {
-			return c.SendString("WebUI is not enabled. If you want to use the web interface, restart KOsync with the --webui flag.")
+			lang := GetLanguageFromFiber(c)
+			return c.SendString(Translate(lang, "err_webui_disabled"))
 		})
 	}
 
@@ -216,5 +218,15 @@ func Run() {
 
 	if err := app.Listen(koapp.Config.ListenAddress); err != nil {
 		panic(err)
+	}
+}
+
+func (app *Kosync) NewI18nMiddleware() fiber.Handler {
+	return func(c fiber.Ctx) error {
+		acceptLang := c.Get("Accept-Language", "")
+		queryLang := c.Query("lang", "")
+		lang := DetectLanguage(acceptLang, queryLang)
+		c.Locals(CtxContextLanguage, lang)
+		return c.Next()
 	}
 }

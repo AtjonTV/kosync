@@ -37,7 +37,7 @@ const totalReadingTime = computed(() => {
             <i class="pi pi-book text-2xl text-blue-600 dark:text-blue-400"></i>
           </div>
           <div>
-            <span class="block text-surface-500 dark:text-surface-400 text-sm font-medium mb-1">Total Documents</span>
+            <span class="block text-surface-500 dark:text-surface-400 text-sm font-medium mb-1">{{ $t('total_documents') }}</span>
             <span class="text-2xl font-bold text-surface-900 dark:text-surface-0">{{ totalDocuments }}</span>
           </div>
         </div>
@@ -51,7 +51,7 @@ const totalReadingTime = computed(() => {
             <i class="pi pi-percentage text-2xl text-green-600 dark:text-green-400"></i>
           </div>
           <div>
-            <span class="block text-surface-500 dark:text-surface-400 text-sm font-medium mb-1">Average Progress</span>
+            <span class="block text-surface-500 dark:text-surface-400 text-sm font-medium mb-1">{{ $t('average_progress') }}</span>
             <span class="text-2xl font-bold text-surface-900 dark:text-surface-0">{{ averageProgress }}%</span>
           </div>
         </div>
@@ -65,8 +65,8 @@ const totalReadingTime = computed(() => {
             <i class="pi pi-clock text-2xl text-orange-600 dark:text-orange-400"></i>
           </div>
           <div>
-            <span class="block text-surface-500 dark:text-surface-400 text-sm font-medium mb-1">Recent Read Time</span>
-            <span class="text-2xl font-bold text-surface-900 dark:text-surface-0">{{ totalReadingTime }} min</span>
+            <span class="block text-surface-500 dark:text-surface-400 text-sm font-medium mb-1">{{ $t('recent_read_time') }}</span>
+            <span class="text-2xl font-bold text-surface-900 dark:text-surface-0">{{ totalReadingTime }} {{ $t('minutes_abbr') }}</span>
           </div>
         </div>
       </template>

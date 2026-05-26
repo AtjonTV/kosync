@@ -7,10 +7,12 @@
 import { ref } from "vue";
 import { useUserStore } from "@/stores/user.ts";
 import { useSyncStore } from "@/stores/sync.ts";
+import { useI18nStore } from "@/stores/i18n.ts";
 import LoginModal from "@/components/LoginModal.vue";
 
 const userStore = useUserStore();
 const syncStore = useSyncStore();
+const i18nStore = useI18nStore();
 
 const isLoggedIn = ref(false);
 const loginVisible = ref(false);
@@ -88,17 +90,20 @@ defineExpose({ openLogin });
 <template>
   <div class="flex justify-between items-center px-6 py-4 border-b border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900">
     <div class="flex items-center gap-2">
-      <h1 class="text-2xl font-bold">KOsync</h1>
+      <h1 class="text-2xl font-bold">{{ $t('title') }}</h1>
     </div>
     <div class="flex items-center gap-3">
+      <Button variant="text" rounded @click="i18nStore.setLocale(i18nStore.locale === 'en' ? 'de' : 'en')" title="Switch Language">
+        {{ i18nStore.locale.toUpperCase() }}
+      </Button>
       <Button :icon="isDarkMode ? 'pi pi-sun' : 'pi pi-moon'" variant="text" rounded @click="toggleTheme" title="Toggle Theme" />
-      <Button v-if="!isLoggedIn" @click="openLogin">Login</Button>
+      <Button v-if="!isLoggedIn" @click="openLogin">{{ $t('login') }}</Button>
       <Button v-if="isLoggedIn" variant="secondary" disabled>
         <i class="pi pi-user mr-2"></i>
-        <span class="hidden sm:inline">Logged in as&nbsp;</span>
-        <span class="font-bold">{{userStore.getUsername()}}</span>
+        <span class="hidden sm:inline">{{ $t('logged_in_as', userStore.getUsername()) }}</span>
+        <span class="sm:hidden font-bold">{{ userStore.getUsername() }}</span>
       </Button>
-      <Button v-if="isLoggedIn" @click="doLogout">Logout</Button>
+      <Button v-if="isLoggedIn" @click="doLogout">{{ $t('logout') }}</Button>
     </div>
     <LoginModal v-model:visible="loginVisible" @login-success="onLoginSuccess" />
   </div>
