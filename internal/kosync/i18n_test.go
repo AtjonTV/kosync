@@ -55,7 +55,7 @@ func TestTranslate(t *testing.T) {
 		{EN, "err_user_already_exists", "user already exists"},
 		{DE, "err_user_already_exists", "Benutzer existiert bereits"},
 		{EN, "err_webui_disabled", "WebUI is not enabled. If you want to use the web interface, restart KOsync with the --webui flag."},
-		{DE, "err_webui_disabled", "Die WebUI ist nicht aktiviert. Wenn Sie die Weboberfläche nutzen möchten, starten Sie KOsync mit dem Flag --webui neu."},
+		{DE, "err_webui_disabled", "Die WebUI ist nicht aktiviert. Wenn du die Weboberfläche nutzen möchtest, starte KOsync mit dem Flag --webui neu."},
 		{EN, "unknown_key", "unknown_key"},
 		{Language("fr"), "err_user_already_exists", "user already exists"}, // Fallback to EN
 	}
