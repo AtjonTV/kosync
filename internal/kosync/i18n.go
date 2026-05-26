@@ -37,12 +37,12 @@ var messages = map[Language]map[string]string{
 	},
 	DE: {
 		"err_user_already_exists":       "Benutzer existiert bereits",
-		"err_access_token_invalid":      "Ihr Zugriffs-Token ist ungültig. Stellen Sie sicher, dass es so übergeben wird: /api/ws/{token}",
+		"err_access_token_invalid":      "Dein Zugriffs-Token ist ungültig. Stelle sicher, dass es so übergeben wird: /api/ws/{token}",
 		"err_rpc_missing_document":      "Dem RPC-Aufruf fehlt das Argument 'document'",
 		"err_rpc_invalid_document_type": "Das RPC-Argument 'document' hat einen ungültigen Typ",
 		"err_rpc_missing_argument":       "Dem RPC-Aufruf fehlt das Argument '%s'",
 		"err_rpc_invalid_argument_type":  "Das RPC-Argument '%s' hat einen ungültigen Typ",
-		"err_webui_disabled":            "Die WebUI ist nicht aktiviert. Wenn Sie die Weboberfläche nutzen möchten, starten Sie KOsync mit dem Flag --webui neu.",
+		"err_webui_disabled":            "Die WebUI ist nicht aktiviert. Wenn du die Weboberfläche nutzen möchtest, starte KOsync mit dem Flag --webui neu.",
 	},
 }
 
