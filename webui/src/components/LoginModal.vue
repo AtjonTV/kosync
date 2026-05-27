@@ -1,3 +1,8 @@
+//
+// File:        webui/src/components/LoginModal.vue
+// Project:     https://git.obth.eu/atjontv/kosync
+// Copyright:   © 2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
+//
 <script setup lang="ts">
 import { ref } from 'vue';
 import Dialog from 'primevue/dialog';
@@ -31,17 +36,13 @@ const handleLogin = async () => {
   error.value = '';
 
   try {
-    const success = await userStore.loginWithCredentials(username.value, password.value);
-    if (success) {
-      emit('login-success');
-      emit('update:visible', false);
-      username.value = '';
-      password.value = '';
-    } else {
-      error.value = i18nStore.t('err_invalid_credentials');
-    }
-  } catch (e) {
-    error.value = i18nStore.t('err_login_failed');
+    await userStore.loginWithCredentials(username.value, password.value);
+    emit('login-success');
+    emit('update:visible', false);
+    username.value = '';
+    password.value = '';
+  } catch (e: any) {
+    error.value = e.message || i18nStore.t('err_login_failed');
   } finally {
     loading.value = false;
   }

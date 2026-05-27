@@ -1,3 +1,9 @@
+//
+// File:        webui/src/stores/sync.ts
+// Project:     https://git.obth.eu/atjontv/kosync
+// Copyright:   © 2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
+//
+
 import {type Ref, ref} from 'vue'
 import { defineStore } from 'pinia'
 import JMPClient from "jmp-client-js";
@@ -65,6 +71,7 @@ export const useSyncStore = defineStore('sync', () => {
       sessionStorage.setItem('syncState', btoa(JSON.stringify(sync.value)))
     } catch (e) {
       console.error("Sync failed:", e);
+      throw e;
     }
   }
 
@@ -160,7 +167,7 @@ export const useSyncStore = defineStore('sync', () => {
       await c.rpc("documents.history.delete", {document_id: documentId, last_read_at: lastReadAt});
     } catch (e) {
       console.error("Failed to delete history item:", e);
-      return;
+      throw e;
     }
   }
 
@@ -170,7 +177,7 @@ export const useSyncStore = defineStore('sync', () => {
       await c.rpc("documents.history.restore", {document_id: documentId, last_read_at: lastReadAt});
     } catch (e) {
       console.error("Failed to restore history item:", e);
-      return;
+      throw e;
     }
   }
 
@@ -180,7 +187,7 @@ export const useSyncStore = defineStore('sync', () => {
       await c.rpc("documents.update", {document: data});
     } catch (e) {
       console.error("Failed to update document:", e);
-      return;
+      throw e;
     }
   }
 
@@ -190,7 +197,7 @@ export const useSyncStore = defineStore('sync', () => {
       await c.rpc("documents.delete", {document_id: documentId});
     } catch (e) {
       console.error("Failed to delete document:", e);
-      return;
+      throw e;
     }
   }
 
@@ -201,7 +208,7 @@ export const useSyncStore = defineStore('sync', () => {
       return (stats ?? []) as ReadStatistics[];
     } catch (e) {
       console.error("Failed to fetch statistics:", e);
-      return [];
+      throw e;
     }
   }
 

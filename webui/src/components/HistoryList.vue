@@ -7,12 +7,14 @@
 <script setup lang="ts">
 import {useSyncStore} from "@/stores/sync.ts";
 import { useConfirm } from "primevue/useconfirm";
+import { useToast } from "primevue/usetoast";
 import { useI18nStore } from "@/stores/i18n.ts";
 
 const props = defineProps<{document: any}>();
 
 const syncStore = useSyncStore();
 const confirm = useConfirm();
+const toast = useToast();
 const i18nStore = useI18nStore();
 
 const deleteHistoryItem = (doc: any, historyItem: any) => {
@@ -30,7 +32,11 @@ const deleteHistoryItem = (doc: any, historyItem: any) => {
             severity: 'danger'
         },
         accept: async () => {
-            await syncStore.deleteHistoryItem(doc.id, historyItem.last_read_at);
+            try {
+                await syncStore.deleteHistoryItem(doc.id, historyItem.last_read_at);
+            } catch (e: any) {
+                toast.add({ severity: 'error', summary: i18nStore.t('error'), detail: e.message || e, life: 3000 });
+            }
         }
     });
 };
@@ -45,7 +51,11 @@ const restoreHistoryItem = (doc: any, historyItem: any) => {
             severity: 'primary'
         },
         accept: async () => {
-            await syncStore.restoreHistoryItem(doc.id, historyItem.last_read_at);
+            try {
+                await syncStore.restoreHistoryItem(doc.id, historyItem.last_read_at);
+            } catch (e: any) {
+                toast.add({ severity: 'error', summary: i18nStore.t('error'), detail: e.message || e, life: 3000 });
+            }
         }
     });
 };

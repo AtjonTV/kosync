@@ -1,3 +1,9 @@
+//
+// File:        webui/src/api.ts
+// Project:     https://git.obth.eu/atjontv/kosync
+// Copyright:   © 2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
+//
+
 import {useUserStore} from "@/stores/user.ts";
 import {useI18nStore} from "@/stores/i18n.ts";
 
@@ -23,7 +29,25 @@ export async function fetchApi<T>(route: string, options: RequestInit = {}): Pro
         }
       }
     );
-    if (!response.ok) return {data: null, error: response.statusText};
+    if (!response.ok) {
+        let error: string | Response = response.statusText;
+        try {
+            if (response.headers.get('content-type')?.startsWith('application/json')) {
+                const json = await response.json();
+                if (json && typeof json === 'object' && 'error' in json) {
+                    error = json.error as string;
+                }
+            } else {
+                const text = await response.text();
+                if (text) {
+                    error = text;
+                }
+            }
+        } catch (e) {
+            // Fallback to statusText
+        }
+        return {data: null, error};
+    }
 
     if (response.headers.get('content-type')?.startsWith('application/json')) {
         const data = await response.json() as T;

@@ -6,11 +6,13 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue';
 import Chart from 'primevue/chart';
+import { useToast } from 'primevue/usetoast';
 import { useSyncStore } from '@/stores/sync';
 import { useI18nStore } from '@/stores/i18n';
 
 const syncStore = useSyncStore();
 const i18nStore = useI18nStore();
+const toast = useToast();
 const showDays = ref(14);
 
 const chartData = computed(() => {
@@ -51,17 +53,25 @@ const chartData = computed(() => {
 const chartOptions = ref();
 
 const loadData = async () => {
-  if (syncStore.sync.statistics.length === 0) {
-    await syncStore.doSync();
+  try {
+    if (syncStore.sync.statistics.length === 0) {
+      await syncStore.doSync();
+    }
+    chartOptions.value = setChartOptions();
+  } catch (e: any) {
+    toast.add({ severity: 'error', summary: i18nStore.t('error'), detail: e.message || e, life: 3000 });
   }
-  chartOptions.value = setChartOptions();
 };
 
 watch([showDays, () => i18nStore.locale], async ([newVal, _]) => {
-  if (syncStore.sync.statistics.length < newVal) {
-    await syncStore.doSync(true, newVal);
+  try {
+    if (syncStore.sync.statistics.length < newVal) {
+      await syncStore.doSync(true, newVal);
+    }
+    chartOptions.value = setChartOptions();
+  } catch (e: any) {
+    toast.add({ severity: 'error', summary: i18nStore.t('error'), detail: e.message || e, life: 3000 });
   }
-  chartOptions.value = setChartOptions();
 });
 
 const setChartOptions = () => {

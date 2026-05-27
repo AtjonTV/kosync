@@ -1,3 +1,8 @@
+//
+// File:        webui/src/components/DocumentsList.vue
+// Project:     https://git.obth.eu/atjontv/kosync
+// Copyright:   © 2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
+//
 <script setup lang="ts">
 
 import {useSyncStore} from "@/stores/sync.ts";
@@ -5,6 +10,7 @@ import {ref, computed} from "vue";
 import {fetchApi} from "@/api.ts";
 import {useUserStore} from "@/stores/user.ts";
 import { useConfirm } from "primevue/useconfirm";
+import { useToast } from "primevue/usetoast";
 import { useI18nStore } from "@/stores/i18n.ts";
 import HistoryList from "@/components/HistoryList.vue";
 
@@ -12,12 +18,17 @@ const {customTitle} = defineProps<{customTitle?: string}>()
 
 const userStore = useUserStore();
 const confirm = useConfirm();
+const toast = useToast();
 const i18nStore = useI18nStore();
 
 const syncStore = useSyncStore();
 if (await userStore.isLoggedIn()) {
-  syncStore.doSync();
-  syncStore.doPubSubSync();
+  try {
+    await syncStore.doSync();
+    await syncStore.doPubSubSync();
+  } catch (e: any) {
+    toast.add({ severity: 'error', summary: i18nStore.t('error'), detail: e.message || e, life: 3000 });
+  }
 }
 
 const showHistoryDialog = ref(false);
@@ -29,13 +40,18 @@ const openHistory = (doc: any) => {
 };
 
 const onEditComplete = async (event: any) => {
-  await syncStore.updateDocument(event.newData);
+  try {
+    await syncStore.updateDocument(event.newData);
 
-  let {data, newValue, field} = event;
-  if (newValue.trim().length > 0) {
-      data[field] = newValue;
-  } else {
-      event.preventDefault();
+    let {data, newValue, field} = event;
+    if (newValue.trim().length > 0) {
+        data[field] = newValue;
+    } else {
+        event.preventDefault();
+    }
+  } catch (e: any) {
+    toast.add({ severity: 'error', summary: i18nStore.t('error'), detail: e.message || e, life: 3000 });
+    event.preventDefault();
   }
 }
 
@@ -54,7 +70,11 @@ const deleteDocument = (data: any) => {
             severity: 'danger'
         },
         accept: async () => {
-            syncStore.deleteDocument(data.id)
+            try {
+                await syncStore.deleteDocument(data.id)
+            } catch (e: any) {
+                toast.add({ severity: 'error', summary: i18nStore.t('error'), detail: e.message || e, life: 3000 });
+            }
         }
     });
 };

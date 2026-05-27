@@ -2,6 +2,7 @@
 // File:        webui/src/stores/i18n.ts
 // Project:     https://git.obth.eu/atjontv/kosync
 // Copyright:   © 2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
+// Copyright:   © 2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
 //
 
 import { ref } from 'vue'
@@ -74,6 +75,7 @@ const translations: Record<Locale, Record<string, string>> = {
     confirm_title: 'Confirm',
     cancel: 'Cancel',
     delete: 'Delete',
+    error: 'Error',
     no_documents: 'No documents found.',
     view_grid: 'Grid',
     view_list: 'List',
@@ -163,6 +165,7 @@ const translations: Record<Locale, Record<string, string>> = {
     confirm_title: 'Bestätigen',
     cancel: 'Abbrechen',
     delete: 'Löschen',
+    error: 'Fehler',
     no_documents: 'Keine Dokumente gefunden.',
     view_grid: 'Raster',
     view_list: 'Liste',

@@ -1,3 +1,9 @@
+//
+// File:        webui/src/stores/user.ts
+// Project:     https://git.obth.eu/atjontv/kosync
+// Copyright:   © 2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
+//
+
 import {type Ref, ref} from 'vue'
 import { defineStore } from 'pinia'
 import {fetchApi} from "@/api.ts";
@@ -37,7 +43,14 @@ export const useUserStore = defineStore('user', () => {
     });
 
     if (!response.ok) {
-      return false;
+      let error = response.statusText;
+      try {
+        const json = await response.json();
+        if (json && json.error) error = json.error;
+      } catch (e) {
+        // Not JSON
+      }
+      throw new Error(error);
     }
 
     const token = await response.text();

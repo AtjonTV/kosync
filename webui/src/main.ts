@@ -1,3 +1,9 @@
+//
+// File:        webui/src/main.ts
+// Project:     https://git.obth.eu/atjontv/kosync
+// Copyright:   © 2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
+//
+
 import './assets/main.css'
 import 'primeicons/primeicons.css'
 
@@ -7,6 +13,7 @@ import PrimeVue from 'primevue/config';
 import Aura from '@primeuix/themes/aura';
 import { definePreset } from '@primeuix/themes';
 import ConfirmationService from 'primevue/confirmationservice';
+import ToastService from 'primevue/toastservice';
 
 import App from './App.vue'
 import router from './router'
@@ -48,5 +55,6 @@ app.use(PrimeVue, {
     }
 });
 app.use(ConfirmationService);
+app.use(ToastService);
 
 app.mount('#app')
