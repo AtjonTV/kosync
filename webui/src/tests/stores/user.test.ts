@@ -109,11 +109,10 @@ describe('useUserStore', () => {
 
 
   describe('loginWithCredentials', () => {
-    it('returns false when the server responds with an error', async () => {
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }))
+    it('throws an error when the server responds with an error', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, statusText: 'Unauthorized' }))
       const store = useUserStore()
-      const result = await store.loginWithCredentials('user', 'wrongpass')
-      expect(result).toBe(false)
+      await expect(store.loginWithCredentials('user', 'wrongpass')).rejects.toThrow('Unauthorized')
       vi.unstubAllGlobals()
     })
 

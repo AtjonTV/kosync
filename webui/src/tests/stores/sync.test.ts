@@ -109,10 +109,10 @@ describe('useSyncStore', () => {
       expect(store.sync.documents).toHaveLength(1)
     })
 
-    it('handles errors gracefully without throwing', async () => {
+    it('throws error when connection fails', async () => {
       mockConnect.mockImplementation(() => { throw new Error('connection failed') })
       const store = useSyncStore()
-      await expect(store.doSync(true)).resolves.not.toThrow()
+      await expect(store.doSync(true)).rejects.toThrow('connection failed')
     })
   })
 
@@ -126,10 +126,10 @@ describe('useSyncStore', () => {
       })
     })
 
-    it('handles errors gracefully without throwing', async () => {
+    it('throws error when rpc fails', async () => {
       mockRpc.mockRejectedValue(new Error('rpc failed'))
       const store = useSyncStore()
-      await expect(store.deleteHistoryItem('doc-1', 1000)).resolves.not.toThrow()
+      await expect(store.deleteHistoryItem('doc-1', 1000)).rejects.toThrow('rpc failed')
     })
   })
 
@@ -143,10 +143,10 @@ describe('useSyncStore', () => {
       })
     })
 
-    it('handles errors gracefully without throwing', async () => {
+    it('throws error when rpc fails', async () => {
       mockRpc.mockRejectedValue(new Error('rpc failed'))
       const store = useSyncStore()
-      await expect(store.restoreHistoryItem('doc-1', 1000)).resolves.not.toThrow()
+      await expect(store.restoreHistoryItem('doc-1', 1000)).rejects.toThrow('rpc failed')
     })
   })
 
@@ -158,10 +158,10 @@ describe('useSyncStore', () => {
       expect(mockRpc).toHaveBeenCalledWith('documents.update', { document: docData })
     })
 
-    it('handles errors gracefully without throwing', async () => {
+    it('throws error when rpc fails', async () => {
       mockRpc.mockRejectedValue(new Error('rpc failed'))
       const store = useSyncStore()
-      await expect(store.updateDocument({ id: 'doc-1' })).resolves.not.toThrow()
+      await expect(store.updateDocument({ id: 'doc-1' })).rejects.toThrow('rpc failed')
     })
   })
 
@@ -172,10 +172,10 @@ describe('useSyncStore', () => {
       expect(mockRpc).toHaveBeenCalledWith('documents.delete', { document_id: 'doc-1' })
     })
 
-    it('handles errors gracefully without throwing', async () => {
+    it('throws error when rpc fails', async () => {
       mockRpc.mockRejectedValue(new Error('rpc failed'))
       const store = useSyncStore()
-      await expect(store.deleteDocument('doc-1')).resolves.not.toThrow()
+      await expect(store.deleteDocument('doc-1')).rejects.toThrow('rpc failed')
     })
   })
 
