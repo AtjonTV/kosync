@@ -7,8 +7,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Localized error messages for both Fiber and JMP APIs.
+- Global Toast notification system in WebUI for displaying errors.
 
 ### Changed
+- WebUI `fetchApi` now parses error messages from response bodies.
+- Pinia stores (`sync`, `user`) now throw errors instead of silent console logging.
+- JMP RPC calls now return localized error messages instead of raw internal strings.
 
 ### Deprecated
 
