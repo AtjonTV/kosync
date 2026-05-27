@@ -72,8 +72,8 @@ Every source file (Go, TypeScript, Vue, etc.) **MUST** include the following hea
 - The legal name corresponds to the person who creates the contribution themselves or lets an AI create the contribution for them.
 
 **Updating Copyrights:**
-- When editing a file for the first time, you must add another copyright line below the last existing one (see template above)
-- When editing a file again, you must check if your copyright year needs updating (e.g., from "2026" to "2026-2027").
+- When editing a file for the first time, you must add another copyright line below the last existing one (see template above). Duplicate copyright lines (e.g., repeating the same line, or having multiple lines for the same legal name/author) are not allowed.
+- When editing a file again, you must check if your copyright year needs updating (e.g., from "2026" to "2026-2027"). Do not add a new or duplicate copyright line for the same legal name if one already exists in the file.
 
 ### 3.2 Go Conventions
 - Use standard `gofmt` for formatting with **Tabs** for indentation.
