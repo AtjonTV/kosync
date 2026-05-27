@@ -196,7 +196,9 @@ func (app *Kosync) PubSubAnnounce(userId string, topic PubSubTopic, data interfa
 func (app *Kosync) RpcDocumentsAll(ctx *jmp.Context, rpc *jmp.RpcRequestPayload) jmp.Result {
 	result, e := app.apiGetUserDocuments(ctx.GetString(CtxContextUserName))
 	if e != nil {
-		return jmp.NewErrorResultFromErr(e)
+		LogError("RpcDocumentsAll error: %v", e)
+		lang := GetLanguage(ctx)
+		return jmp.NewErrorResult([]string{Translate(lang, "err_internal")})
 	}
 	return jmp.NewOkResult("Array[DocumentWithHistory]", result)
 }
@@ -219,12 +221,16 @@ func (app *Kosync) RpcDocumentsUpdate(ctx *jmp.Context, rpc *jmp.RpcRequestPaylo
 
 	err := app.Db.CreateOrUpdateDocument(&doc)
 	if err != nil {
-		return jmp.NewErrorResultFromErr(err)
+		LogError("RpcDocumentsUpdate error: %v", err)
+		lang := GetLanguage(ctx)
+		return jmp.NewErrorResult([]string{Translate(lang, "err_database")})
 	}
 
 	updatedDoc, _, e := app.Db.FindDocumentById(ctx.GetString(CtxContextUserId), doc.Id)
 	if e != nil {
-		return jmp.NewErrorResultFromErr(e)
+		LogError("RpcDocumentsUpdate error (finding updated doc): %v", e)
+		lang := GetLanguage(ctx)
+		return jmp.NewErrorResult([]string{Translate(lang, "err_database")})
 	}
 
 	go func() {
@@ -244,7 +250,8 @@ func (app *Kosync) RpcDocumentsDelete(ctx *jmp.Context, rpc *jmp.RpcRequestPaylo
 
 	err = app.Db.DeleteDocumentById(ctx.GetString(CtxContextUserId), rpcDocId)
 	if err != nil {
-		return jmp.NewErrorResultFromErr(err)
+		LogError("RpcDocumentsDelete error: %v", err)
+		return jmp.NewErrorResult([]string{Translate(lang, "err_database")})
 	}
 
 	go func(userId, documentId string) {
@@ -271,7 +278,8 @@ func (app *Kosync) RpcDocumentsHistoryDelete(ctx *jmp.Context, payload *jmp.RpcR
 
 	err = app.Db.DeleteDocumentHistoryItem(ctx.GetString(CtxContextUserId), rpcDocId, lastReadAt)
 	if err != nil {
-		return jmp.NewErrorResultFromErr(err)
+		LogError("RpcDocumentsHistoryDelete error: %v", err)
+		return jmp.NewErrorResult([]string{Translate(lang, "err_database")})
 	}
 
 	go func(userId, documentId string, lastReadAt int64) {
@@ -299,7 +307,8 @@ func (app *Kosync) RpcDocumentsHistoryRestore(ctx *jmp.Context, payload *jmp.Rpc
 
 	err = app.Db.RestoreDocumentHistoryItem(ctx.GetString(CtxContextUserId), rpcDocId, lastReadAt)
 	if err != nil {
-		return jmp.NewErrorResultFromErr(err)
+		LogError("RpcDocumentsHistoryRestore error: %v", err)
+		return jmp.NewErrorResult([]string{Translate(lang, "err_database")})
 	}
 
 	go func(userId, documentId string, lastReadAt int64) {

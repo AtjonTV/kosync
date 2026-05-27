@@ -9,6 +9,7 @@ package kosync
 import (
 	// bearer:disable go_gosec_blocklist_md5
 	"crypto/md5"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -51,6 +52,32 @@ func setupApp(config *Config, logStream io.Writer) *fiber.App {
 		},
 		ProxyHeader:        fiber.HeaderXForwardedFor,
 		EnableIPValidation: config.ProxyIpValidation,
+		ErrorHandler: func(c fiber.Ctx, err error) error {
+			code := fiber.StatusInternalServerError
+			var e *fiber.Error
+			if errors.As(err, &e) {
+				code = e.Code
+			}
+
+			lang := GetLanguageFromFiber(c)
+			var message string
+			switch code {
+			case fiber.StatusNotFound:
+				message = Translate(lang, "err_not_found")
+			case fiber.StatusUnauthorized:
+				message = Translate(lang, "err_unauthorized")
+			case fiber.StatusBadRequest:
+				message = Translate(lang, "err_bad_request")
+			default:
+				message = Translate(lang, "err_internal")
+			}
+
+			LogError("Fiber Error [%d]: %v", code, err)
+
+			return c.Status(code).JSON(fiber.Map{
+				"error": message,
+			})
+		},
 	})
 
 	app.Use(requestid.New())
