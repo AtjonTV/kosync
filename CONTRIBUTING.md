@@ -67,7 +67,9 @@ Every source file (Go, TypeScript, Vue, etc.) **MUST** include the following hea
 // Copyright:   © ${year} ${legal_name}. Licensed under the EUPL-1.2 or later
 //
 ```
-*(Note: Ensure the file path is correct for each file and that the year and legal name are filled in.)*
+**Note:**
+- Ensure the file path is correct for each file and that the year and legal name are filled in.
+- The legal name corresponds to the person who creates the contribution themselves or lets an AI create the contribution for them.
 
 **Updating Copyrights:**
 - When editing a file for the first time, you must add another copyright line below the last existing one (see template above)
