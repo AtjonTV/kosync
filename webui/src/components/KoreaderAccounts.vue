@@ -17,10 +17,13 @@ const toast = useToast()
 
 const showCreate = ref(false)
 const showRotate = ref(false)
+const showRename = ref(false)
 const rotateTarget = ref<KoreaderAccount | null>(null)
+const renameTarget = ref<KoreaderAccount | null>(null)
 
 const form = ref({ username: '', password: '', label: '' })
 const newPassword = ref('')
+const newLabel = ref('')
 const error = ref('')
 const busy = ref(false)
 
@@ -74,6 +77,30 @@ const rotate = async () => {
     })
   } catch (e) {
     error.value = errorMessage(e, 'Could not change the password.')
+  } finally {
+    busy.value = false
+  }
+}
+
+const openRename = (account: KoreaderAccount) => {
+  renameTarget.value = account
+  newLabel.value = account.label
+  error.value = ''
+  showRename.value = true
+}
+
+const rename = async () => {
+  if (!renameTarget.value) return
+
+  error.value = ''
+  busy.value = true
+  try {
+    // An empty name is allowed: it simply means the credential is not tied to a
+    // particular device.
+    await koreader.setLabel(renameTarget.value.id, newLabel.value.trim())
+    showRename.value = false
+  } catch (e) {
+    error.value = errorMessage(e, 'Could not rename the device.')
   } finally {
     busy.value = false
   }
@@ -141,7 +168,12 @@ onMounted(() => {
 
       <DataTable :value="koreader.accounts" data-key="id" :loading="koreader.loading">
         <Column field="username" header="Username" :sortable="true"></Column>
-        <Column field="label" header="Device"></Column>
+        <Column field="label" header="Device" :sortable="true">
+          <template #body="{ data }">
+            <span v-if="data.label">{{ data.label }}</span>
+            <span v-else class="text-surface-400 dark:text-surface-500">Not named</span>
+          </template>
+        </Column>
         <Column field="last_used" header="Last used" :sortable="true">
           <template #body="{ data }">{{ formatDateTime(data.last_used) }}</template>
         </Column>
@@ -153,9 +185,17 @@ onMounted(() => {
             />
           </template>
         </Column>
-        <Column header="Actions" style="width: 12rem">
+        <Column header="Actions" style="width: 14rem">
           <template #body="{ data }">
             <div class="flex gap-2">
+              <Button
+                icon="pi pi-pencil"
+                variant="text"
+                rounded
+                title="Rename device"
+                aria-label="Rename device"
+                @click="openRename(data)"
+              />
               <Button
                 icon="pi pi-key"
                 variant="text"
@@ -218,6 +258,24 @@ onMounted(() => {
           @click="showCreate = false"
         />
         <Button type="submit" label="Create" :loading="busy" />
+      </div>
+    </form>
+  </Dialog>
+
+  <Dialog v-model:visible="showRename" header="Rename device" modal :style="{ width: '28rem' }">
+    <form class="flex flex-col gap-4" @submit.prevent="rename">
+      <p class="text-surface-600 dark:text-surface-400">
+        The name is only a label for you. Changing it does not affect
+        <strong>{{ renameTarget?.username }}</strong> or the devices signed in with it.
+      </p>
+      <div class="flex flex-col gap-2">
+        <label for="ko-new-label">Device</label>
+        <InputText id="ko-new-label" v-model="newLabel" placeholder="Kobo Clara" autofocus fluid />
+      </div>
+      <Message v-if="error" severity="error" variant="simple">{{ error }}</Message>
+      <div class="flex justify-end gap-2">
+        <Button type="button" label="Cancel" severity="secondary" @click="showRename = false" />
+        <Button type="submit" label="Save" :loading="busy" />
       </div>
     </form>
   </Dialog>

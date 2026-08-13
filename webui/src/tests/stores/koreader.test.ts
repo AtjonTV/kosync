@@ -53,6 +53,28 @@ describe('koreader credentials store', () => {
     expect(pbMockModule.collection('koreader_accounts').update).not.toHaveBeenCalled()
   })
 
+  it('renames a device through the collection API', async () => {
+    const store = useKoreaderStore()
+    await store.setLabel('account-1', 'Kobo Clara')
+
+    // A rename touches nothing but the label, so it must never go near the
+    // username or the password.
+    expect(pbMockModule.collection('koreader_accounts').update).toHaveBeenCalledWith('account-1', {
+      label: 'Kobo Clara',
+    })
+    expect(pbMockModule.send).not.toHaveBeenCalled()
+    expect(pbMockModule.collection('koreader_accounts').getFullList).toHaveBeenCalled()
+  })
+
+  it('allows clearing the device name', async () => {
+    const store = useKoreaderStore()
+    await store.setLabel('account-1', '')
+
+    expect(pbMockModule.collection('koreader_accounts').update).toHaveBeenCalledWith('account-1', {
+      label: '',
+    })
+  })
+
   it('toggles the disabled flag through the collection API', async () => {
     const store = useKoreaderStore()
     await store.setDisabled('account-1', true)
