@@ -82,4 +82,58 @@ describe('auth store', () => {
     expect(await store.refresh()).toBe(false)
     expect(pbMockModule.collection('users').authRefresh).not.toHaveBeenCalled()
   })
+
+  it('changes the password and signs back in with it', async () => {
+    pbMockModule.authStore.record = { id: 'user-a', email: 'alice@example.com' }
+    pbMockModule.authStore.isValid = true
+
+    const store = useAuthStore()
+    await store.changePassword('the-old-password', 'the-new-password')
+
+    // The old password has to be sent along, otherwise PocketBase refuses.
+    expect(pbMockModule.collection('users').update).toHaveBeenCalledWith('user-a', {
+      oldPassword: 'the-old-password',
+      password: 'the-new-password',
+      passwordConfirm: 'the-new-password',
+    })
+
+    // Changing the password invalidates the session, so the store has to get a
+    // new one instead of leaving the user on a dead token.
+    expect(pbMockModule.collection('users').authWithPassword).toHaveBeenCalledWith(
+      'alice@example.com',
+      'the-new-password',
+    )
+  })
+
+  it('refuses to change the password without a session', async () => {
+    const store = useAuthStore()
+
+    await expect(store.changePassword('old', 'new')).rejects.toThrow()
+    expect(pbMockModule.collection('users').update).not.toHaveBeenCalled()
+  })
+
+  it('does not sign back in when the password change fails', async () => {
+    pbMockModule.authStore.record = { id: 'user-a', email: 'alice@example.com' }
+    pbMockModule.authStore.isValid = true
+    pbMockModule.collection('users').update.mockRejectedValue(new Error('wrong password'))
+
+    const store = useAuthStore()
+
+    await expect(store.changePassword('wrong', 'the-new-password')).rejects.toThrow()
+    expect(pbMockModule.collection('users').authWithPassword).not.toHaveBeenCalled()
+  })
+
+  it('asks PocketBase to confirm a new address', async () => {
+    pbMockModule.authStore.record = { id: 'user-a', email: 'alice@invalid.local' }
+    pbMockModule.authStore.isValid = true
+
+    const store = useAuthStore()
+    await store.requestEmailChange('alice@example.com')
+
+    // The confirmation goes to the new address, which is what makes this usable
+    // for the placeholder addresses the legacy import hands out.
+    expect(pbMockModule.collection('users').requestEmailChange).toHaveBeenCalledWith(
+      'alice@example.com',
+    )
+  })
 })

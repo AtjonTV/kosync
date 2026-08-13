@@ -4,6 +4,7 @@
   Copyright:   © 2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
 -->
 <script setup lang="ts">
+import AccountSettings from '@/components/AccountSettings.vue'
 import KoreaderAccounts from '@/components/KoreaderAccounts.vue'
 import SetupGuide from '@/components/SetupGuide.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -18,6 +19,7 @@ const auth = useAuthStore()
       <span class="text-surface-500 dark:text-surface-400">{{ auth.email }}</span>
     </div>
 
+    <AccountSettings />
     <KoreaderAccounts />
     <SetupGuide />
   </div>

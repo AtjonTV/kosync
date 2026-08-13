@@ -52,6 +52,38 @@ export const useAuthStore = defineStore('auth', () => {
     await pb.collection(Collections.users).requestPasswordReset(email)
   }
 
+  /**
+   * Sets a new account password.
+   *
+   * Changing the password invalidates every session of the account, this one
+   * included, so the store signs back in right away with the new password
+   * instead of dropping the user onto the login form.
+   */
+  async function changePassword(oldPassword: string, newPassword: string): Promise<void> {
+    const id = record.value?.id
+    const identity = email.value
+    if (!id) throw new Error('You are not signed in.')
+
+    await pb.collection(Collections.users).update(id, {
+      oldPassword,
+      password: newPassword,
+      passwordConfirm: newPassword,
+    })
+
+    await login(identity, newPassword)
+  }
+
+  /**
+   * Asks for the account address to be changed.
+   *
+   * PocketBase sends a confirmation link to the *new* address and only applies
+   * the change once that link is opened, which is what makes this safe to offer
+   * to the placeholder addresses the legacy import creates.
+   */
+  async function requestEmailChange(newEmail: string): Promise<void> {
+    await pb.collection(Collections.users).requestEmailChange(newEmail)
+  }
+
   function logout(): void {
     pb.authStore.clear()
   }
@@ -77,6 +109,8 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     register,
     requestPasswordReset,
+    changePassword,
+    requestEmailChange,
     logout,
     refresh,
     errorMessage,

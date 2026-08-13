@@ -45,8 +45,14 @@ LEGACY USER  EMAIL                  PASSWORD
 alice        alice@invalid.local    hZ3k9QmT2rXv8Lp4
 ```
 
-Hand those out. Each person should sign in, change the address to a real one so account recovery
-works, and set their own password. The KOReader credential is untouched by that.
+Hand those out. Each person should sign in and open **Account → Sign in details**, where they can:
+
+- **set their own password**, which takes effect immediately and signs out every other session, and
+- **change the address** to a real one, so account recovery works. A confirmation link goes to the
+  new address and nothing changes until it is opened, which needs the server to be able to send
+  mail. On an instance without mail, a superuser can change the address at `/_/` instead.
+
+Neither touches the KOReader credential, so no device has to be reconfigured.
 
 ## Single user instances
 

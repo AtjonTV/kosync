@@ -24,6 +24,7 @@ export interface CollectionMock {
   authRefresh: ReturnType<typeof vi.fn>
   requestVerification: ReturnType<typeof vi.fn>
   requestPasswordReset: ReturnType<typeof vi.fn>
+  requestEmailChange: ReturnType<typeof vi.fn>
 }
 
 export function createCollectionMock(): CollectionMock {
@@ -38,6 +39,7 @@ export function createCollectionMock(): CollectionMock {
     authRefresh: vi.fn().mockResolvedValue({}),
     requestVerification: vi.fn().mockResolvedValue(true),
     requestPasswordReset: vi.fn().mockResolvedValue(true),
+    requestEmailChange: vi.fn().mockResolvedValue(true),
   }
 }
 
