@@ -676,25 +676,39 @@ from one device they cluster hard on one value, with clean half and double multi
 Measured against real data, all five books on one device (`go7`), with the page counts the device
 itself reports as ground truth:
 
-| Book | page unit | derived pages | device pages | spine words | words/page |
-| --- | --- | --- | --- | --- | --- |
-| Zeit des Sturms | 0.00143 | **700** | 700 ✓ | 108 755 | 155.4 |
-| Das Schwert der Vorsehung | 0.00178 | **563** | 563 ✓ | 115 952 | 206.0 |
-| Die Witcher-Saga | 0.00028 | 3562 | — | 633 862 | 178.0 |
-| Der letzte Wunsch | — | *no data* | 619 | 96 355 | 155.7 |
-| Kreuzweg der Raben | — | *no data* | 446 | 68 510 | 153.6 |
+Measured against real data, all five books on one device (`go7`), with the page counts the device
+itself reports as ground truth:
 
-So the device's page count for a book is `1 / base_delta`, read straight off a histogram of the
-deltas — **exact on both books where it could be checked**, no word count and no user input involved.
-The base unit is visible because partial pushes (a chapter end, closing the document) land on the
-half-step, which also reveals N: `N = dominant / base`, here 2, matching the recommended "sync every
-2 pages".
+| Book | derived pages | device pages | spine words | words/page |
+| --- | --- | --- | --- | --- |
+| Zeit des Sturms | **700** | 700 ✓ | 109 288 | 156.1 |
+| Das Schwert der Vorsehung | **563** | 563 ✓ | 116 921 | 207.7 |
+| Der letzte Wunsch | *no data* | 619 | 96 837 | 156.4 |
+| Kreuzweg der Raben | *no data* | 446 | 68 856 | 154.4 |
+| Die Witcher-Saga | *declined* | — | 638 847 | — |
 
-Two limits are visible in the same table.
+So the device's page count for a book is `1 / page_fraction`, recovered from the deltas alone — **exact
+on both books where it could be checked**, with no word count and no user input involved. The unit is
+visible because partial pushes (a chapter end, closing the document) land on the half-step, which also
+reveals N: here 2, matching the recommended "sync every 2 pages".
+
+Getting the last percent right needs one more step. The median delta is a single noisy sample; once a
+candidate unit has established how many pages each delta spans, the size follows from all of them at
+once, as total progress over total pages. Skipping that refinement leaves the estimate about 1.5%
+short — 690 and 556 instead of 700 and 563, which is wrong while looking entirely reasonable.
+
+Three limits, all of them found by running the estimator against real data rather than by reasoning
+about it.
 
 **It needs pushes.** Two of the five books have one or two history rows each, both at the very end —
-read before the server was in use. No amount of cleverness recovers a page count from that, so the
-fallback layers are not optional.
+read before the server was in use. No amount of cleverness recovers a page count from that.
+
+**It has a ceiling of roughly 1600 pages.** KOReader reports progress to four decimals — every one of
+the 1803 values in the reference data sits exactly on a 0.0001 grid. A page in the 3562-page omnibus
+spans 2.8 grid steps, which is below what the protocol can express, and the estimator's first version
+duly reported the book as exactly 10000 pages: stable across every chunk of the series, and simply the
+reporting grid wearing a page's clothes. The fix is a floor at six grid steps, and the cost is that
+long omnibus editions can never be measured. `pages.FromProgress` refuses instead, which is the point.
 
 **Words per page is not a device constant.** Three books sit at 153.6–155.7, and one sits at 206.0 —
 33% denser — on the *same device* during an *overlapping period* (both were being read in
@@ -712,15 +726,40 @@ The resulting layering, best first:
 2. **Configured per device**, as `pages_per_sync` on `koreader_accounts` — an override for when the
    measurement is ambiguous, and expressed in the unit the user actually knows because they typed it
    into KOReader, rather than asking them to guess a page size.
-3. **A global words-per-page constant** in config, for books with too few pushes to measure — which
-   on this sample is two books in five, so it will be used more than one would hope. Set it around
-   155 rather than the ~250 usually quoted for print; that is what an e-reader page actually holds
-   here. If the density difference does turn out to be the book's own CSS, it is a property of the
-   file rather than of the reader, and a measurement taken once could be stored on `books` and reused
-   for every user who has the same `content_hash`. Worth checking before settling for the constant.
+3. **A global words-per-page constant** in config, for books that cannot be measured — three in five
+   on this sample, so it will be used more than one would hope. Set it around 155 rather than the
+   ~250 usually quoted for print; that is what an e-reader page actually holds here. If the density
+   difference does turn out to be the book's own CSS, it is a property of the file rather than of the
+   reader, and a measurement taken once could be stored on `books` and reused for every user with the
+   same `content_hash`. Worth checking before settling for the constant.
 
 Word counts must come from the **spine**, not from every XHTML file in the archive. On this sample it
 happens to make almost no difference, which is exactly why it would survive review as a bug.
+
+### 16.6 Built so far
+
+Phase 8 has started. Two packages exist, both pure logic with no schema or API surface, so they can be
+reviewed on their own:
+
+- **`internal/epub`** — `PartialMD5` and `FilenameMD5` (the two document hashes), and `Open` for
+  metadata, cover and spine word count. Verified against the five real books: 5 of 5 hashes, and all
+  five parse.
+- **`internal/pages`** — `FromProgress`, the page-size estimator described above.
+
+44 test cases, 89.4% and 87.9% statement coverage. Both packages carry an opt-in test that runs
+against real data when an environment variable points at it — `KOSYNC_REAL_EPUB_HASHES` for the
+hashes, `KOSYNC_REAL_PROGRESS_CSV` for the estimator — and skips otherwise. The books are not ours to
+ship and the reading history is personal, so neither can live in the repository; but synthetic
+fixtures cannot show that the code agrees with KOReader rather than with itself, so the opt-in path
+has to exist.
+
+Two defects in the parser were found only by pointing it at the real files, and both are now covered
+by tests: real titles arrive wrapped across indented lines, newlines and all, and EPUB 3 dropped the
+scheme attribute on identifiers in favour of a `urn:isbn:` value, so every real EPUB 3 ISBN was being
+filed as unknown.
+
+Still to build for phase 8: the `books` collection and migration, the upload endpoint, cover thumbs,
+and the library view.
 
 Measured values move as data accumulates, which would otherwise rewrite history. It does not, because
 `user_achievements` rows are awarded records rather than a derived view (§3.8) — once granted, a tier
