@@ -16,8 +16,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 )
+
+// allowedName is what a file name given on the command line may look like.
+var allowedName = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
 
 // keepFile keeps the otherwise empty WebUI output directory in source control.
 // "bun build --emptyOutDir" removes it, so it is written back after a build.
@@ -41,7 +45,9 @@ func main() {
 		panic(fmt.Sprintf("Provided go executable path is invalid, the binary must be called 'go' but '%s' given!", base))
 	}
 
-	out := "." + string(os.PathSeparator) + filepath.Base(*outName)
+	// Both values end up as arguments of an executed command, so they are
+	// reduced to a plain file name and checked against a strict pattern first.
+	out := "." + string(os.PathSeparator) + safeName(*outName, "output executable")
 
 	if *buildWeb {
 		run(*goPath, "generate", "./internal/webui")
@@ -55,6 +61,18 @@ func main() {
 	}
 }
 
+// safeName reduces a path to its file name and rejects anything that is not a
+// plain, unsurprising name.
+func safeName(value, what string) string {
+	name := filepath.Base(value)
+
+	if !allowedName.MatchString(name) {
+		panic(fmt.Sprintf("Provided %s name %q is invalid, allowed are letters, digits, '.', '_' and '-'.", what, name))
+	}
+
+	return name
+}
+
 // defaultOutName returns the platform specific executable name.
 func defaultOutName() string {
 	if runtime.GOOS == "windows" {
@@ -65,8 +83,13 @@ func defaultOutName() string {
 }
 
 // run executes a command and passes its output through.
+//
+// This is a developer build script (see the "ignore" build tag above): it is
+// never compiled into the server, it is started by hand, and the only values
+// that reach it are its own flags, which main validates before use.
 func run(name string, args ...string) {
-	cmd := exec.Command(name, args...)
+	// bearer:disable go_gosec_injection_subproc_injection
+	cmd := exec.Command(name, args...) // #nosec G204 -- see the comment above
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -81,7 +104,7 @@ func writeKeepFile() {
 	if err := os.MkdirAll(filepath.Dir(keepFile), 0o755); err != nil {
 		panic(err)
 	}
-	if err := os.WriteFile(keepFile, nil, 0o644); err != nil {
+	if err := os.WriteFile(keepFile, nil, 0o600); err != nil {
 		panic(err)
 	}
 }

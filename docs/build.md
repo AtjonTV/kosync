@@ -55,6 +55,23 @@ cd server && go test ./...
 cd webui  && bun run test
 ```
 
+## Pinned transitive packages
+
+`webui/package.json` carries a `resolutions` block. JSON has no comments, so the reasoning lives
+here:
+
+| Entry | Why |
+| --- | --- |
+| `minimatch/brace-expansion: ^5.0.9` | `minimatch@10` asks for `^5.0.5` and resolved to a nested 5.0.8, which carries GHSA-rgw5-rvv9-x895. Only that path is pinned: the 2.x copies used by `glob` and `editorconfig` are not affected by the advisory and forcing a major version on them would be a real risk. |
+| `nanoid: ^3.3.18` | `postcss` pulled a nested 3.3.16, which carries GHSA-2v37-7h3g-55p8. Every consumer asks for `^3.3.x`, so pinning globally is safe. |
+
+Both are build and development dependencies; neither ends up in the browser bundle. Check with
+`bun audit` after changing dependencies, and drop an entry once the parent package ships a fixed
+range on its own.
+
+There is deliberately no `bun.lockb`: this project uses the text `bun.lock`, and having both makes
+`bun install --frozen-lockfile` depend on the Bun version.
+
 ## One thing that needs Node
 
 `bun run type-check` runs `vue-tsc`, which type checks `.vue` files by patching the TypeScript

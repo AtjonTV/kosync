@@ -9,6 +9,10 @@ lerna-debug.log*
 
 node_modules
 .DS_Store
+
+# Bun's old binary lockfile. This project uses the text "bun.lock"; having both
+# makes "bun install --frozen-lockfile" depend on the bun version.
+bun.lockb
 dist
 dist-ssr
 coverage

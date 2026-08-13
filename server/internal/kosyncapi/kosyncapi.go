@@ -13,7 +13,11 @@
 package kosyncapi
 
 import (
-	"crypto/md5" // #nosec G501 -- KOReader hashes its passwords with MD5, so the server has to speak it
+	// KOReader hashes its passwords with MD5 before sending them, so the server
+	// has to speak MD5 to talk to a device at all. The digest is never what is
+	// stored: PocketBase hashes it with bcrypt on the way in.
+	// bearer:disable go_gosec_blocklist_md5
+	"crypto/md5" // #nosec G501 -- see above
 	"database/sql"
 	"errors"
 	"fmt"
@@ -106,7 +110,8 @@ func (h *Handler) registerGuards() {
 
 // md5Hex returns the digest KOReader will send for the given password.
 func md5Hex(password string) string {
-	return fmt.Sprintf("%x", md5.Sum([]byte(password))) // #nosec G401 -- see package doc
+	// bearer:disable go_gosec_crypto_weak_crypto, go_lang_weak_hash_md5
+	return fmt.Sprintf("%x", md5.Sum([]byte(password))) // #nosec G401 -- see the import comment
 }
 
 // validateKoreaderPassword rejects passwords a device could not use safely.

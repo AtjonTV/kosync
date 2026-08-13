@@ -12,7 +12,11 @@
 package testutil
 
 import (
-	"crypto/md5" // #nosec G501 -- KOReader hashes its passwords with MD5, so the server has to speak it
+	// KOReader hashes its passwords with MD5 before sending them, so the server
+	// has to speak MD5 to talk to a device at all. The digest is never what is
+	// stored: PocketBase hashes it with bcrypt on the way in.
+	// bearer:disable go_gosec_blocklist_md5
+	"crypto/md5" // #nosec G501 -- see above
 	"fmt"
 	"strings"
 	"testing"
@@ -31,7 +35,8 @@ const recordIdLength = 15
 
 // Md5Hex returns the password digest a KOReader device would send.
 func Md5Hex(password string) string {
-	return fmt.Sprintf("%x", md5.Sum([]byte(password))) // #nosec G401 -- see package doc
+	// bearer:disable go_gosec_crypto_weak_crypto, go_lang_weak_hash_md5
+	return fmt.Sprintf("%x", md5.Sum([]byte(password))) // #nosec G401 -- see the import comment
 }
 
 // PadId turns a readable seed into a valid PocketBase record id, so that tests

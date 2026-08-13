@@ -64,6 +64,9 @@ func main() {
 	})
 
 	if err := app.Start(); err != nil {
+		// Startup failures (a busy port, an unreadable data directory) have to
+		// reach the operator, and at this point there is no app logger to use.
+		// bearer:disable go_lang_logger_leak
 		log.Fatal(err)
 	}
 }
