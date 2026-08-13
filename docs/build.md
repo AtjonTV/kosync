@@ -55,6 +55,21 @@ cd server && go test ./...
 cd webui  && bun run test
 ```
 
+## One thing that needs Node
+
+`bun run type-check` runs `vue-tsc`, which type checks `.vue` files by patching the TypeScript
+compiler through `fs.readFileSync` while it is being required. Bun's module loader does not read
+modules through that API, so under Bun the patch never applies: `vue-tsc` quietly falls back to
+plain `tsc`, stops understanding `.vue` files altogether, and reports every `.vue` import as
+"Cannot find module".
+
+So the type check needs `node` on the PATH. Everything else — `bun run test`, the linters, the vite
+build, and therefore `go generate ./internal/webui` — works with Bun alone.
+
+If you ever see a wall of `TS2307: Cannot find module './App.vue'`, that is this and not a broken
+import. Do not "fix" it by adding a `declare module '*.vue'` shim: that would silence the real type
+checking of every component.
+
 The Go tests create a throwaway PocketBase instance per test and run the real migrations against it,
 so they cover the schema and its access rules as well as the handlers.
 

@@ -84,8 +84,16 @@ webui-lint:
   image: oven/bun:${BUN_VERSION}-alpine
   <<: *bun-cache
   before_script:
+    # vue-tsc type checks .vue files by patching the TypeScript compiler as it
+    # is required, through fs.readFileSync. Bun's module loader does not read
+    # modules through that API, so under Bun the patch never applies, vue-tsc
+    # silently degrades to plain tsc and every ".vue" import fails to resolve.
+    # Node is therefore needed for the type check, and only for the type check:
+    # vitest, oxlint, eslint and the vite build all run fine under Bun.
+    - apk add --no-cache nodejs
     - cd webui && bun install --frozen-lockfile
   script:
+    - node --version
     - bun run type-check
     - bun run lint:oxlint --deny-warnings
     - bun run lint:eslint --max-warnings 0
