@@ -135,7 +135,7 @@ The `password` field is never readable via the API.
 | `last_device_id` | text | |
 | `last_read_at` | date | ms precision |
 | `source_account` | relation → `koreader_accounts` | which credential last pushed, optional |
-| `book` | relation → `books` | **phase 6**, empty until EPUB support lands |
+| `book` | relation → `books` | **phase 8**, empty until EPUB support lands |
 
 Unique index on `(owner, document)`. Index on `(owner, last_read_at)` for the dashboard.
 Rules: all five = `owner.id = @request.auth.id`. That single rule also governs **realtime**
@@ -157,7 +157,7 @@ Written by the server whenever a document row is superseded. Rules: `list`/`view
 | `progress_increase` | number (percentage points) |
 | `reading_time` | number (seconds) |
 | `documents_touched` | number |
-| `pages_read` | number (0 until books provide page counts — phase 8) |
+| `pages_read` | number (0 until books provide page counts — phase 12, see §16.5) |
 | `computed_at` | date |
 
 Unique index `(owner, date)`. `list`/`view` owner-scoped, writes superuser only. The WebUI reads and
@@ -176,12 +176,14 @@ Unique index `(owner, date)`. `list`/`view` owner-scoped, writes superuser only.
 DB-backed rather than an in-memory channel so that (a) a burst of pushes for the same day collapses into
 one recompute via the unique index, and (b) pending work survives a restart.
 
-### 3.8 Phase-6+ collections (designed now, built later)
+### 3.8 Phase-8+ collections (designed now, built later)
 
 - `books` — `owner`, `file` (file field, `application/epub+zip`), `cover` (file field with
   `thumbs: ["100x150", "200x300"]`), `title`, `authors`, `identifiers` (json: ISBN/UUID), `language`,
   `page_count`, `word_count`, `content_hash`, `koreader_hashes` (json: precomputed binary+filename hashes
-  used for auto-matching).
+  used for auto-matching). See §16 for the whole library design.
+- `reading_book_days` — the §3.5 measures keyed by `(owner, date, book)` instead of `(owner, date)`,
+  computed by the same worker. §16.5 explains why it is a separate table rather than a regrouping.
 - `achievements` — `key`, `name`, `description`, `icon` (SVG file), `kind` (`pages|books|streak`),
   `threshold`, `repeatable` (bool).
 - `user_achievements` — `owner`, `achievement`, `tier` (nth time earned), `awarded_at`, `context` (json).
@@ -497,11 +499,16 @@ Then the later ideas, in dependency order:
 
 | Phase | Idea (from your list) | Depends on |
 | --- | --- | --- |
-| **8. Books** | EPUB upload, metadata + cover extraction, library view | 5 |
+| **8. Books** | EPUB upload, metadata + cover extraction, hash precomputation, library view | 5 |
 | **9. Matching** | link pushes to books on arrival; unlinked pushes listed separately | 8 |
-| **10. Merge** | user-selected merge of several pushes into one document | 9 |
-| **11. Achievements** | pages/books/streak rules, SVG icons, repeatable tiers | 8 (page counts) + 3 (daily rows) |
-| **12. Mail** | recovery + achievement notifications via PocketBase SMTP | 11 |
+| **10. OPDS** | OPDS 2.0 catalog, Basic auth, authenticated acquisition | 8 |
+| **11. Merge** | user-selected merge of several pushes into one document | 9 |
+| **12. Book statistics** | per-book/day rows, book detail view, notional page counts | 9 + 3 |
+| **13. Achievements** | pages/books/streak rules, SVG icons, repeatable tiers | 12 (page counts) + 3 (daily rows) |
+| **14. Mail** | recovery + achievement notifications via PocketBase SMTP | 13 |
+
+Phases 9 and 10 are independent of each other and can be built in either order; §16 explains why doing
+10 first makes 9 exact rather than heuristic for anything downloaded from the catalog.
 
 Two notes on those later phases: EPUB parsing should use a small pure-Go reader over `archive/zip` +
 `encoding/xml` rather than a heavyweight dependency (cover extraction is `container.xml` → OPF →
@@ -551,3 +558,173 @@ above; the rest was implemented as written.
    not be used to edit the production schema by hand, or the next deploy will disagree with it.
 5. **Analytics correctness during import** — a large backfill enqueues many days at once; the worker is
    rate-limited and the importer's own bulk path is tested against a hand-computed expectation.
+
+---
+
+## 16. The library: uploads, OPDS 2.0 and book-level statistics
+
+Design for phases 8 to 12. Nothing here is built.
+
+### 16.1 Why the server holds the file
+
+Three reasons, and they reinforce each other:
+
+1. **Backup.** The EPUB survives a lost or wiped device.
+2. **Exact matching.** Holding the bytes means KOsync can compute the same document hash KOReader
+   computes, so a progress push identifies itself instead of being guessed at (§16.3).
+3. **Book-level statistics.** Metadata and a page count turn per-day totals into per-book ones: which
+   books were finished, how long each took, which days went into it (§16.5).
+
+The catalog is what ties 1 to 2: a book downloaded from KOsync is *byte-identical* to the one being
+read, which is the only condition under which the binary hash can match.
+
+### 16.2 Storage
+
+A `books` file field (§3.8), so PocketBase handles storage, local disk or S3, and generates the cover
+thumbnails. Two limits belong in config: a maximum upload size, and an optional per-owner quota.
+`content_hash` (SHA-256 of the file) deduplicates re-uploads of the same file **within one owner**;
+cross-owner dedup is deliberately not done, because it makes deletion and ownership ambiguous for a
+saving that does not matter at this scale.
+
+Parsing stays dependency-free: `archive/zip` + `encoding/xml`, `container.xml` → OPF → metadata, and
+`<meta name="cover">` → manifest href for the cover.
+
+### 16.3 The two KOReader hashes
+
+KOReader identifies a document one of two ways, and `koreader_hashes` stores both:
+
+| Hash | Computed from | Matches when |
+| --- | --- | --- |
+| filename | the file name only | the reader kept the name KOsync served |
+| binary (partial MD5) | sampled chunks at increasing offsets | the file is byte-identical |
+
+Consequences worth designing around:
+
+- **Serve a deterministic filename.** The filename hash is only useful if KOsync knows the name on
+  disk, so acquisition links must serve a name derived from the record, not from whatever the file was
+  called at upload.
+- **A different copy of the same book matches neither.** Another retailer's EPUB of the same title is
+  different bytes and, usually, a different name. So the library UX has to say plainly: upload the file
+  you actually read, or read the file you downloaded from here. This is the whole argument for the
+  catalog.
+
+**The binary hash is confirmed**, checked against five real production documents (the Witcher EPUBs
+and their stored hashes) — 5 of 5. The algorithm is: MD5 over 1024-byte samples read at the offsets
+below, stopping at the first read that returns nothing.
+
+```
+offset(i) = uint32(1024) << uint((2*i) & 31)    for i = -1 .. 10
+          = 0, 1024, 4096, 16384, 65536, 262144, 1048576, ...
+```
+
+The `& 31` is the part that matters and the reason this had to be measured rather than read. KOReader
+computes the offset with LuaJIT's `bit.lshift`, which masks the shift count to five bits, so the first
+iteration is not `1024 >> 2 = 256` as the source reads — it is `1024 << 30` truncated to 32 bits, which
+is **0**. The first sample is the file header. Implementing the loop the way it looks produces a hash
+that matches nothing; that was the first attempt here, and it scored 0 of 5. A test must pin the
+offsets literally, with the five known hashes as fixtures, so nobody later "fixes" the mask away.
+
+### 16.4 OPDS 2.0
+
+Client baseline: KOReader v2026.07 (commit `e72fe823d01b38351b7088168ba4559e3ed2e8bd`), the release
+that added OPDS 2.0 support.
+
+OPDS 2.0 is the Readium manifest model in JSON — a feed is `metadata` + `links` +
+`navigation`/`groups`/`publications`, and a publication is `metadata` + `links` + `images`. Every field
+it wants already exists on `books`, and the cover `thumbs` supply `images` directly, so the feed is a
+projection over the library rather than a second data model. No XML, and no OpenSearch descriptor
+document: 2.0 replaces it with a templated `rel: search` link.
+
+**Route group `/opds`, not `/koreader/opds`.** The `/koreader` prefix exists to isolate the MD5 header
+protocol. OPDS is a standard other readers speak, and the path should not claim otherwise.
+
+**Auth: HTTP Basic against `koreader_accounts`.** Basic sends the plaintext password, and the stored
+hash is bcrypt over the MD5 — so hashing the received password with MD5 and verifying against the
+existing hash works unchanged. The credential a device already has for syncing also opens the catalog,
+with no second thing to create, and the §5.2 cache keeps bcrypt off the hot path. Serve an
+`application/opds-authentication+json` body on the 401 so conformant clients can discover the scheme.
+
+**Acquisition must not use PocketBase's file URLs.** `/api/files/...` needs a short-lived token as a
+query parameter, which an OPDS client will not know to fetch. Acquisition and cover links point at
+`/opds/...` routes that re-check Basic auth and stream from the PocketBase filesystem.
+
+**Build the feed as a tree behind a renderer interface.** The JSON renderer is the only one needed for
+the baseline above, but older clients speak Atom 1.2, and with the tree already built that renderer is
+a small addition rather than a second implementation. Do not build it up front.
+
+### 16.5 Book-level statistics
+
+This is the part that changes the analytics schema. Today's aggregation key is `(owner, date)`; book
+statistics need `(owner, date, book)`, so phase 12 adds a `reading_book_days` collection with the same
+measures plus a `book` relation, computed by the same worker from the same history rows.
+
+Two subtleties:
+
+**Reading time does not add up, and should not be forced to.** §6.3 estimates a day's reading time by
+ordering every push in that day and summing the gaps below the session threshold. Grouping by book
+first means a gap that spans a switch from one book to another belongs to neither, so
+`sum(book rows) ≤ day row`. The plan keeps `reading_days` computed exactly as it is now — those numbers
+were validated against the legacy query at 82 of 83 days — and computes the book rows independently.
+The day total stays the authoritative one; the residual is switching time and is not displayed as a
+discrepancy.
+
+**Page size should be measured, not configured.** An EPUB is reflowable, so it has no page count, and
+KOReader's own count changes with font size and screen. But the sync pushes give the answer away.
+KOReader syncs every N pages, so the progress deltas between consecutive pushes quantize: on real data
+from one device they cluster hard on one value, with clean half and double multiples around it.
+
+Measured against real data, all five books on one device (`go7`), with the page counts the device
+itself reports as ground truth:
+
+| Book | page unit | derived pages | device pages | spine words | words/page |
+| --- | --- | --- | --- | --- | --- |
+| Zeit des Sturms | 0.00143 | **700** | 700 ✓ | 108 755 | 155.4 |
+| Das Schwert der Vorsehung | 0.00178 | **563** | 563 ✓ | 115 952 | 206.0 |
+| Die Witcher-Saga | 0.00028 | 3562 | — | 633 862 | 178.0 |
+| Der letzte Wunsch | — | *no data* | 619 | 96 355 | 155.7 |
+| Kreuzweg der Raben | — | *no data* | 446 | 68 510 | 153.6 |
+
+So the device's page count for a book is `1 / base_delta`, read straight off a histogram of the
+deltas — **exact on both books where it could be checked**, no word count and no user input involved.
+The base unit is visible because partial pushes (a chapter end, closing the document) land on the
+half-step, which also reveals N: `N = dominant / base`, here 2, matching the recommended "sync every
+2 pages".
+
+Two limits are visible in the same table.
+
+**It needs pushes.** Two of the five books have one or two history rows each, both at the very end —
+read before the server was in use. No amount of cleverness recovers a page count from that, so the
+fallback layers are not optional.
+
+**Words per page is not a device constant.** Three books sit at 153.6–155.7, and one sits at 206.0 —
+33% denser — on the *same device* during an *overlapping period* (both were being read in
+January 2026), so it is not a settings change between books. Two hypotheses were tested and killed:
+counting non-spine files in the archive (spine-only counting moves it by 0.1%), and font settings
+drifting over time (the reading periods overlap). The likely remainder is the book's own embedded CSS,
+which is unconfirmed. Whatever the cause, the design consequence is settled: a per-device page size
+the user configures once would have been ~25% wrong for one book in four, and they would have had no
+way to notice. Measure; do not ask.
+
+The resulting layering, best first:
+
+1. **Measured** per `(book, device)` from a rolling window of recent deltas. Precise, and self-healing:
+   change the font and the quantum shifts, and so does the estimate.
+2. **Configured per device**, as `pages_per_sync` on `koreader_accounts` — an override for when the
+   measurement is ambiguous, and expressed in the unit the user actually knows because they typed it
+   into KOReader, rather than asking them to guess a page size.
+3. **A global words-per-page constant** in config, for books with too few pushes to measure — which
+   on this sample is two books in five, so it will be used more than one would hope. Set it around
+   155 rather than the ~250 usually quoted for print; that is what an e-reader page actually holds
+   here. If the density difference does turn out to be the book's own CSS, it is a property of the
+   file rather than of the reader, and a measurement taken once could be stored on `books` and reused
+   for every user who has the same `content_hash`. Worth checking before settling for the constant.
+
+Word counts must come from the **spine**, not from every XHTML file in the archive. On this sample it
+happens to make almost no difference, which is exactly why it would survive review as a bug.
+
+Measured values move as data accumulates, which would otherwise rewrite history. It does not, because
+`user_achievements` rows are awarded records rather than a derived view (§3.8) — once granted, a tier
+stays granted even if the underlying estimate later shifts.
+
+With those in place the library view can show, per book: total reading time, days spent, first and last
+read, percentage complete, and the distribution of reading across days.
