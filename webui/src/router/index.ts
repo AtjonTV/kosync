@@ -1,5 +1,12 @@
+//
+// File:        webui/src/router/index.ts
+// Project:     https://git.obth.eu/atjontv/kosync
+// Copyright:   © 2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
+//
+
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
+import HomeView from '@/views/HomeView.vue'
+import { pb } from '@/pb'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -10,14 +17,22 @@ const router = createRouter({
       component: HomeView,
     },
     {
-      path: '/about',
-      name: 'about',
-      // route level code-splitting
-      // this generates a separate chunk (About.[hash].js) for this route
-      // which is lazy-loaded when the route is visited.
-      component: () => import('../views/AboutView.vue'),
+      path: '/account',
+      name: 'account',
+      component: () => import('@/views/AccountView.vue'),
+      meta: { requiresAuth: true },
     },
   ],
+})
+
+// The dashboard itself shows the sign in form to guests, so only the pages that
+// would be empty without a session send visitors home.
+router.beforeEach((to) => {
+  if (to.meta.requiresAuth && !pb.authStore.isValid) {
+    return { name: 'home' }
+  }
+
+  return true
 })
 
 export default router

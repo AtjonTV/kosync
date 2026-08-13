@@ -1,0 +1,8 @@
+# Host on "example.com" over HTTP (remove "http://" or replace with "https://" for automatic Let's Encrypt certificate retrieval).
+#
+# KOReader sends its password as an MD5 digest, which is only as safe as the
+# connection carrying it, so a production deployment should terminate TLS here.
+http://example.com {
+    # Docker: If the port is not exposed on localhost, replace "localhost" with the containers IP
+    reverse_proxy localhost:8080
+}

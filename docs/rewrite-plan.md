@@ -512,7 +512,32 @@ another reason the daily rows are worth precomputing.
 
 ---
 
-## 14. Open risks
+## 14. What the implementation changed about this plan
+
+Phases 0 to 7 are built. These are the points where the code deliberately deviates from the plan
+above; the rest was implemented as written.
+
+1. **`/koreader/syncs/progress` answers with a body.** The plan said "byte-compatible with the legacy
+   server", which returned an empty 200. The official server returns `{"document":…,"timestamp":…}`
+   and `/users/auth` returns `{"authorized":"OK"}`, so those are what v2 returns.
+2. **`koreader_accounts` cannot authenticate at all.** Beyond disabling password auth, the collection's
+   `AuthRule` is nil, so PocketBase refuses any authentication against it. A device credential can
+   never become an API session, belt and braces.
+3. **`enabled` became `disabled`.** PocketBase booleans default to false, so a flag named `enabled`
+   would have made every credential created outside the API dead on arrival.
+4. **The restore endpoint consumes the entry it restores.** After a restore the entry *is* the current
+   state, so leaving it in the history would show it twice. The state it replaced is archived, which
+   is what keeps the restore undoable.
+5. **`reading_days` rows are deleted when a day empties out.** Storing a row of zeroes for every day
+   somebody did not read would grow the collection for no information.
+6. **`progress_increase` is clamped per document.** The legacy query let a restarted book subtract from
+   a day. Clamping is both more useful and required by the field's own bounds.
+7. **A dry run of the importer is a rolled back transaction**, not a separate code path, so it exercises
+   exactly what a real run does.
+8. **The importer reuses an existing credential's owner** when it finds one, which is what makes a
+   second run a no-op rather than a duplicate import under a fresh account.
+
+## 15. Open risks
 
 1. **bcrypt cost on every progress push** — mitigated by the credential cache (§5.2). If load ever
    demands more, the next step is a dedicated verifier with a lower cost factor for KOReader accounts
