@@ -6,6 +6,7 @@
 <script setup lang="ts">
 import AccountSettings from '@/components/AccountSettings.vue'
 import KoreaderAccounts from '@/components/KoreaderAccounts.vue'
+import DeviceList from '@/components/DeviceList.vue'
 import SetupGuide from '@/components/SetupGuide.vue'
 import { useAuthStore } from '@/stores/auth'
 
@@ -21,6 +22,7 @@ const auth = useAuthStore()
 
     <AccountSettings />
     <KoreaderAccounts />
+    <DeviceList />
     <SetupGuide />
   </div>
 </template>

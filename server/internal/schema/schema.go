@@ -36,6 +36,10 @@ const (
 	// CollectionBooks holds uploaded EPUBs with the metadata read out of them.
 	CollectionBooks = "books"
 
+	// CollectionDevices holds one row per device that has ever pushed progress,
+	// so the thing can be given a name a person recognises.
+	CollectionDevices = "devices"
+
 	// CollectionReadingBookDays holds the daily reading statistics of a single
 	// book. It is a separate collection rather than a grouping of reading_days
 	// because a day's reading time cannot be split across books without losing
@@ -73,6 +77,19 @@ const (
 	// FieldBook links a document to the uploaded EPUB it is progress through,
 	// empty until a matching book exists.
 	FieldBook = "book"
+)
+
+// devices field names.
+//
+// FieldDeviceId is KOReader's own identifier and is what everything groups by,
+// because it survives a rename. FieldReportedName is the name the device last
+// sent, and FieldName is the one its owner chose — seeded from the reported one
+// and never overwritten afterwards, so a rename is not undone by the next push.
+const (
+	FieldDeviceId     = "device_id"
+	FieldReportedName = "reported_name"
+	FieldName         = "name"
+	FieldLastSeen     = "last_seen"
 )
 
 // reading_days and reading_months field names.

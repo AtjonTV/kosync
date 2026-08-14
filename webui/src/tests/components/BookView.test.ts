@@ -10,7 +10,7 @@ import { createTestingPinia } from '@pinia/testing'
 import PrimeVue from 'primevue/config'
 import BookView from '@/views/BookView.vue'
 import { useBookStatsStore } from '@/stores/bookStats'
-import type { Book, ReadingBookDay } from '@/models'
+import type { Book, Device, ReadingBookDay } from '@/models'
 
 vi.mock('@/pb', async () => {
   const mock = await import('../mocks/pb')
@@ -75,7 +75,23 @@ function bookDay(date: string, overrides: Partial<ReadingBookDay> = {}): Reading
   }
 }
 
-function mountBook(entry: Book, days: ReadingBookDay[] = []) {
+function device(overrides: Partial<Device> = {}): Device {
+  return {
+    id: 'device-a',
+    collectionId: 'c',
+    collectionName: 'devices',
+    created: '',
+    updated: '',
+    owner: 'user-a',
+    device_id: 'go7',
+    reported_name: 'go7',
+    name: '',
+    last_seen: '',
+    ...overrides,
+  }
+}
+
+function mountBook(entry: Book, days: ReadingBookDay[] = [], known: Device[] = [device()]) {
   return mount(BookView, {
     global: {
       plugins: [
@@ -85,6 +101,7 @@ function mountBook(entry: Book, days: ReadingBookDay[] = []) {
             books: { books: [entry], loaded: true },
             bookStats: { days },
             documents: { documents: [], loaded: true },
+            devices: { devices: known, loaded: true },
           },
         }),
         PrimeVue,
@@ -108,6 +125,19 @@ describe('BookView', () => {
 
     expect(wrapper.text()).toContain('700')
     expect(wrapper.text()).toContain('measured on go7')
+  })
+
+  // The book stores the identifier, which is a hex string on a real device. What
+  // belongs on screen is whatever its owner decided to call the thing.
+  it('uses the name the owner gave the device', () => {
+    const wrapper = mountBook(
+      book({ measured_pages: 700, measured_device: '865F46C0C0F4401D9A05768B6B0BF3AC' }),
+      [],
+      [device({ device_id: '865F46C0C0F4401D9A05768B6B0BF3AC', name: 'Boox Go 7' })],
+    )
+
+    expect(wrapper.text()).toContain('measured on Boox Go 7')
+    expect(wrapper.text()).not.toContain('865F46C0C0F4401D9A05768B6B0BF3AC')
   })
 
   // An EPUB has no pages of its own, so an unmeasured count is a guess from the

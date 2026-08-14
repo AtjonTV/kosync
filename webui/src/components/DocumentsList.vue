@@ -4,10 +4,11 @@
   Copyright:   © 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
 -->
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import { useDocumentsStore } from '@/stores/documents'
+import { useDevicesStore } from '@/stores/devices'
 import HistoryList from '@/components/HistoryList.vue'
 import type { DataTableCellEditCompleteEvent } from 'primevue/datatable'
 import type { DocumentWithHistory } from '@/models'
@@ -16,8 +17,16 @@ import { errorMessage } from '@/pb'
 defineProps<{ customTitle?: string }>()
 
 const documents = useDocumentsStore()
+// A push carries a device identifier and a name, and the name it carries is
+// whatever KOReader was told to call itself. This turns it into the name the
+// owner chose.
+const devices = useDevicesStore()
 const confirm = useConfirm()
 const toast = useToast()
+
+onMounted(() => {
+  if (!devices.loaded) devices.load()
+})
 
 const showHistoryDialog = ref(false)
 const selectedDocument = ref<DocumentWithHistory | null>(null)
@@ -103,6 +112,22 @@ const deleteDocument = (doc: DocumentWithHistory) => {
       >
         <Column field="document" header="Document" :sortable="true" style="width: 25%"></Column>
         <Column field="title" header="Title" :sortable="true" style="width: 25%">
+          <template #body="{ data }">
+            <RouterLink
+              v-if="data.book"
+              :to="{ name: 'book', params: { id: data.book } }"
+              class="hover:underline"
+              >{{ data.title }}</RouterLink
+            >
+            <template v-else>
+              <span>{{ data.title }}</span>
+              <span
+                class="ml-2 text-xs text-surface-500 dark:text-surface-400"
+                title="No EPUB on the server matches this document's hash"
+                >no book</span
+              >
+            </template>
+          </template>
           <template #editor="{ data, field }">
             <InputText v-model="data[field]" autofocus fluid />
           </template>
@@ -110,7 +135,11 @@ const deleteDocument = (doc: DocumentWithHistory) => {
         <Column field="progress" header="Reading progress" :sortable="true">
           <template #body="{ data }"> {{ Number(data.progress * 100).toFixed(2) }}% </template>
         </Column>
-        <Column field="last_device" header="Device" :sortable="true"></Column>
+        <Column field="last_device" header="Device" :sortable="true">
+          <template #body="{ data }">{{
+            devices.nameOf(data.last_device_id) || data.last_device
+          }}</template>
+        </Column>
         <Column field="last_read_at" header="Last read" :sortable="true">
           <template #body="{ data }">{{ formatDateTime(data.last_read_at) }}</template>
         </Column>
@@ -169,8 +198,12 @@ const deleteDocument = (doc: DocumentWithHistory) => {
               <div
                 class="flex justify-between items-center text-sm text-surface-500 dark:text-surface-400"
               >
-                <span class="truncate max-w-[50%]" :title="doc.last_device">
-                  <i class="pi pi-tablet mr-1 text-xs"></i>{{ doc.last_device }}
+                <span
+                  class="truncate max-w-[50%]"
+                  :title="devices.nameOf(doc.last_device_id) || doc.last_device"
+                >
+                  <i class="pi pi-tablet mr-1 text-xs"></i
+                  >{{ devices.nameOf(doc.last_device_id) || doc.last_device }}
                 </span>
                 <span>{{ formatDate(doc.last_read_at) }}</span>
               </div>

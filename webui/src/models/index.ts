@@ -83,6 +83,21 @@ export interface Book extends BaseRecord {
   measured_through: string
 }
 
+/**
+ * A device that has pushed progress.
+ *
+ * `device_id` is KOReader's own identifier and is what everything groups by,
+ * because it survives a rename. `reported_name` is what the device calls itself,
+ * and `name` is what its owner calls it.
+ */
+export interface Device extends BaseRecord {
+  owner: string
+  device_id: string
+  reported_name: string
+  name: string
+  last_seen: string
+}
+
 /** One precomputed day of reading in one book. */
 export interface ReadingBookDay extends BaseRecord {
   owner: string

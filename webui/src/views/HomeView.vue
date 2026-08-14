@@ -6,26 +6,33 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, watch } from 'vue'
 import DashboardMetrics from '@/components/DashboardMetrics.vue'
-import DocumentsList from '@/components/DocumentsList.vue'
+import BookLibrary from '@/components/BookLibrary.vue'
 import ReadStatisticsChart from '@/components/ReadStatisticsChart.vue'
 import AuthPanel from '@/components/AuthPanel.vue'
 import SetupGuide from '@/components/SetupGuide.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useDocumentsStore } from '@/stores/documents'
 import { useStatsStore } from '@/stores/stats'
+import { useBooksStore } from '@/stores/books'
 
 const auth = useAuthStore()
 const documents = useDocumentsStore()
 const stats = useStatsStore()
+const books = useBooksStore()
 
+// The books are loaded here as well as by the library itself, because the
+// covers are the main thing on this page now and should not appear a beat after
+// everything else. The documents come too: the progress shown on a cover lives
+// on the document, not the book.
 const start = async () => {
-  await Promise.all([documents.load(), stats.load()])
-  await Promise.all([documents.subscribe(), stats.subscribe()])
+  await Promise.all([documents.load(), stats.load(), books.load()])
+  await Promise.all([documents.subscribe(), stats.subscribe(), books.subscribe()])
 }
 
 const stop = () => {
   documents.unsubscribe()
   stats.stop()
+  books.unsubscribe()
 }
 
 watch(
@@ -52,7 +59,7 @@ onUnmounted(stop)
   <template v-if="auth.isValid">
     <DashboardMetrics />
     <ReadStatisticsChart />
-    <DocumentsList custom-title="My documents" />
+    <BookLibrary :limit="6" />
   </template>
 
   <div v-else class="flex flex-col gap-6">

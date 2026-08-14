@@ -103,6 +103,16 @@ const days = await pb.collection('reading_book_days').getFullList({
 A realtime subscription is filtered by the collection's list rule, which is per owner rather than per
 book, so a client watching one book has to discard rows for the others itself.
 
+### Devices
+
+`devices` maps the `device_id` that appears on documents and on measured page counts to a name. Rows
+are created by the server as pushes arrive, so the collection is read-mostly: `create` and `delete` are
+refused, and of the fields only `name` may be changed.
+
+```js
+await pb.collection('devices').update(id, { name: 'Boox Go 7' })
+```
+
 ## 3. The KOsync API, under `/api/kosync`
 
 The few operations the generated collection API cannot express. All of them require an account

@@ -77,7 +77,8 @@ the reference books this reproduced the counts the device reports, 700 and 563, 
 
 The measurement is taken per file and per device, from the recent end of the series first so that
 changing the font is followed rather than ignored, and the series with the most pushes behind it wins.
-It is stored on the book as `measured_pages`, along with the device it came from.
+It is stored on the book as `measured_pages`, along with the `device_id` it came from — see the
+`devices` collection in [database.md](database.md) for how that becomes a name worth reading.
 
 It does not always succeed, and when it cannot it says so instead of guessing:
 

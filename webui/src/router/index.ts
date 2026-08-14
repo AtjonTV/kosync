@@ -17,6 +17,12 @@ const router = createRouter({
       component: HomeView,
     },
     {
+      path: '/documents',
+      name: 'documents',
+      component: () => import('@/views/DocumentsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/library',
       name: 'library',
       component: () => import('@/views/LibraryView.vue'),

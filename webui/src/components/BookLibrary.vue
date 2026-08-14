@@ -13,6 +13,15 @@ import type { Book } from '@/models'
 import type { FileUploadUploaderEvent } from 'primevue/fileupload'
 import { errorMessage, fileUrl } from '@/pb'
 
+const props = defineProps<{
+  /**
+   * How many books to show. Unset means all of them, by title, which is what
+   * the library page wants. Set, the dashboard gets the ones most recently read
+   * and a link to the rest — a shelf, not a catalogue.
+   */
+  limit?: number
+}>()
+
 const books = useBooksStore()
 const documents = useDocumentsStore()
 const confirm = useConfirm()
@@ -27,7 +36,40 @@ const newTitle = ref('')
 const renameError = ref('')
 const busy = ref(false)
 
-const sorted = computed(() => [...books.books].sort((a, b) => a.title.localeCompare(b.title)))
+/** When a book was last read, keyed by book id. */
+const lastReadByBook = computed(() => {
+  const latest = new Map<string, string>()
+
+  for (const document of documents.documents) {
+    if (!document.book) continue
+
+    const best = latest.get(document.book) ?? ''
+    if (document.last_read_at > best) latest.set(document.book, document.last_read_at)
+  }
+
+  return latest
+})
+
+const byTitle = computed(() => [...books.books].sort((a, b) => a.title.localeCompare(b.title)))
+
+const byRecency = computed(() =>
+  [...books.books].sort((a, b) => {
+    const left = lastReadByBook.value.get(a.id) ?? ''
+    const right = lastReadByBook.value.get(b.id) ?? ''
+    if (left !== right) return right.localeCompare(left)
+
+    return a.title.localeCompare(b.title)
+  }),
+)
+
+const sorted = computed(() => {
+  if (!props.limit) return byTitle.value
+
+  return byRecency.value.slice(0, props.limit)
+})
+
+/** How many books the limit is hiding. */
+const hidden = computed(() => (props.limit ? Math.max(books.books.length - props.limit, 0) : 0))
 
 /**
  * How far the reading has got in each book, keyed by book id.
@@ -174,7 +216,7 @@ onMounted(() => {
       </div>
     </template>
     <template #content>
-      <p class="mb-4 text-surface-600 dark:text-surface-400">
+      <p v-if="!limit" class="mb-4 text-surface-600 dark:text-surface-400">
         Books you upload are kept here as a backup, and let KOsync recognise which book a device is
         reporting progress for. Upload the very file you read on the device: the match is made on
         the file's contents, so another copy of the same title will not do.
@@ -270,6 +312,12 @@ onMounted(() => {
 
       <div v-else class="p-8 text-center text-surface-500 dark:text-surface-400">
         No books yet. Add an EPUB to keep a copy here.
+      </div>
+
+      <div v-if="hidden" class="mt-6 text-center">
+        <RouterLink :to="{ name: 'library' }" class="hover:underline">
+          See all {{ books.books.length }} books
+        </RouterLink>
       </div>
     </template>
   </Card>

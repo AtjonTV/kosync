@@ -85,6 +85,29 @@ wherever one can be had — see [analytics.md](analytics.md). `measured_pages` h
 when there is one, with `measured_device` naming where it came from and `measured_through` recording
 how far into the reading it looked, so a book nobody has read since is not measured again.
 
+A `documents` row carries a `book` relation, set by the server when the document's hash matches an
+uploaded book. It is empty until such a book exists, and it is cleared rather than cascaded when the
+book is deleted: removing a file must not remove the reading done in it.
+
+### `devices`
+
+One row per device that has pushed progress, per owner.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `owner` | relation → `users` | |
+| `device_id` | text | KOReader's own identifier; everything else groups by this, because it survives a rename |
+| `reported_name` | text | what the device last called itself, refreshed on every push |
+| `name` | text | what its owner calls it; seeded from the reported name and never overwritten afterwards |
+| `last_seen` | date | only ever moves forwards, so imported history cannot make a device look retired |
+
+Unique on `(owner, device_id)`: the same physical device used from two accounts is two rows, because
+each owner names it for themselves. Rows are created by the server as pushes arrive — a device exists
+because it synced, so `create` and `delete` are superuser only and only `name` may be edited.
+
+This is deliberately not `koreader_accounts.label`. A credential and a device are not the same thing:
+one credential can be used from several devices, and the statistics group by device.
+
 ### `reading_book_days`
 
 The daily statistics of a single book, keyed by owner, day and book. Read only through the API, like
@@ -93,9 +116,6 @@ takes its rows with it; the reading itself lives in `documents` and stays. See
 [analytics.md](analytics.md) for why the reading time here does not add up to the day totals and the
 pages do.
 
-A `documents` row carries a `book` relation, set by the server when the document's hash matches an
-uploaded book. It is empty until such a book exists, and it is cleared rather than cascaded when the
-book is deleted: removing a file must not remove the reading done in it.
 
 ## Backups
 

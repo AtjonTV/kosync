@@ -11,11 +11,13 @@ import { fileUrl } from '@/pb'
 import { useBooksStore } from '@/stores/books'
 import { useBookStatsStore } from '@/stores/bookStats'
 import { useDocumentsStore } from '@/stores/documents'
+import { useDevicesStore } from '@/stores/devices'
 
 const route = useRoute()
 const books = useBooksStore()
 const stats = useBookStatsStore()
 const documents = useDocumentsStore()
+const devices = useDevicesStore()
 
 const bookId = computed(() => String(route.params.id ?? ''))
 const book = computed(() => books.books.find((entry) => entry.id === bookId.value) ?? null)
@@ -53,11 +55,13 @@ const percent = computed(() => Math.round((progress.value ?? 0) * 100))
 const pages = computed(() => {
   if (!book.value) return null
   if (book.value.measured_pages > 0) {
+    // The book stores the device's identifier, because that is what survives a
+    // rename; what belongs on screen is whatever the owner calls the thing.
+    const device = devices.nameOf(book.value.measured_device)
+
     return {
       count: book.value.measured_pages,
-      note: book.value.measured_device
-        ? `measured on ${book.value.measured_device}`
-        : 'measured from your reading',
+      note: device ? `measured on ${device}` : 'measured from your reading',
     }
   }
   if (book.value.page_count > 0) {
@@ -148,6 +152,7 @@ onMounted(async () => {
 
   if (!books.loaded) await books.load()
   if (!documents.loaded) await documents.load()
+  if (!devices.loaded) await devices.load()
   await load(bookId.value)
 })
 

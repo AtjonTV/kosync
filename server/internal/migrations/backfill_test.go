@@ -219,3 +219,76 @@ func storeReadingDay(t testing.TB, app core.App, owner, date string) {
 		t.Fatalf("store the day %q: %v", date, err)
 	}
 }
+
+// A device that finished a book months ago never pushes again, so it would
+// never appear in a registry that only fills itself from new pushes — and the
+// page count measured on it would go on naming a bare identifier.
+func TestBackfillRegistersDevicesThatAlreadyPushed(t *testing.T) {
+	app := testutil.NewApp(t)
+	user := testutil.CreateUser(t, app, testutil.IdUserA, testutil.EmailUserA, testutil.PasswordUsers)
+
+	const deviceId = "865F46C0C0F4401D9A05768B6B0BF3AC"
+	base := time.Date(2026, 3, 1, 10, 0, 0, 0, time.UTC)
+
+	document := testutil.CreateDocument(t, app, user, "", "hash-a", 0.4, base)
+	document.Set(schema.FieldLastDevice, "go7-renamed")
+	document.Set(schema.FieldLastDeviceId, deviceId)
+	if err := app.Save(document); err != nil {
+		t.Fatalf("store the document: %v", err)
+	}
+
+	// An older state, under the name the device had then.
+	entry := testutil.CreateHistoryEntry(t, app, document, "", 0.1, base.AddDate(0, 0, -30))
+	entry.Set(schema.FieldLastDevice, "go7")
+	entry.Set(schema.FieldLastDeviceId, deviceId)
+	if err := app.Save(entry); err != nil {
+		t.Fatalf("store the history entry: %v", err)
+	}
+
+	if err := migrations.BackfillDevices(app); err != nil {
+		t.Fatalf("backfill the devices: %v", err)
+	}
+
+	registered, err := app.FindAllRecords(schema.CollectionDevices)
+	if err != nil {
+		t.Fatalf("list the devices: %v", err)
+	}
+	if len(registered) != 1 {
+		t.Fatalf("expected one device, got %d", len(registered))
+	}
+	// The newest push wins, which is the same rule the hook applies afterwards.
+	if got := registered[0].GetString(schema.FieldReportedName); got != "go7-renamed" {
+		t.Errorf("expected the most recent name, got %q", got)
+	}
+	if got := registered[0].GetDateTime(schema.FieldLastSeen).Time(); !got.Equal(base) {
+		t.Errorf("expected last_seen to be the newest push, got %v", got)
+	}
+}
+
+// It runs inside a migration, and a migration that has already run once must
+// not double the registry if it is ever re-applied.
+func TestBackfillDevicesIsIdempotent(t *testing.T) {
+	app := testutil.NewApp(t)
+	user := testutil.CreateUser(t, app, testutil.IdUserA, testutil.EmailUserA, testutil.PasswordUsers)
+
+	document := testutil.CreateDocument(t, app, user, "", "hash-a", 0.4, time.Now())
+	document.Set(schema.FieldLastDevice, "go7")
+	document.Set(schema.FieldLastDeviceId, "device-a")
+	if err := app.Save(document); err != nil {
+		t.Fatalf("store the document: %v", err)
+	}
+
+	for range 2 {
+		if err := migrations.BackfillDevices(app); err != nil {
+			t.Fatalf("backfill the devices: %v", err)
+		}
+	}
+
+	registered, err := app.FindAllRecords(schema.CollectionDevices)
+	if err != nil {
+		t.Fatalf("list the devices: %v", err)
+	}
+	if len(registered) != 1 {
+		t.Errorf("expected the device to be registered once, got %d", len(registered))
+	}
+}

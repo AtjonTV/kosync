@@ -513,7 +513,8 @@ Then the later ideas, in dependency order:
 Phases 9 and 10 are independent of each other and can be built in either order; §16 explains why doing
 10 first makes 9 exact rather than heuristic for anything downloaded from the catalog.
 
-Phases 8, 9 and 12 are built; §16.6, §18 and §19 record what each of them turned into.
+Phases 8, 9, 12, 15, 16 and 17 are built; §16.6, §18, §19 and §21 record what each of them turned
+into, and §17 is now a description of what the interface does rather than what it should do.
 
 Phases 15 and 16 are interface work rather than new capability, and are described in §17. They are
 listed last because nothing depends on them, but 15 is worth doing before the documents table grows
@@ -831,34 +832,35 @@ read, percentage complete, and the distribution of reading across days.
 
 ## 17. Interface restructuring (phases 15 and 16)
 
-Neither of these adds capability; both are about the shape the app presents once there is a library in
-it. Recorded now because the current layout was designed when documents were the only thing to show.
+Built. Neither added capability; both were about the shape the app presents once there is a library in
+it, since the old layout was designed when documents were the only thing to show.
 
 ### 17.1 A library-first dashboard (phase 15)
 
-Today `/` is the statistics plus the documents table, and `/library` is a separate page. That has it
-backwards: the library is the thing with covers, and the covers are what make a dashboard worth
-looking at. The intended shape is
+`/` is now the statistics and then the library, and the documents table has moved to `/documents`.
 
-- `/` — statistics first, then the library as the main component below them,
-- and the documents table moved to a page of its own.
+The plan left two questions to settle while building rather than before, and both are now answered.
 
-Worth doing before the documents table gains anything else, since each new feature there is one more
-thing to move.
+**How much of the library belongs on the dashboard: the recently read.** `BookLibrary` takes an
+optional `limit`, and the dashboard passes six. Limited, it sorts by when each book was last read
+rather than by title and links to the rest; unlimited, it is the full library by title, which is what
+`/library` wants. A dashboard is a shelf, not a catalogue, and the distinction cost one prop.
 
-Two questions to settle when building it, not before: how much of the library belongs on the dashboard
-(everything, or the recently read), and whether the documents page and the library end up merged once
-matching (phase 9) means most documents *are* books. The second question is the more interesting one,
-and the answer probably depends on how many pushes stay unmatched in practice.
+**Whether documents and the library merge: no, and the reason is now visible.** `/documents` says how
+many of them have no book behind them, and each row either links to its book or is marked `no book`.
+That is phase 9's deferred "unlinked pushes listed separately", which was held back for exactly this
+restructure. Merging the two views would hide the one thing that page is for: a document with no book
+gets no cover, no page count and no statistics, and uploading the file is the only fix.
 
 ### 17.2 Navigation (phase 16)
 
-The top bar grew one control at a time and now reads as a row of unrelated icons. The intended shape is
+Built as described. Home, library and documents sit on the left as ordinary navigation with an active
+state; the address, account settings and sign out are one menu on the right, with the address as its
+first item rather than a label beside it — it says whose account the menu is about, which is the
+question a person opening it has. The theme toggle is the only free-standing control left.
 
-- **left** — home, library, and later documents, as ordinary navigation,
-- **right** — the address, account settings and sign out collapsed into a single account menu.
-
-That leaves the theme toggle as the only free-standing control on the right, which is where it belongs.
+The labels collapse to icons below the `sm` breakpoint, so three navigation entries do not push the
+account menu off a phone.
 
 ---
 
@@ -1030,3 +1032,36 @@ exactly the person who set up one shared credential.
 
 Where a device name appears once this exists: the measured page count on a book, the documents table's
 "last read on", and — if phase 13 happens — anything that counts reading per device.
+
+---
+
+## 21. Device names (phase 17)
+
+Built, and smaller than it looked, because both halves were already in the data.
+
+**The display bug went first.** A push carries `last_device` and `last_device_id`, and `documents`
+stored both all along; the book page was simply reading the wrong one. Both the documents table and the
+book page now resolve the identifier to a name.
+
+**The registry is the feature.** `devices` holds one row per `(owner, device_id)` with the name the
+device reports and the name its owner chose. It is written by a hook on every push, after the write
+rather than before it, on the same rule matching follows: registering a device must never cost a reader
+their position.
+
+Three decisions worth stating:
+
+1. **The reported name is refreshed; the chosen one never is.** Renaming a device in KOReader shows up
+   for anyone who has not overridden it, and a name typed into KOsync survives the very next sync.
+   Getting this backwards would make the feature useless in the least obvious way — it would work, and
+   then silently undo itself.
+2. **`last_seen` only moves forwards.** History arrives out of order during an import, and a restored
+   old state must not make a device look unused since last year.
+3. **A device is not a credential.** `koreader_accounts.label` already exists and would have been the
+   cheap place to put this, but one credential can be used from several devices and the statistics
+   group by device id. Reusing the label would misname things worst for exactly the person who set up
+   one shared credential.
+
+Backfilled from the existing pushes, over both `documents` and `document_history`: a device that
+finished a book months ago never pushes again, so a registry that only fills itself going forward would
+never learn its name. On the production copy it registered three devices — including one neither of us
+had thought about, a desktop KOReader reporting itself as `Flatpak`.
