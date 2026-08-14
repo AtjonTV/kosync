@@ -846,11 +846,27 @@ optional `limit`, and the dashboard passes six. Limited, it sorts by when each b
 rather than by title and links to the rest; unlimited, it is the full library by title, which is what
 `/library` wants. A dashboard is a shelf, not a catalogue, and the distinction cost one prop.
 
-**Whether documents and the library merge: no, and the reason is now visible.** `/documents` says how
-many of them have no book behind them, and each row either links to its book or is marked `no book`.
-That is phase 9's deferred "unlinked pushes listed separately", which was held back for exactly this
-restructure. Merging the two views would hide the one thing that page is for: a document with no book
-gets no cover, no page count and no statistics, and uploading the file is the only fix.
+**Whether documents and the library merge: no — the two have different jobs.** The library is where
+books are read and interacted with. The documents page is the fallback that answers one question:
+what have I read that is not on the server yet? So it is built around that question rather than
+around the table it used to be:
+
+- **The missing ones lead**, in their own "Not in your library" section with the count in the
+  heading, an explanation of what they are missing out on, and an **EPUB upload right there** — the
+  only fix, offered where the problem is stated rather than only on the library page.
+- **The matched ones follow**, each with its cover and a link to its book, under a heading that says
+  the library is the better place to read them.
+- **Every row says which it is**, with a cover and link when there is a book and a "Not in library"
+  tag when there is not.
+
+That is phase 9's deferred "unlinked pushes listed separately", finally built, and held back for
+exactly this restructure.
+
+The first attempt got this wrong in an instructive way. The marker and the link were added to the
+**table** view — and the grid is the default, so the view most people see said nothing at all beyond a
+count with no way to tell which rows it meant. The list component now takes the documents to render as
+a prop instead of reading the store, so a page decides what a list contains, and both views are
+asserted for the marker and the link in the tests.
 
 ### 17.2 Navigation (phase 16)
 

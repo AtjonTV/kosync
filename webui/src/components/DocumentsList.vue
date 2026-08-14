@@ -4,35 +4,59 @@
   Copyright:   © 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
 -->
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import { useDocumentsStore } from '@/stores/documents'
 import { useDevicesStore } from '@/stores/devices'
+import { useBooksStore } from '@/stores/books'
 import HistoryList from '@/components/HistoryList.vue'
 import type { DataTableCellEditCompleteEvent } from 'primevue/datatable'
-import type { DocumentWithHistory } from '@/models'
-import { errorMessage } from '@/pb'
+import type { Book, DocumentWithHistory } from '@/models'
+import { errorMessage, fileUrl } from '@/pb'
 
-defineProps<{ customTitle?: string }>()
+const props = withDefaults(
+  defineProps<{
+    /** The documents to show. The page decides which; this only renders them. */
+    documents: DocumentWithHistory[]
+    /** Shared with the page so one control switches every list on it. */
+    viewMode?: string
+    emptyMessage?: string
+  }>(),
+  { viewMode: 'Grid', emptyMessage: 'No documents found.' },
+)
 
-const documents = useDocumentsStore()
+// Named for what it is rather than "documents", which is the prop: this
+// component is handed the documents to render and only reaches for the store to
+// change one.
+const store = useDocumentsStore()
 // A push carries a device identifier and a name, and the name it carries is
 // whatever KOReader was told to call itself. This turns it into the name the
 // owner chose.
 const devices = useDevicesStore()
+// The books are here for the covers and the links: a document that has one is a
+// book you can open, and saying so is the difference between this page being a
+// list of hashes and a list of things you read.
+const books = useBooksStore()
 const confirm = useConfirm()
 const toast = useToast()
-
-onMounted(() => {
-  if (!devices.loaded) devices.load()
-})
 
 const showHistoryDialog = ref(false)
 const selectedDocument = ref<DocumentWithHistory | null>(null)
 
-const viewMode = ref('Grid')
-const viewOptions = ref(['Grid', 'List'])
+const booksById = computed(() => new Map(books.books.map((book) => [book.id, book])))
+
+const bookOf = (doc: DocumentWithHistory): Book | undefined =>
+  doc.book ? booksById.value.get(doc.book) : undefined
+
+const coverOf = (doc: DocumentWithHistory) => {
+  const book = bookOf(doc)
+
+  return book?.cover ? fileUrl(book, book.cover, '100x150') : ''
+}
+
+const deviceOf = (doc: DocumentWithHistory) =>
+  devices.nameOf(doc.last_device_id) || doc.last_device || 'unknown device'
 
 const openHistory = (doc: DocumentWithHistory) => {
   selectedDocument.value = doc
@@ -54,7 +78,7 @@ const onEditComplete = async (event: DataTableCellEditCompleteEvent) => {
   }
 
   try {
-    await documents.updateTitle(document.id, title)
+    await store.updateTitle(document.id, title)
   } catch (e) {
     toast.add({
       severity: 'error',
@@ -74,7 +98,7 @@ const deleteDocument = (doc: DocumentWithHistory) => {
     acceptProps: { label: 'Delete', severity: 'danger' },
     accept: async () => {
       try {
-        await documents.remove(doc.id)
+        await store.remove(doc.id)
       } catch (e) {
         toast.add({
           severity: 'error',
@@ -86,19 +110,19 @@ const deleteDocument = (doc: DocumentWithHistory) => {
     },
   })
 }
+
+onMounted(() => {
+  if (!devices.loaded) devices.load()
+  if (!books.loaded) books.load()
+})
 </script>
 
 <template>
   <div class="flex flex-col gap-4">
-    <div class="flex justify-between items-center">
-      <h1 class="text-3xl">{{ customTitle ?? 'Documents' }}</h1>
-      <SelectButton v-model="viewMode" :options="viewOptions" :allow-empty="false" />
-    </div>
-
-    <div v-if="viewMode === 'List'">
+    <div v-if="props.viewMode === 'List'">
       <DataTable
         data-key="id"
-        :value="documents.documents"
+        :value="props.documents"
         paginator
         :rows="15"
         :rows-per-page-options="[15, 25, 50, 100]"
@@ -110,23 +134,24 @@ const deleteDocument = (doc: DocumentWithHistory) => {
         :sort-order="-1"
         @cell-edit-complete="onEditComplete"
       >
-        <Column field="document" header="Document" :sortable="true" style="width: 25%"></Column>
-        <Column field="title" header="Title" :sortable="true" style="width: 25%">
+        <Column field="title" header="Title" :sortable="true" style="width: 30%">
           <template #body="{ data }">
-            <RouterLink
-              v-if="data.book"
-              :to="{ name: 'book', params: { id: data.book } }"
-              class="hover:underline"
-              >{{ data.title }}</RouterLink
-            >
-            <template v-else>
-              <span>{{ data.title }}</span>
-              <span
-                class="ml-2 text-xs text-surface-500 dark:text-surface-400"
-                title="No EPUB on the server matches this document's hash"
-                >no book</span
+            <div class="flex items-center gap-2">
+              <RouterLink
+                v-if="data.book"
+                :to="{ name: 'book', params: { id: data.book } }"
+                class="hover:underline"
+                >{{ data.title || data.document }}</RouterLink
               >
-            </template>
+              <span v-else>{{ data.title || data.document }}</span>
+              <Tag
+                v-if="!data.book"
+                value="Not in library"
+                severity="warn"
+                class="shrink-0"
+                title="No uploaded EPUB matches this document"
+              />
+            </div>
           </template>
           <template #editor="{ data, field }">
             <InputText v-model="data[field]" autofocus fluid />
@@ -136,12 +161,19 @@ const deleteDocument = (doc: DocumentWithHistory) => {
           <template #body="{ data }"> {{ Number(data.progress * 100).toFixed(2) }}% </template>
         </Column>
         <Column field="last_device" header="Device" :sortable="true">
-          <template #body="{ data }">{{
-            devices.nameOf(data.last_device_id) || data.last_device
-          }}</template>
+          <template #body="{ data }">{{ deviceOf(data) }}</template>
         </Column>
         <Column field="last_read_at" header="Last read" :sortable="true">
           <template #body="{ data }">{{ formatDateTime(data.last_read_at) }}</template>
+        </Column>
+        <Column field="document" header="Hash" :sortable="true">
+          <template #body="{ data }">
+            <span
+              class="font-mono text-xs text-surface-500 dark:text-surface-400"
+              :title="`KOReader identifies this file as ${data.document}`"
+              >{{ data.document.slice(0, 12) }}…</span
+            >
+          </template>
         </Column>
         <Column header="Actions" style="width: 8rem">
           <template #body="{ data }">
@@ -165,28 +197,69 @@ const deleteDocument = (doc: DocumentWithHistory) => {
       </DataTable>
     </div>
 
-    <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+    <div v-else class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
       <Card
-        v-for="doc in documents.documents"
+        v-for="doc in props.documents"
         :key="doc.id"
-        class="flex flex-col h-full bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-700 shadow-sm overflow-hidden"
+        class="bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-700 shadow-sm overflow-hidden"
       >
         <template #content>
-          <div class="flex flex-col h-full p-2">
-            <h3
-              class="text-xl font-semibold mb-4 text-surface-900 dark:text-surface-0 line-clamp-2"
-              :title="doc.title || doc.document"
+          <div class="flex gap-4">
+            <RouterLink
+              v-if="doc.book"
+              :to="{ name: 'book', params: { id: doc.book } }"
+              class="w-16 shrink-0 aspect-[2/3] rounded overflow-hidden bg-surface-100 dark:bg-surface-800 block"
             >
-              {{ doc.title || doc.document }}
-            </h3>
+              <img
+                v-if="coverOf(doc)"
+                :src="coverOf(doc)"
+                :alt="`Cover of ${doc.title}`"
+                class="w-full h-full object-cover"
+                loading="lazy"
+              />
+              <span
+                v-else
+                class="w-full h-full flex items-center justify-center text-surface-400 dark:text-surface-500"
+              >
+                <i class="pi pi-book"></i>
+              </span>
+            </RouterLink>
+            <!-- No cover to show, and the reason is the point of this page. -->
+            <span
+              v-else
+              class="w-16 shrink-0 aspect-[2/3] rounded border border-dashed border-surface-300 dark:border-surface-600 flex items-center justify-center text-surface-400 dark:text-surface-500"
+              title="No uploaded EPUB matches this document"
+            >
+              <i class="pi pi-question"></i>
+            </span>
 
-            <div class="mt-auto flex flex-col gap-3">
+            <div class="flex flex-col gap-2 min-w-0 grow">
+              <div class="flex items-start justify-between gap-2">
+                <RouterLink
+                  v-if="doc.book"
+                  :to="{ name: 'book', params: { id: doc.book } }"
+                  class="font-semibold leading-tight line-clamp-2 hover:underline"
+                  :title="doc.title || doc.document"
+                  >{{ doc.title || doc.document }}</RouterLink
+                >
+                <span
+                  v-else
+                  class="font-semibold leading-tight line-clamp-2"
+                  :title="doc.title || doc.document"
+                  >{{ doc.title || doc.document }}</span
+                >
+              </div>
+
+              <Tag v-if="!doc.book" value="Not in library" severity="warn" class="self-start" />
+
               <div>
                 <div
                   class="flex justify-between text-sm mb-1 text-surface-600 dark:text-surface-400"
                 >
-                  <span>Progress</span>
-                  <span>{{ Number((doc.progress || 0) * 100).toFixed(1) }}%</span>
+                  <span>{{ deviceOf(doc) }}</span>
+                  <span class="tabular-nums"
+                    >{{ Number((doc.progress || 0) * 100).toFixed(1) }}%</span
+                  >
                 </div>
                 <ProgressBar
                   :value="Number((doc.progress || 0) * 100)"
@@ -196,47 +269,39 @@ const deleteDocument = (doc: DocumentWithHistory) => {
               </div>
 
               <div
-                class="flex justify-between items-center text-sm text-surface-500 dark:text-surface-400"
+                class="flex justify-between items-center text-xs text-surface-500 dark:text-surface-400"
               >
-                <span
-                  class="truncate max-w-[50%]"
-                  :title="devices.nameOf(doc.last_device_id) || doc.last_device"
-                >
-                  <i class="pi pi-tablet mr-1 text-xs"></i
-                  >{{ devices.nameOf(doc.last_device_id) || doc.last_device }}
-                </span>
                 <span>{{ formatDate(doc.last_read_at) }}</span>
+                <span class="flex gap-1">
+                  <Button
+                    icon="pi pi-history"
+                    variant="text"
+                    rounded
+                    size="small"
+                    title="View History"
+                    @click="openHistory(doc)"
+                  />
+                  <Button
+                    icon="pi pi-trash"
+                    severity="danger"
+                    variant="text"
+                    rounded
+                    size="small"
+                    title="Delete"
+                    @click="deleteDocument(doc)"
+                  />
+                </span>
               </div>
-            </div>
-
-            <div
-              class="flex justify-end gap-2 mt-4 pt-4 border-t border-surface-200 dark:border-surface-700"
-            >
-              <Button
-                icon="pi pi-history"
-                variant="text"
-                rounded
-                title="View History"
-                @click="openHistory(doc)"
-              />
-              <Button
-                icon="pi pi-trash"
-                severity="danger"
-                variant="text"
-                rounded
-                title="Delete"
-                @click="deleteDocument(doc)"
-              />
             </div>
           </div>
         </template>
       </Card>
 
       <div
-        v-if="documents.documents.length === 0"
+        v-if="props.documents.length === 0"
         class="col-span-full text-center p-8 text-surface-500 dark:text-surface-400"
       >
-        No documents found.
+        {{ props.emptyMessage }}
       </div>
     </div>
 
