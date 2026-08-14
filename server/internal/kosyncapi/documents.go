@@ -7,10 +7,63 @@
 package kosyncapi
 
 import (
+	"database/sql"
+	"errors"
+	"fmt"
+
 	"git.obth.eu/atjontv/kosync/internal/documents"
 	"git.obth.eu/atjontv/kosync/internal/schema"
 	"github.com/pocketbase/pocketbase/core"
 )
+
+// mergeRequest asks for several documents to be folded into one.
+type mergeRequest struct {
+	// Into is the document that survives and keeps its hash.
+	Into string `json:"into"`
+	// From are the documents folded into it, which cease to exist.
+	From []string `json:"from"`
+}
+
+// mergeDocuments joins documents that are the same reading under different
+// hashes.
+//
+// The work is in internal/documents; what is here is who is allowed to ask.
+// Anything belonging to somebody else is reported as missing, the same as
+// something that never existed.
+func (h *Handler) mergeDocuments(e *core.RequestEvent) error {
+	request := mergeRequest{}
+	if err := e.BindBody(&request); err != nil {
+		return e.BadRequestError("Failed to read the merge payload.", err)
+	}
+	if request.Into == "" {
+		return e.BadRequestError("Field 'into' is required: name the document to keep.", nil)
+	}
+	if len(request.From) == 0 {
+		return e.BadRequestError("Field 'from' is required: name at least one document to merge.", nil)
+	}
+
+	merged, err := documents.Merge(e.App, e.Auth.Id, request.Into, request.From)
+	switch {
+	case errors.Is(err, documents.ErrNothingToMerge):
+		return e.BadRequestError("A document cannot be merged into itself.", err)
+	case errors.Is(err, sql.ErrNoRows):
+		return e.NotFoundError("One of the requested documents was not found.", err)
+	case err != nil:
+		return e.InternalServerError("Failed to merge the documents.", err)
+	}
+
+	return ok(e, fmt.Sprintf("%s merged into one.", plural(merged+1, "document")))
+}
+
+// plural writes a count with its noun, so a message reads as a sentence rather
+// than as a template.
+func plural(count int, noun string) string {
+	if count == 1 {
+		return "1 " + noun
+	}
+
+	return fmt.Sprintf("%d %ss", count, noun)
+}
 
 // restoreHistory puts a document back into an earlier state.
 //

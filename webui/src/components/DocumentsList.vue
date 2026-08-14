@@ -11,6 +11,7 @@ import { useDocumentsStore } from '@/stores/documents'
 import { useDevicesStore } from '@/stores/devices'
 import { useBooksStore } from '@/stores/books'
 import HistoryList from '@/components/HistoryList.vue'
+import MergeDialog from '@/components/MergeDialog.vue'
 import type { DataTableCellEditCompleteEvent } from 'primevue/datatable'
 import type { Book, DocumentWithHistory } from '@/models'
 import { errorMessage, fileUrl } from '@/pb'
@@ -42,6 +43,7 @@ const confirm = useConfirm()
 const toast = useToast()
 
 const showHistoryDialog = ref(false)
+const showMergeDialog = ref(false)
 const selectedDocument = ref<DocumentWithHistory | null>(null)
 
 const booksById = computed(() => new Map(books.books.map((book) => [book.id, book])))
@@ -61,6 +63,14 @@ const deviceOf = (doc: DocumentWithHistory) =>
 const openHistory = (doc: DocumentWithHistory) => {
   selectedDocument.value = doc
   showHistoryDialog.value = true
+}
+
+// The document a merge is started from is the one that is kept, which is why
+// this is a per-row action rather than a selection: picking the survivor is the
+// only decision worth making, and clicking it is how it is made.
+const openMerge = (doc: DocumentWithHistory) => {
+  selectedDocument.value = doc
+  showMergeDialog.value = true
 }
 
 const formatDate = (value: string) => (value ? new Date(value).toLocaleDateString() : '')
@@ -175,7 +185,7 @@ onMounted(() => {
             >
           </template>
         </Column>
-        <Column header="Actions" style="width: 8rem">
+        <Column header="Actions" style="width: 10rem">
           <template #body="{ data }">
             <Button
               icon="pi pi-history"
@@ -183,6 +193,13 @@ onMounted(() => {
               rounded
               title="View History"
               @click="openHistory(data)"
+            />
+            <Button
+              icon="pi pi-object-group"
+              variant="text"
+              rounded
+              title="Merge with another document"
+              @click="openMerge(data)"
             />
             <Button
               icon="pi pi-trash"
@@ -282,6 +299,14 @@ onMounted(() => {
                     @click="openHistory(doc)"
                   />
                   <Button
+                    icon="pi pi-object-group"
+                    variant="text"
+                    rounded
+                    size="small"
+                    title="Merge with another document"
+                    @click="openMerge(doc)"
+                  />
+                  <Button
                     icon="pi pi-trash"
                     severity="danger"
                     variant="text"
@@ -314,5 +339,7 @@ onMounted(() => {
     >
       <HistoryList :document="selectedDocument" />
     </Dialog>
+
+    <MergeDialog v-model:visible="showMergeDialog" :document="selectedDocument" />
   </div>
 </template>

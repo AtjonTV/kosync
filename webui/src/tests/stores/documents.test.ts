@@ -183,6 +183,22 @@ describe('documents store', () => {
     expect(pbMockModule.collection('documents').getFullList).toHaveBeenCalled()
   })
 
+  it('merges through the KOsync API and reloads', async () => {
+    pbMockModule.send.mockResolvedValue({ message: '2 documents merged into one.' })
+
+    const store = useDocumentsStore()
+    const message = await store.merge('doc-1', ['doc-2', 'doc-3'])
+
+    expect(pbMockModule.send).toHaveBeenCalledWith('/api/kosync/documents/merge', {
+      method: 'POST',
+      body: { into: 'doc-1', from: ['doc-2', 'doc-3'] },
+    })
+    expect(message).toBe('2 documents merged into one.')
+    // The merged history is moved server side in one statement, so no
+    // subscription reports it and the page has to be read again.
+    expect(pbMockModule.collection('documents').getFullList).toHaveBeenCalled()
+  })
+
   it('clears everything on sign out', async () => {
     pbMockModule.collection('documents').getFullList.mockResolvedValue([document('doc-1')])
 

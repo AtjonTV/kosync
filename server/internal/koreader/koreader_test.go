@@ -10,8 +10,10 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"git.obth.eu/atjontv/kosync/internal/config"
+	"git.obth.eu/atjontv/kosync/internal/documents"
 	"git.obth.eu/atjontv/kosync/internal/koreader"
 	"git.obth.eu/atjontv/kosync/internal/schema"
 	"git.obth.eu/atjontv/kosync/internal/testutil"
@@ -403,6 +405,87 @@ func TestPushUpdatesTheCredentialLastUsed(t *testing.T) {
 			if account.GetDateTime(schema.FieldLastUsed).IsZero() {
 				t.Errorf("expected last_used to be set after a successful authentication")
 			}
+		},
+	}
+
+	scenario.Test(t)
+}
+
+// mergedAwayHash is the hash of a document that was folded into another one, the
+// way a second copy of the same book ends up after a merge.
+const mergedAwayHash = "7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e"
+
+// withMergedDocument seeds a second document of user A and merges it into the
+// fixture's document, leaving mergedAwayHash as an alias.
+func withMergedDocument(t testing.TB, app *tests.TestApp, _ *core.ServeEvent) {
+	user, err := app.FindRecordById(schema.CollectionUsers, testutil.IdUserA)
+	if err != nil {
+		t.Fatalf("failed to load the fixture user: %v", err)
+	}
+
+	second := testutil.CreateDocument(t, app, user, "", mergedAwayHash, 0.05,
+		time.Date(2026, 2, 20, 8, 0, 0, 0, time.UTC))
+
+	if _, err := documents.Merge(app, user.Id, testutil.IdDocumentA, []string{second.Id}); err != nil {
+		t.Fatalf("failed to merge the fixture documents: %v", err)
+	}
+}
+
+// After a merge the device that reported the folded hash carries on sending it.
+// If that made a document of its own again the merge would come apart on the
+// next sync, so the push has to land on the document it was merged into.
+func TestPutProgressFollowsAMerge(t *testing.T) {
+	scenario := tests.ApiScenario{
+		Name:   "a push under a merged away hash updates the surviving document",
+		Method: http.MethodPut,
+		URL:    "/koreader/syncs/progress",
+		Body: strings.NewReader(`{"document":"` + mergedAwayHash + `","progress":"/body/DocFragment[9]",` +
+			`"percentage":0.8,"device":"Kobo Clara","device_id":"ABCDEF"}`),
+		Headers:         deviceHeaders(testutil.KoUsernameA, testutil.KoPasswordA),
+		TestAppFactory:  newApp,
+		BeforeTestFunc:  withMergedDocument,
+		ExpectedStatus:  http.StatusOK,
+		ExpectedContent: []string{`"document":"` + mergedAwayHash + `"`},
+		AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
+			survivor, err := app.FindRecordById(schema.CollectionDocuments, testutil.IdDocumentA)
+			if err != nil {
+				t.Fatalf("failed to reload the surviving document: %v", err)
+			}
+			if got := survivor.GetFloat(schema.FieldProgress); got != 0.8 {
+				t.Errorf("expected the push to land on the survivor at 0.8, got %v", got)
+			}
+
+			all, err := app.FindAllRecords(schema.CollectionDocuments,
+				dbx.HashExp{schema.FieldOwner: testutil.IdUserA})
+			if err != nil {
+				t.Fatalf("failed to list the documents: %v", err)
+			}
+			if len(all) != 1 {
+				t.Errorf("expected the merge to hold, user A now has %d documents", len(all))
+			}
+		},
+	}
+
+	scenario.Test(t)
+}
+
+// The other half of the same thing: the device asks about its own file and gets
+// the joined position back, which is what makes two devices sync with each other
+// once their documents have been merged.
+func TestGetProgressFollowsAMerge(t *testing.T) {
+	scenario := tests.ApiScenario{
+		Name:           "a pull under a merged away hash reads the surviving document",
+		Method:         http.MethodGet,
+		URL:            "/koreader/syncs/progress/" + mergedAwayHash,
+		Headers:        deviceHeaders(testutil.KoUsernameA, testutil.KoPasswordA),
+		TestAppFactory: newApp,
+		BeforeTestFunc: withMergedDocument,
+		ExpectedStatus: http.StatusOK,
+		ExpectedContent: []string{
+			// Answered about the file it asked about, at the position the reading
+			// as a whole has reached.
+			`"document":"` + mergedAwayHash + `"`,
+			`"percentage":0.25`,
 		},
 	}
 

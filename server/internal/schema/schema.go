@@ -24,6 +24,12 @@ const (
 	// CollectionDocumentHistory holds every superseded state of a document.
 	CollectionDocumentHistory = "document_history"
 
+	// CollectionDocumentAliases holds the document hashes that used to be
+	// documents of their own and were merged into another one. A push arriving
+	// under a retired hash lands on the document it was merged into, which is
+	// what keeps a merge from undoing itself the next time the device syncs.
+	CollectionDocumentAliases = "document_aliases"
+
 	// CollectionReadingDays holds the precomputed daily reading statistics.
 	CollectionReadingDays = "reading_days"
 
@@ -68,7 +74,10 @@ const (
 	FieldLastUsed = "last_used"
 )
 
-// documents and document_history field names.
+// documents, document_history and document_aliases field names.
+//
+// An alias row is only FieldOwner, FieldDocument and FieldDocumentRef: the
+// retired hash, and the document it now resolves to.
 const (
 	FieldDocument        = "document"
 	FieldDocumentRef     = "document_ref"

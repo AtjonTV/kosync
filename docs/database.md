@@ -55,6 +55,24 @@ Unique on `(owner, document)`: the same book synced by two people are two record
 Every position a document has left behind, written by the server whenever the current state is
 replaced. Owners can read and delete their entries; nobody can write or edit one through the API.
 
+### `document_aliases`
+
+The document hashes that used to be documents of their own and were merged into another one.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `owner` | relation → `users` | |
+| `document` | text | the retired hash |
+| `document_ref` | relation → `documents` | what it resolves to now; cascades |
+
+Unique on `(owner, document)`, the same as `documents`: one owner, one meaning per hash. A device
+carries on sending the hash it has always sent, and this is what lets that push land on the document
+the reading was folded into instead of quietly rebuilding the one that was merged away.
+
+Written by the merge, never by a client, so there is no create rule and no update rule. Deleting one
+is allowed and is the way back: drop the alias and the next push from that device makes its own
+document again.
+
 ### `reading_days`
 
 One precomputed row per owner and day. See [analytics.md](analytics.md).

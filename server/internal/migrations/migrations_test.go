@@ -22,6 +22,7 @@ func TestAllCollectionsAreCreated(t *testing.T) {
 		schema.CollectionKoreaderAccounts,
 		schema.CollectionDocuments,
 		schema.CollectionDocumentHistory,
+		schema.CollectionDocumentAliases,
 		schema.CollectionReadingDays,
 		schema.CollectionReadingMonths,
 		schema.CollectionAnalyticsQueue,

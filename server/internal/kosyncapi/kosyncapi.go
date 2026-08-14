@@ -73,6 +73,7 @@ func (h *Handler) Mount(se *core.ServeEvent) {
 	group.POST("/koreader-accounts", h.createKoreaderAccount)
 	group.POST("/koreader-accounts/{id}/password", h.rotateKoreaderPassword)
 	group.POST("/documents/{id}/restore/{historyId}", h.restoreHistory)
+	group.POST("/documents/merge", h.mergeDocuments)
 }
 
 // registerGuards keeps operations that must go through this package from

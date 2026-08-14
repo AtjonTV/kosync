@@ -23,6 +23,7 @@ export const Collections = {
   koreaderAccounts: 'koreader_accounts',
   documents: 'documents',
   documentHistory: 'document_history',
+  documentAliases: 'document_aliases',
   readingDays: 'reading_days',
   readingMonths: 'reading_months',
   books: 'books',
@@ -38,6 +39,7 @@ export const KosyncApi = {
   koreaderAccountPassword: (id: string) => `/api/kosync/koreader-accounts/${id}/password`,
   restoreHistory: (documentId: string, historyId: string) =>
     `/api/kosync/documents/${documentId}/restore/${historyId}`,
+  mergeDocuments: '/api/kosync/documents/merge',
 } as const
 
 /**

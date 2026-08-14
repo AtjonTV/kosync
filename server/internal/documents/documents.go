@@ -9,6 +9,9 @@
 package documents
 
 import (
+	"database/sql"
+	"errors"
+
 	"git.obth.eu/atjontv/kosync/internal/schema"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
@@ -23,6 +26,36 @@ func FindByHash(app core.App, ownerId, documentHash string) (*core.Record, error
 		"owner = {:owner} && document = {:document}",
 		dbx.Params{"owner": ownerId, "document": documentHash},
 	)
+}
+
+// Resolve loads the document a hash belongs to, following a merge.
+//
+// A device keeps sending the hash it has always sent, and after a merge that
+// hash is no longer a document of its own. Every read and every write of
+// progress goes through here rather than through FindByHash, so the push lands
+// on the document the reading was folded into instead of quietly rebuilding the
+// one that was merged away.
+//
+// Like FindByHash it returns a wrapped sql.ErrNoRows when the hash means nothing
+// to this owner.
+func Resolve(app core.App, ownerId, documentHash string) (*core.Record, error) {
+	record, err := FindByHash(app, ownerId, documentHash)
+	if err == nil || !errors.Is(err, sql.ErrNoRows) {
+		return record, err
+	}
+
+	alias, aliasErr := app.FindFirstRecordByFilter(
+		schema.CollectionDocumentAliases,
+		"owner = {:owner} && document = {:document}",
+		dbx.Params{"owner": ownerId, "document": documentHash},
+	)
+	if aliasErr != nil {
+		// No document and no alias: report the missing document, which is what
+		// the caller asked about.
+		return nil, err
+	}
+
+	return app.FindRecordById(schema.CollectionDocuments, alias.GetString(schema.FieldDocumentRef))
 }
 
 // Archive copies the state a document is about to leave behind into its history.

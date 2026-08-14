@@ -17,6 +17,8 @@ custom WebSocket protocol with what PocketBase already does well.
   downloaded that way is recognised the moment you start reading it.
 - **Keeps a history** of every position a document went through, and can put a document back into an
   earlier one.
+- **Merges split reading.** Two devices reading two copies of the same book report two documents;
+  fold them into one and they sync with each other from then on.
 - **Deploys as a single executable** with the web interface compiled in. No Redis, no Nginx, no Node.
 
 ## How the accounts fit together

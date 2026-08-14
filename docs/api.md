@@ -206,5 +206,44 @@ session (`Authorization: <token>`).
 | POST | `/api/kosync/koreader-accounts` | Create a device credential. Body: `{"username":…,"password":…,"label":…}`. The server hashes the password with MD5 before storing it, so the browser never has to. |
 | POST | `/api/kosync/koreader-accounts/{id}/password` | Replace the password of one of your credentials. Body: `{"password":…}`. |
 | POST | `/api/kosync/documents/{id}/restore/{historyId}` | Put a document back into an earlier state. The state being replaced is archived first, so the restore itself can be undone. |
+| POST | `/api/kosync/documents/merge` | Fold several documents into one. Body: `{"into":…,"from":[…]}`. |
 
 Anything that belongs to somebody else answers `404`, the same as something that does not exist.
+
+### Merging documents
+
+KOReader identifies a book by its contents, so the same title read from two
+different copies of the file is two documents here, with the reading split
+between them. Merging joins them:
+
+```js
+await pb.send(KosyncApi.mergeDocuments, {
+  method: 'POST',
+  body: { into: keptDocumentId, from: [otherDocumentId] },
+})
+```
+
+`into` survives and keeps its own hash. It takes on the most recent position
+among all of them, and a book or a title only where it had none — merging never
+relabels the document the caller chose to keep.
+
+Everything the merge replaces is written to `document_history` first. The
+documents that are folded in are deleted outright, so this is the only thing
+that keeps the reading they hold, and it is what makes an unwanted merge
+recoverable: the state is one restore away.
+
+**The retired hashes keep working.** Each one becomes a row in
+`document_aliases` pointing at the survivor, and both `PUT` and `GET` on
+`/koreader/syncs/progress` resolve through it. Without that the device that
+reported a folded hash would push it again and get a fresh document back,
+undoing the merge on the next sync. With it, the two devices sync with each
+other. A pull is still answered with the hash it asked about, not with the one
+the document is stored under.
+
+Deleting an alias is the way back out: it is the one operation the collection
+allows, and once the hash means nothing again the next push from that device
+makes a document of its own.
+
+```js
+await pb.collection('document_aliases').delete(aliasId)
+```

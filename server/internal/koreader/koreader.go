@@ -107,7 +107,7 @@ func (h *Handler) getProgress(e *core.RequestEvent) error {
 		return e.NotFoundError("No document requested.", nil)
 	}
 
-	record, err := documents.FindByHash(h.app, account.OwnerId, documentHash)
+	record, err := documents.Resolve(h.app, account.OwnerId, documentHash)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return e.NotFoundError("No progress stored for this document.", nil)
@@ -116,7 +116,10 @@ func (h *Handler) getProgress(e *core.RequestEvent) error {
 	}
 
 	return e.JSON(http.StatusOK, ProgressResponse{
-		Document:   record.GetString(schema.FieldDocument),
+		// The hash that was asked about, which after a merge is not the hash the
+		// document is stored under. The device asked about its own file and
+		// should be answered about its own file.
+		Document:   documentHash,
 		Progress:   record.GetString(schema.FieldCurrentLocation),
 		Percentage: record.GetFloat(schema.FieldProgress),
 		Device:     record.GetString(schema.FieldLastDevice),
@@ -146,7 +149,7 @@ func (h *Handler) putProgress(e *core.RequestEvent) error {
 	now := time.Now().UTC()
 
 	err := h.app.RunInTransaction(func(txApp core.App) error {
-		document, err := documents.FindByHash(txApp, account.OwnerId, request.Document)
+		document, err := documents.Resolve(txApp, account.OwnerId, request.Document)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}

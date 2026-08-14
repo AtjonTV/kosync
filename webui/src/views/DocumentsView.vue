@@ -92,6 +92,8 @@ onUnmounted(stop)
         <h1 class="text-3xl">Documents</h1>
         <p class="text-surface-500 dark:text-surface-400">
           Everything your devices have reported reading, whether or not the book is on the server.
+          Two entries that are the same book read from two different copies of the file can be
+          merged into one.
         </p>
       </div>
       <SelectButton v-model="viewMode" :options="viewOptions" :allow-empty="false" />

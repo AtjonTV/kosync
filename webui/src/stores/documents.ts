@@ -138,6 +138,24 @@ export const useDocumentsStore = defineStore('documents', () => {
     await load()
   }
 
+  /**
+   * Folds several documents into one and returns what the server called it.
+   *
+   * The server moves the history of the merged documents with a single update
+   * rather than record by record, which is the right thing for a document with
+   * thousands of entries but means those rows arrive through no subscription.
+   * Reloading afterwards is what puts the page back in step.
+   */
+  async function merge(into: string, from: string[]): Promise<string> {
+    const response = await pb.send<{ message?: string }>(KosyncApi.mergeDocuments, {
+      method: 'POST',
+      body: { into, from },
+    })
+    await load()
+
+    return response?.message ?? 'The documents were merged.'
+  }
+
   function clear(): void {
     unsubscribe()
     documents.value = []
@@ -155,6 +173,7 @@ export const useDocumentsStore = defineStore('documents', () => {
     remove,
     removeHistoryEntry,
     restoreHistoryEntry,
+    merge,
     clear,
   }
 })

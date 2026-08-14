@@ -222,7 +222,7 @@ Only for things PocketBase's generated CRUD genuinely cannot express:
 | POST | `/api/kosync/koreader-accounts` | server computes MD5 from the plaintext, so a browser bug can never store a non-MD5 "password" |
 | POST | `/api/kosync/koreader-accounts/{id}/password` | same, for rotation |
 | POST | `/api/kosync/documents/{id}/restore-history/{historyId}` | multi-record transaction: current state → history, history state → current |
-| POST | `/api/kosync/documents/merge` | **phase 7** — fold N documents into one, re-parent history, recompute analytics |
+| POST | `/api/kosync/documents/merge` | **phase 11** — fold N documents into one, re-parent history, recompute analytics; see §23 |
 
 All guarded by `apis.RequireAuth("users")` plus explicit ownership checks.
 
@@ -280,7 +280,7 @@ dashboard load and on every websocket announce. It is O(all history) per request
 
 ### 6.2 Write path
 
-1. Progress arrives (KOReader push, WebUI edit, history restore, later: merge).
+1. Progress arrives (KOReader push, WebUI edit, history restore, merge).
 2. A hook enqueues `(owner, date)` into `analytics_queue`. The unique index collapses duplicates, so 200
    pushes on one day produce one work item.
 3. A single worker goroutine — started in `OnServe`, stopped in `OnTerminate` — drains the queue every
@@ -513,10 +513,10 @@ Then the later ideas, in dependency order:
 Phases 9 and 10 are independent of each other and can be built in either order; §16 explains why doing
 10 first makes 9 exact rather than heuristic for anything downloaded from the catalog.
 
-Phases 8, 9, 10, 12, 15, 16 and 17 are built; §16.6, §18, §19, §21 and §22 record what each of them
-turned into, and §17 is now a description of what the interface does rather than what it should do.
-Phase 10 landed after 9 rather than before it, so the exactness §16 wanted from that ordering arrived
-as a third stored hash instead — see §22.1.
+Phases 8, 9, 10, 11, 12, 15, 16 and 17 are built; §16.6, §18, §19, §21, §22 and §23 record what each of
+them turned into, and §17 is now a description of what the interface does rather than what it should
+do. Phase 10 landed after 9 rather than before it, so the exactness §16 wanted from that ordering
+arrived as a third stored hash instead — see §22.1.
 
 Phases 15 and 16 are interface work rather than new capability, and are described in §17. They are
 listed last because nothing depends on them, but 15 is worth doing before the documents table grows
@@ -1196,3 +1196,76 @@ turns the download into a `HEAD` for the `Content-Disposition`. So `hash_catalog
 was written up as: it applies with that box ticked and filename matching selected. The binary hash
 carries the ordinary case, and does so regardless of what the file ends up being called — which is
 what makes it the right default and the one the setup guide recommends.
+
+---
+
+## 23. Merge (phase 11)
+
+Built. §4.2 reserved `POST /api/kosync/documents/merge` for it and described it in one line — "fold N
+documents into one, re-parent history, recompute analytics" — which turns out to be three quarters of
+the work. The quarter it left out is the one that decides whether the feature holds.
+
+**The case is real, and it took having the data to see it.** The library on the production instance
+holds one book under two documents: "Metro Trilogie (2033,2034,2035)" at 0.07%, read on els-n39 and
+matched to nothing, and an untitled document at 1.09% read in the Flatpak build and matched to
+"Metro - Die Trilogie". Two copies of one file, two hashes, one book, and the reading split so that
+neither the documents page nor the per-book statistics see the whole of it. Nothing about the schema
+prevents this and nothing before phase 11 repaired it.
+
+### 23.1 The hash has to survive its document
+
+A merge that deletes the folded document and stops there undoes itself. The device that reported that
+hash has not changed; it pushes the same string on its next sync, finds no document, and creates one —
+and the merge is gone, silently, with no error anywhere. This is the same failure mode as a device
+name that the next push overwrites, and it is the reason merge is more than a transaction.
+
+So `document_aliases` maps a retired `(owner, document)` to the document it now resolves to, and both
+the push and the pull go through `documents.Resolve` rather than `FindByHash`. The alias cascades with
+its document, and deleting one by hand is the way back out — the collection's only writable operation.
+The pull is still answered with the hash it asked about rather than with the survivor's, because the
+device asked about its own file.
+
+There is a second effect that was not the goal and is arguably the better half of the feature: once
+two hashes resolve to one document, **the two devices sync with each other**. Reading Metro on the
+Boox and picking it up in the Flatpak build now continues where it left off, which it never did before
+however carefully both were configured.
+
+### 23.2 Nothing is deleted that is not archived first
+
+This version has no soft deletion. A folded document is removed outright, so whatever state it held is
+gone unless the merge wrote it somewhere first — and the somewhere already exists, because every
+progress push has been archiving superseded states into `document_history` since phase 2.
+
+The rule is therefore: every state that loses is archived. The survivor's own position is archived when
+it is superseded by a newer one, exactly as a push would supersede it. Every folded document's current
+state is archived, except the one that has just become the survivor's current state, which would
+otherwise appear twice — the same reasoning the history restore already uses. The history of each
+folded document is moved across with a single `UPDATE` rather than record by record, because a
+document can carry thousands of entries and every one of them would otherwise be loaded, revalidated
+and announced over realtime to move one column.
+
+That makes an unwanted merge recoverable rather than reversible, which is the trade the operator asked
+for and the honest way to describe it: the positions are all in the history, one restore away, and
+deleting the alias separates the devices again. What it does not do is put the two documents back as
+two rows.
+
+### 23.3 What the statistics need
+
+Skipping the hooks on the history move means skipping the analytics enqueue they would have done, so
+the merge queues the days itself — every day of the joined reading, not only the days that changed
+hands. The reason is `reading_book_days`: if the survivor picked up a book here (and in the Metro case
+it does, in whichever direction the merge is made), then every day it was ever read is attributed
+differently now, including days that no record touched. The days are collected before anything moves,
+because afterwards there is no way back to them.
+
+### 23.4 The one decision left to the person
+
+The document a merge is started from is the one that is kept. That is a per-row action in the web
+interface rather than a multi-select with a "keep this one" control, because choosing the survivor is
+the only judgement in the operation and clicking it is how the judgement is expressed. Everything else
+follows: the most recent position wins, and the survivor takes on a book or a title only where it had
+none, so that merging never quietly relabels the document the person chose to keep.
+
+The dialog offers every other document, matched and unmatched alike. Filtering to the unmatched ones
+would have been tidier and would have hidden exactly the pair this exists for, since the usual split
+has one half in the library and one half out of it.
