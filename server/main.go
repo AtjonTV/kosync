@@ -17,6 +17,7 @@ import (
 	"net/http"
 
 	"git.obth.eu/atjontv/kosync/internal/analytics"
+	"git.obth.eu/atjontv/kosync/internal/books"
 	"git.obth.eu/atjontv/kosync/internal/config"
 	"git.obth.eu/atjontv/kosync/internal/importer"
 	"git.obth.eu/atjontv/kosync/internal/koreader"
@@ -53,6 +54,7 @@ func main() {
 	koreader.Register(app, conf)
 	kosyncapi.Register(app, conf)
 	analytics.Register(app, conf)
+	books.Register(app, conf)
 
 	app.RootCmd.AddCommand(importer.NewCommand(app, conf))
 

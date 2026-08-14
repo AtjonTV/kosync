@@ -26,6 +26,7 @@ file. See [`server/kosync.env.example`](../server/kosync.env.example) for a copy
 | `ANALYTICS_RECONCILE_DAYS` | `7` | how many recent days the weekly reconciliation recomputes |
 | `KOREADER_AUTH_CACHE_TTL_SECONDS` | `300` | lifetime of a verified device credential in memory, `0` disables |
 | `KOREADER_AUTH_CACHE_ENTRIES` | `1024` | how many credentials are cached at most |
+| `BOOKS_WORDS_PER_PAGE` | `155` | fallback reading density for books whose page count cannot be measured |
 
 An invalid value falls back to its default instead of stopping the server.
 

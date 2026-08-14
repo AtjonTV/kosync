@@ -85,7 +85,9 @@ type containerXML struct {
 func Open(ra io.ReaderAt, size int64) (*Reader, error) {
 	archive, err := zip.NewReader(ra, size)
 	if err != nil {
-		return nil, fmt.Errorf("epub: open archive: %w", err)
+		// An EPUB is a zip. Something that is not a zip is not an EPUB, and
+		// callers should not have to tell those two cases apart.
+		return nil, fmt.Errorf("%w: %v", ErrNotEPUB, err)
 	}
 
 	reader := &Reader{

@@ -32,6 +32,9 @@ const (
 
 	// CollectionAnalyticsQueue holds pending (owner, date) statistics recomputations.
 	CollectionAnalyticsQueue = "analytics_queue"
+
+	// CollectionBooks holds uploaded EPUBs with the metadata read out of them.
+	CollectionBooks = "books"
 )
 
 // Shared field names.
@@ -72,6 +75,25 @@ const (
 	FieldComputedAt       = "computed_at"
 	FieldMonth            = "month"
 	FieldDaysActive       = "days_active"
+)
+
+// books field names.
+const (
+	FieldFile        = "file"
+	FieldCover       = "cover"
+	FieldAuthors     = "authors"
+	FieldLanguage    = "language"
+	FieldIdentifiers = "identifiers"
+	FieldPageCount   = "page_count"
+	FieldWordCount   = "word_count"
+	FieldContentHash = "content_hash"
+
+	// FieldHashBinary and FieldHashFilename are the two document hashes
+	// KOReader identifies a book by. They are separate indexed columns rather
+	// than one JSON blob because matching a progress push means looking a book
+	// up by either of them.
+	FieldHashBinary   = "hash_binary"
+	FieldHashFilename = "hash_filename"
 )
 
 // OwnerRule restricts a collection to the records owned by the authenticated

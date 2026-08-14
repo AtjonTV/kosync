@@ -758,8 +758,35 @@ by tests: real titles arrive wrapped across indented lines, newlines and all, an
 scheme attribute on identifiers in favour of a `urn:isbn:` value, so every real EPUB 3 ISBN was being
 filed as unknown.
 
-Still to build for phase 8: the `books` collection and migration, the upload endpoint, cover thumbs,
-and the library view.
+The `books` collection and the upload path now exist too:
+
+- **`internal/migrations/1786665600_books.go`** — the `books` collection, owner-scoped, with the file,
+  the cover (thumbs 100x150 and 200x300), the metadata, and both document hashes as separate indexed
+  columns rather than the JSON blob §3.8 planned. Matching a push means looking a book up by either
+  hash, which JSON cannot index.
+- **`internal/books`** — uploads go through the ordinary collection API, so rules, realtime and file
+  serving come for free; a create hook reads the arriving file and fills in everything derived from
+  it. A second hook refuses edits to the derived fields, while leaving title and authors editable.
+
+Verified end to end against a real book through the running binary: uploading *Zeit des Sturms*
+produced `hash_binary = 043f11771ef9d191364ac0ba08198d36`, which is exactly the document id the
+production database recorded for it. A file uploaded here is therefore already identified as the thing
+the device has been pushing progress for, which is the whole premise of phase 9. Cover extraction and
+thumbnail generation work on the real file as well.
+
+The fallback page count came out at 705 against the device's 700 — 0.7% out, which is far better than
+the words-per-page spread in §16.5 deserves and should not be read as typical.
+
+Three things were found only by running this, and all are fixed and covered by tests:
+
+1. **A cover that is not a valid image failed the whole upload.** The field's own mime check rejected
+   it and took the book with it. Covers are now sniffed by content, not by the href's extension, and
+   an unusable one is dropped silently.
+2. **`Config.Normalize` did not guard `BooksWordsPerPage`**, so a zero produced zero-page books.
+3. **A file that is not a zip reported a zip error** rather than "not an EPUB". `epub.Open` now returns
+   `ErrNotEPUB` for that case too, since something that is not a zip is not an EPUB.
+
+Still to build for phase 8: the library view in the WebUI.
 
 Measured values move as data accumulates, which would otherwise rewrite history. It does not, because
 `user_achievements` rows are awarded records rather than a derived view (§3.8) — once granted, a tier

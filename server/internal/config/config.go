@@ -41,6 +41,12 @@ type Config struct {
 
 	KoreaderAuthCacheTtl     int `env:"KOREADER_AUTH_CACHE_TTL_SECONDS" default:"300"`
 	KoreaderAuthCacheEntries int `env:"KOREADER_AUTH_CACHE_ENTRIES" default:"1024"`
+
+	// BooksWordsPerPage is the fallback reading density for books whose page
+	// count cannot be measured from the reader's own progress. 155 is what an
+	// e-reader page actually holds on the reference data, well below the ~250
+	// usually quoted for print.
+	BooksWordsPerPage int `env:"BOOKS_WORDS_PER_PAGE" default:"155"`
 }
 
 // New loads the configuration from "./kosync.env" (if present) and the environment.
@@ -86,6 +92,9 @@ func (c *Config) Normalize() {
 	}
 	if c.KoreaderAuthCacheEntries < 1 {
 		c.KoreaderAuthCacheEntries = 1024
+	}
+	if c.BooksWordsPerPage < 1 {
+		c.BooksWordsPerPage = 155
 	}
 }
 

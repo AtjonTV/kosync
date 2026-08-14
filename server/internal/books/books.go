@@ -1,0 +1,298 @@
+//
+// File:        internal/books/books.go
+// Project:     https://git.obth.eu/atjontv/kosync
+// Copyright:   © 2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
+//
+
+// Package books turns an uploaded EPUB into a library record.
+//
+// Uploads go through the ordinary PocketBase collection API, so the rules,
+// realtime events and file serving all come for free. What this package adds is
+// a hook that reads the file as it arrives and fills in everything derived from
+// it: the two hashes KOReader identifies the book by, the bibliographic
+// metadata, the cover and the word count.
+package books
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"math"
+	"net/http"
+	"path/filepath"
+	"strings"
+	"unicode"
+
+	"git.obth.eu/atjontv/kosync/internal/config"
+	"git.obth.eu/atjontv/kosync/internal/epub"
+	"git.obth.eu/atjontv/kosync/internal/schema"
+	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/filesystem"
+)
+
+// coverName is the stored name of the extracted cover. The extension is
+// replaced with the one the archive used.
+const coverName = "cover"
+
+// Register wires the upload processing into the app.
+func Register(app core.App, conf *config.Config) {
+	app.OnRecordCreateRequest(schema.CollectionBooks).BindFunc(func(e *core.RecordRequestEvent) error {
+		if err := describe(e.Record, conf); err != nil {
+			return e.BadRequestError(sentence(err.Error()), nil)
+		}
+
+		return e.Next()
+	})
+
+	// The derived fields describe the file, so they cannot be edited away from
+	// it. Title and authors are deliberately not in this list: correcting
+	// publisher metadata is the owner's business.
+	app.OnRecordUpdateRequest(schema.CollectionBooks).BindFunc(func(e *core.RecordRequestEvent) error {
+		info, err := e.RequestInfo()
+		if err != nil {
+			return err
+		}
+
+		for _, field := range []string{
+			schema.FieldFile,
+			schema.FieldContentHash,
+			schema.FieldHashBinary,
+			schema.FieldHashFilename,
+			schema.FieldWordCount,
+		} {
+			if _, present := info.Body[field]; present {
+				return e.BadRequestError(
+					fmt.Sprintf("%q describes the uploaded file and cannot be changed; upload the book again instead.", field),
+					nil,
+				)
+			}
+		}
+
+		return e.Next()
+	})
+}
+
+// sentence turns an idiomatic Go error into something worth showing a person.
+// Errors are lowercase and unpunctuated by convention; messages in a user
+// interface are neither.
+func sentence(message string) string {
+	if message == "" {
+		return message
+	}
+
+	runes := []rune(message)
+	runes[0] = unicode.ToUpper(runes[0])
+	result := string(runes)
+
+	if !strings.HasSuffix(result, ".") {
+		result += "."
+	}
+
+	return result
+}
+
+// describe reads the uploaded EPUB and fills in everything derived from it.
+func describe(record *core.Record, conf *config.Config) error {
+	uploads := record.GetUnsavedFiles(schema.FieldFile)
+	if len(uploads) == 0 {
+		// Either the file is missing, in which case the field's own validation
+		// reports it, or this is a record being created server side.
+		return nil
+	}
+
+	upload := uploads[0]
+
+	reader, err := upload.Reader.Open()
+	if err != nil {
+		return fmt.Errorf("cannot read the uploaded file: %w", err)
+	}
+	defer reader.Close()
+
+	binary, err := epub.PartialMD5(reader)
+	if err != nil {
+		return fmt.Errorf("cannot hash the uploaded file: %w", err)
+	}
+
+	content, err := contentHash(reader)
+	if err != nil {
+		return fmt.Errorf("cannot hash the uploaded file: %w", err)
+	}
+
+	book, err := epub.Open(readerAt{reader}, upload.Size)
+	if err != nil {
+		if errors.Is(err, epub.ErrNotEPUB) {
+			return errors.New("that file is not an EPUB")
+		}
+
+		return fmt.Errorf("that EPUB could not be read: %w", err)
+	}
+
+	metadata := book.Metadata()
+	words, err := book.WordCount()
+	if err != nil {
+		return fmt.Errorf("cannot read the EPUB: %w", err)
+	}
+
+	record.Set(schema.FieldContentHash, content)
+	record.Set(schema.FieldHashBinary, binary)
+	// The name the reader has on disk is the one it hashes, so this matches a
+	// device that holds the very file that was uploaded. A copy served from the
+	// catalogue later will need the hash of the name it is served under.
+	record.Set(schema.FieldHashFilename, epub.FilenameMD5(upload.OriginalName))
+	record.Set(schema.FieldWordCount, words)
+	record.Set(schema.FieldPageCount, notionalPages(words, conf.BooksWordsPerPage))
+
+	// Publisher metadata only fills what the uploader has not set, so a title
+	// corrected in the same request survives.
+	setIfEmpty(record, schema.FieldTitle, fallbackTitle(metadata.Title, upload.OriginalName))
+	setIfEmpty(record, schema.FieldLanguage, metadata.Language)
+	setJSONIfEmpty(record, schema.FieldAuthors, metadata.Authors)
+	setJSONIfEmpty(record, schema.FieldIdentifiers, metadata.Identifiers)
+
+	if err := attachCover(record, book); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// coverTypes are the image types a cover may be stored as, mapped to the
+// extension the stored file gets. It must agree with the MimeTypes on the cover
+// field, or the upload fails validation on the book's behalf.
+var coverTypes = map[string]string{
+	"image/jpeg": ".jpg",
+	"image/png":  ".png",
+	"image/gif":  ".gif",
+	"image/webp": ".webp",
+}
+
+// attachCover extracts the cover image, if the book declares one.
+//
+// Every failure here is silent on purpose: a book with a missing, broken or
+// exotic cover is still a book, and refusing the upload over its artwork would
+// be absurd. The type is sniffed from the content rather than taken from the
+// href, because an archive that names a PNG ".jpg" is common enough and would
+// otherwise fail the field's own mime check and take the whole upload with it.
+func attachCover(record *core.Record, book *epub.Reader) error {
+	if len(record.GetUnsavedFiles(schema.FieldCover)) > 0 {
+		return nil // the uploader supplied their own
+	}
+
+	_, data, err := book.Cover()
+	if err != nil || len(data) == 0 {
+		return nil //nolint:nilerr // deliberately non-fatal
+	}
+
+	extension, supported := coverTypes[detectImageType(data)]
+	if !supported {
+		return nil
+	}
+
+	file, err := filesystem.NewFileFromBytes(data, coverName+extension)
+	if err != nil {
+		return nil //nolint:nilerr // deliberately non-fatal
+	}
+	record.Set(schema.FieldCover, file)
+
+	return nil
+}
+
+// detectImageType sniffs an image's type from its leading bytes.
+func detectImageType(data []byte) string {
+	detected := http.DetectContentType(data)
+	if index := strings.IndexByte(detected, ';'); index >= 0 {
+		detected = detected[:index]
+	}
+
+	return strings.TrimSpace(detected)
+}
+
+// contentHash is the SHA-256 of the whole file, used to recognise the same
+// upload twice.
+func contentHash(reader io.ReadSeeker) (string, error) {
+	if _, err := reader.Seek(0, io.SeekStart); err != nil {
+		return "", err
+	}
+
+	digest := sha256.New()
+	if _, err := io.Copy(digest, reader); err != nil {
+		return "", err
+	}
+
+	return hex.EncodeToString(digest.Sum(nil)), nil
+}
+
+// notionalPages is the fallback page count: an EPUB has no pages of its own, so
+// this is what the word count implies at the configured density. A measured
+// count from the reader's own progress replaces it where one can be had.
+func notionalPages(words, wordsPerPage int) int {
+	if words <= 0 || wordsPerPage <= 0 {
+		return 0
+	}
+
+	return int(math.Round(float64(words) / float64(wordsPerPage)))
+}
+
+// fallbackTitle uses the file name when the book carries no title of its own.
+func fallbackTitle(title, filename string) string {
+	if strings.TrimSpace(title) != "" {
+		return title
+	}
+
+	base := filepath.Base(filename)
+
+	return strings.TrimSuffix(base, filepath.Ext(base))
+}
+
+func setIfEmpty(record *core.Record, field, value string) {
+	if value == "" {
+		return
+	}
+	if strings.TrimSpace(record.GetString(field)) != "" {
+		return
+	}
+	record.Set(field, value)
+}
+
+// setJSONIfEmpty stores a value as JSON unless the uploader already supplied
+// one.
+func setJSONIfEmpty(record *core.Record, field string, value any) {
+	if value == nil {
+		return
+	}
+	if existing := strings.TrimSpace(record.GetString(field)); existing != "" && existing != "null" && existing != "[]" && existing != "{}" {
+		return
+	}
+
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return
+	}
+	record.Set(field, string(encoded))
+}
+
+// readerAt adapts the uploaded file to the interface archive/zip needs.
+//
+// PocketBase hands over an io.ReadSeekCloser, and zip wants an io.ReaderAt.
+// Seeking per read keeps the whole book out of memory, which matters when the
+// field allows files far larger than the reference ones.
+type readerAt struct {
+	source io.ReadSeeker
+}
+
+func (r readerAt) ReadAt(buffer []byte, offset int64) (int, error) {
+	if _, err := r.source.Seek(offset, io.SeekStart); err != nil {
+		return 0, err
+	}
+
+	read, err := io.ReadFull(r.source, buffer)
+	if errors.Is(err, io.ErrUnexpectedEOF) {
+		// ReadAt reports a short final read as EOF, ReadFull does not.
+		return read, io.EOF
+	}
+
+	return read, err
+}

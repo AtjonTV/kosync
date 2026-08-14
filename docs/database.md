@@ -67,6 +67,22 @@ The monthly totals that aged out days are folded into.
 
 Internal bookkeeping: the days waiting to be recomputed. Invisible to accounts.
 
+### `books`
+
+An uploaded EPUB and everything read out of it. Only the file itself is supplied: the title, authors,
+language, identifiers, cover, word count and both document hashes are filled in by the server as the
+upload arrives, and the derived ones cannot be edited afterwards. The title and authors can, since
+correcting a publisher's metadata is the owner's business.
+
+`hash_binary` and `hash_filename` are the two ways KOReader identifies a document. They are stored as
+separate indexed columns so a progress push can be matched to a book by either. `content_hash` is a
+SHA-256 of the whole file and is unique per owner, so uploading the same file twice is refused rather
+than duplicated; two owners uploading the same book each keep their own copy.
+
+`page_count` is a fallback, derived from the word count at `BOOKS_WORDS_PER_PAGE`. An EPUB is
+reflowable and has no pages of its own, so a count measured from a reader's own progress is better
+wherever one can be had — see [analytics.md](analytics.md).
+
 ## Backups
 
 PocketBase takes care of them, in the superuser interface under **Settings → Backups**, or through
