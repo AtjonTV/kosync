@@ -188,22 +188,27 @@ func listSearch(app core.App, owner, query string, offset, limit int) ([]*core.R
 }
 
 // publicationOf turns a book record into a catalog entry.
-func publicationOf(book *core.Record, at urls) Publication {
+func publicationOf(book *core.Record, with details) Publication {
 	pages, _ := books.EffectivePages(book)
+	at := with.at
 
 	publication := Publication{
-		Id:         at.download(book),
-		Title:      book.GetString(schema.FieldTitle),
-		Authors:    book.GetStringSlice(schema.FieldAuthors),
-		Language:   book.GetString(schema.FieldLanguage),
-		Identifier: identifierOf(book),
-		Pages:      pages,
-		Updated:    book.GetDateTime(schema.FieldUpdated).Time(),
+		Id:          at.download(book),
+		Title:       book.GetString(schema.FieldTitle),
+		Authors:     book.GetStringSlice(schema.FieldAuthors),
+		Language:    book.GetString(schema.FieldLanguage),
+		Identifier:  identifierOf(book),
+		Description: with.describe(book),
+		Pages:       pages,
+		Updated:     book.GetDateTime(schema.FieldUpdated).Time(),
+		// No title on the acquisition: a reader labels the download button with
+		// the link's title if there is one and with the format if there is not,
+		// so naming it "Download" replaces "EPUB" with a word the button next
+		// to it already says.
 		Links: []Link{{
-			Rel:   RelAcquisition,
-			Href:  at.download(book),
-			Type:  MediaEpub,
-			Title: "Download",
+			Rel:  RelAcquisition,
+			Href: at.download(book),
+			Type: MediaEpub,
 		}},
 	}
 
@@ -211,8 +216,9 @@ func publicationOf(book *core.Record, at urls) Publication {
 	// client handles; inventing a placeholder would only cost a round trip.
 	if book.GetString(schema.FieldCover) != "" {
 		publication.Images = []Link{
-			{Href: at.cover(book.Id)},
+			{Rel: RelImage, Href: at.cover(book.Id)},
 			{
+				Rel:    RelThumbnail,
 				Href:   at.thumbnail(book.Id),
 				Width:  thumbnailWidth,
 				Height: thumbnailHeight,

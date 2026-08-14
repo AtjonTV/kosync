@@ -18,6 +18,7 @@ import (
 
 	"git.obth.eu/atjontv/kosync/internal/books"
 	"git.obth.eu/atjontv/kosync/internal/config"
+	"git.obth.eu/atjontv/kosync/internal/devices"
 	"git.obth.eu/atjontv/kosync/internal/koreader"
 	"git.obth.eu/atjontv/kosync/internal/opds"
 	"git.obth.eu/atjontv/kosync/internal/schema"
@@ -51,6 +52,7 @@ func newFactory(pageSize int, seed seeder) func(testing.TB) *tests.TestApp {
 
 		sync := koreader.Register(app, conf)
 		books.Register(app, conf)
+		devices.Register(app)
 		opds.Register(app, conf, sync)
 
 		fixture := testutil.Seed(t, app)
@@ -447,6 +449,113 @@ func TestAnEmptySearchGoesBackToTheCatalog(t *testing.T) {
 		Headers:        basicAuth(testutil.KoUsernameA, testutil.KoPasswordA),
 		TestAppFactory: newFactory(50, nil),
 		ExpectedStatus: http.StatusFound,
+	}
+
+	scenario.Test(t)
+}
+
+// KOReader greys out its "book information" button unless the publication
+// carries a description, and most EPUBs carry none of their own — not one of
+// the reference books does. So the catalog writes what this server does know.
+func TestEveryPublicationCarriesADescription(t *testing.T) {
+	seed := func(t testing.TB, app *tests.TestApp, fixture *testutil.Fixture) {
+		started := addBook(t, app, fixture.UserA, "", "Started", nil, false)
+		addBook(t, app, fixture.UserA, "", "Untouched", nil, false)
+
+		read(t, app, fixture.UserA, started, "hash-started", 0.63)
+	}
+
+	scenario := tests.ApiScenario{
+		Name:           "book information",
+		Method:         http.MethodGet,
+		URL:            "/opds/books",
+		Headers:        basicAuth(testutil.KoUsernameA, testutil.KoPasswordA),
+		TestAppFactory: newFactory(50, seed),
+		ExpectedStatus: http.StatusOK,
+		ExpectedContent: []string{
+			`63% read, last opened on 1 March 2026.`,
+			`Not started on any of your devices yet.`,
+			// The page count says which kind it is, because a measurement and a
+			// guess from the word count are worth telling apart.
+			`320 pages, estimated from the word count.`,
+		},
+	}
+
+	scenario.Test(t)
+}
+
+// A device identifier is not a name, and the description is prose.
+func TestTheDescriptionNamesTheDevice(t *testing.T) {
+	seed := func(t testing.TB, app *tests.TestApp, fixture *testutil.Fixture) {
+		book := addBook(t, app, fixture.UserA, "", "Started", nil, false)
+		read(t, app, fixture.UserA, book, "hash-started", 0.63)
+
+		document, err := app.FindFirstRecordByData(schema.CollectionDocuments, schema.FieldDocument, "hash-started")
+		if err != nil {
+			t.Fatalf("failed to load the document: %v", err)
+		}
+		document.Set(schema.FieldLastDevice, "go7")
+		document.Set(schema.FieldLastDeviceId, "865F46C0C0F4401D9A05768B6B0BF3AC")
+		if err := app.Save(document); err != nil {
+			t.Fatalf("failed to record the device: %v", err)
+		}
+
+		device, err := devices.Find(app, fixture.UserA.Id, "865F46C0C0F4401D9A05768B6B0BF3AC")
+		if err != nil || device == nil {
+			t.Fatalf("expected the device to be registered: %v", err)
+		}
+		device.Set(schema.FieldName, "Boox Go 7")
+		if err := app.Save(device); err != nil {
+			t.Fatalf("failed to rename the device: %v", err)
+		}
+	}
+
+	scenario := tests.ApiScenario{
+		Name:               "the chosen device name",
+		Method:             http.MethodGet,
+		URL:                "/opds/books",
+		Headers:            basicAuth(testutil.KoUsernameA, testutil.KoPasswordA),
+		TestAppFactory:     newFactory(50, seed),
+		ExpectedStatus:     http.StatusOK,
+		ExpectedContent:    []string{`last opened on Boox Go 7 on 1 March 2026.`},
+		NotExpectedContent: []string{"865F46C0C0F4401D9A05768B6B0BF3AC"},
+	}
+
+	scenario.Test(t)
+}
+
+// A reader labels the download button with the link's title when there is one,
+// so a title here replaces the format with a word that says nothing.
+func TestTheAcquisitionIsNotGivenATitle(t *testing.T) {
+	scenario := tests.ApiScenario{
+		Name:               "the download link",
+		Method:             http.MethodGet,
+		URL:                "/opds/books",
+		Headers:            basicAuth(testutil.KoUsernameA, testutil.KoPasswordA),
+		TestAppFactory:     newFactory(50, twoLibraries),
+		ExpectedStatus:     http.StatusOK,
+		ExpectedContent:    []string{`"rel":"http://opds-spec.org/acquisition/open-access"`},
+		NotExpectedContent: []string{`"title":"Download"`},
+	}
+
+	scenario.Test(t)
+}
+
+// Without these relations a reader cannot tell the two covers apart and falls
+// back to the first, which is the large one it did not want.
+func TestTheTwoCoverSizesAreDistinguishable(t *testing.T) {
+	scenario := tests.ApiScenario{
+		Name:           "cover relations",
+		Method:         http.MethodGet,
+		URL:            "/opds/books",
+		Headers:        basicAuth(testutil.KoUsernameA, testutil.KoPasswordA),
+		TestAppFactory: newFactory(50, twoLibraries),
+		ExpectedStatus: http.StatusOK,
+		ExpectedContent: []string{
+			`"rel":"http://opds-spec.org/image"`,
+			`"rel":"http://opds-spec.org/image/thumbnail"`,
+			`"width":200`,
+		},
 	}
 
 	scenario.Test(t)

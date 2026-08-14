@@ -1160,3 +1160,39 @@ request hook that assumes the web interface's multipart shape.
 
 **A per-owner storage quota.** §16.2 listed it as belonging in config alongside the upload cap, and it
 still does. A catalog makes the library more worth filling, so this gets more relevant, not less.
+
+### 22.4 What the client actually did
+
+The catalog worked on a real device on the first try — browsing, covers and downloading all behaved —
+with three things wrong that only a client could reveal. All three came out of reading
+`plugins/opds.koplugin/opdsbrowser.lua` rather than the spec, which is the lesson: OPDS 2.0 says what
+is valid, and the client says what is useful.
+
+**"Book information" was greyed out.** The button is `enabled = type(item.content) == "string"`, and
+for an OPDS 2.0 feed `content` comes from exactly one place: `entry.metadata.description`. Nothing
+else fills it. The catalog emitted no description, so the button was dead for every book.
+
+Adding one raised the question of what to put in it. The obvious answer — the publisher's blurb from
+`dc:description` — turned out to be worthless here: not one of the reference EPUBs carries that
+element, so extracting it would have left the button exactly as grey while adding a field, a migration
+and a backfill that re-reads every stored file. What the server does have is where the reading stands,
+which on a shelf being browsed from a second device is the better answer anyway. So a description is
+composed: the position and the device and date it was last read, then the page count and whether it
+was measured or estimated, the word count and the ISBN. On the production copy all ten books got one.
+
+**The download button said "Download".** `text = url.unescape(acquisition.title or
+string.upper(filetype))` — the link's title *replaces* the format name. Setting it to "Download" put a
+redundant word where "EPUB" belonged, and would have made two formats indistinguishable if the library
+ever holds more than one. The acquisition link no longer carries a title.
+
+**Both cover sizes were the same size.** `getItemFromPublication` picks the thumbnail by relation and
+falls back to `entry.images[1]` when it recognises none. The images carried no `rel`, so the fallback
+made the full cover the thumbnail as well — 588 KB where 38 KB was on offer, on a device over wifi.
+They now carry `http://opds-spec.org/image` and `.../image/thumbnail`.
+
+**And one correction to §22.1.** KOReader names a downloaded file `Author - Title.epub` itself, and
+only asks the server for a name when the catalog was added with "use server filenames" ticked, which
+turns the download into a `HEAD` for the `Content-Disposition`. So `hash_catalog` is narrower than it
+was written up as: it applies with that box ticked and filename matching selected. The binary hash
+carries the ordinary case, and does so regardless of what the file ends up being called — which is
+what makes it the right default and the one the setup guide recommends.

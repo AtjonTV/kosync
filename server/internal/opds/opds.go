@@ -144,7 +144,7 @@ func (h *Handler) shelf(e *core.RequestEvent) error {
 		return e.InternalServerError("Failed to read the library.", err)
 	}
 
-	feed := h.feed(at, entry.Title, records, &Page{Number: page, Size: size, Total: total})
+	feed := h.feed(at, entry.Title, records, &Page{Number: page, Size: size, Total: total}, ownerFrom(e))
 	feed.Id = at.shelf(entry.Slug, 1)
 	feed.Links = append(feed.Links, pagination(func(number int) string {
 		return at.shelf(entry.Slug, number)
@@ -172,7 +172,7 @@ func (h *Handler) search(e *core.RequestEvent) error {
 		return e.InternalServerError("Failed to search the library.", err)
 	}
 
-	feed := h.feed(at, "Search: "+query, records, &Page{Number: page, Size: size, Total: total})
+	feed := h.feed(at, "Search: "+query, records, &Page{Number: page, Size: size, Total: total}, ownerFrom(e))
 	feed.Id = at.search(query, 1)
 	feed.Links = append(feed.Links, pagination(func(number int) string {
 		return at.search(query, number)
@@ -182,7 +182,7 @@ func (h *Handler) search(e *core.RequestEvent) error {
 }
 
 // feed builds the common part of every list of books.
-func (h *Handler) feed(at urls, title string, records []*core.Record, page *Page) *Feed {
+func (h *Handler) feed(at urls, title string, records []*core.Record, page *Page, owner string) *Feed {
 	feed := &Feed{
 		Title: title,
 		Page:  page,
@@ -192,8 +192,13 @@ func (h *Handler) feed(at urls, title string, records []*core.Record, page *Page
 		},
 	}
 
+	if len(records) == 0 {
+		return feed
+	}
+
+	with := loadDetails(h.app, owner, at)
 	for _, record := range records {
-		feed.Publications = append(feed.Publications, publicationOf(record, at))
+		feed.Publications = append(feed.Publications, publicationOf(record, with))
 	}
 
 	return feed

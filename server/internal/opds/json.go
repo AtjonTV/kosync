@@ -78,6 +78,7 @@ type jsonPublicationMetadata struct {
 	Language      string       `json:"language,omitempty"`
 	NumberOfPages int          `json:"numberOfPages,omitempty"`
 	Modified      string       `json:"modified,omitempty"`
+	Description   string       `json:"description,omitempty"`
 }
 
 type jsonAuthor struct {
@@ -137,6 +138,7 @@ func jsonPublications(publications []Publication) []jsonPublication {
 				Language:      publication.Language,
 				NumberOfPages: publication.Pages,
 				Modified:      jsonTime(publication.Updated),
+				Description:   publication.Description,
 			},
 			Links:  jsonLinks(publication.Links),
 			Images: jsonLinks(publication.Images),

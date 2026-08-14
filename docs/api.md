@@ -157,7 +157,8 @@ where it is:
       "title": "Zeit des Sturms",
       "author": [ { "name": "Andrzej Sapkowski" } ],
       "language": "de",
-      "numberOfPages": 700
+      "numberOfPages": 700,
+      "description": "Finished, last opened on Boox Go 7 on 21 February 2026.\n\n700 pages, measured from your own reading.\n109,288 words.\nISBN 9783423426091"
     },
     "links": [ {
       "rel": "http://opds-spec.org/acquisition/open-access",
@@ -169,17 +170,31 @@ where it is:
 }
 ```
 
-Two things worth knowing:
+Three things worth knowing:
 
 **Acquisition does not go through PocketBase's file URLs.** `/api/files/...` wants a short lived token
 as a query parameter, obtained from an endpoint no OPDS client has heard of. The catalog streams from
 its own routes instead, behind the same Basic authentication as the feed that pointed at them.
 
+**Every publication carries a `description`,** because KOReader greys out its "book information"
+button for one that does not (`opdsbrowser.lua`: `enabled = type(item.content) == "string"`, filled
+from `entry.metadata.description`). Most EPUBs carry no description of their own — none of the
+reference books do — so rather than leave the button dead, the catalog writes what this server
+actually knows: how far the reading has got, on which device and when, the page count and whether it
+was measured or estimated, the word count, and the ISBN.
+
 **The name in the acquisition URL is derived from the title**, not from the file as it was uploaded,
-and it is sent again as the `Content-Disposition`. That is what makes `hash_catalog` predictable: a
-reader set to identify documents by filename is recognised from its very first push, with no upload
-and no manual linking. A reader set to the binary method is recognised anyway, because the file it
-downloaded is the file the server holds.
+and it is sent again as the `Content-Disposition`. `hash_catalog` is the hash of that name, so a
+reader holding the file under it is recognised from its very first push, with no upload and no manual
+linking.
+
+That last one comes with a caveat worth stating plainly. KOReader names a downloaded file
+`Author - Title.epub` of its own accord and only asks the server what to call it when the catalog was
+added with **"use server filenames"** ticked (`root_catalog_raw_names`, which switches it to a `HEAD`
+and the `Content-Disposition`). So `hash_catalog` matches when that box is ticked *and* the device
+identifies documents by filename. In every other case the binary hash does the work — which is the
+default matching method, and which matches regardless, because the file the reader downloaded is
+byte for byte the file the server holds.
 
 ## 4. The KOsync API, under `/api/kosync`
 

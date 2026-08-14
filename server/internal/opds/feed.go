@@ -36,6 +36,13 @@ const (
 	// downloaded. Nothing here is lent, sold or expiring, so the open access
 	// relation is the honest one.
 	RelAcquisition = "http://opds-spec.org/acquisition/open-access"
+
+	// RelImage and RelThumbnail separate the full cover from the small one. A
+	// reader that cannot tell them apart falls back to the first image in the
+	// list, which means fetching a cover several hundred kilobytes larger than
+	// the grid it is being drawn into.
+	RelImage     = "http://opds-spec.org/image"
+	RelThumbnail = "http://opds-spec.org/image/thumbnail"
 )
 
 // Feed is one page of the catalog, in the shape the catalog thinks in rather
@@ -109,6 +116,12 @@ type Publication struct {
 
 	// Identifier is the book's own identity as the publisher gave it, as a URI.
 	Identifier string
+
+	// Description is the prose a reader shows under "book information". A
+	// publication without one has that button greyed out, so it is filled with
+	// what this server actually knows — where the reading stands — rather than
+	// left to a publisher's blurb that most EPUBs do not carry.
+	Description string
 
 	// Pages is the effective page count, measured where a measurement exists and
 	// derived from the word count otherwise.
