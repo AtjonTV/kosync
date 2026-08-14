@@ -11,6 +11,10 @@ custom WebSocket protocol with what PocketBase already does well.
 
 - **Syncs reading progress** with KOReader, using the same protocol as the official sync server.
 - **Shows a dashboard**: documents, reading progress, per document history, and reading statistics.
+- **Holds your books.** Upload an EPUB and it is matched to the reading you have already done, with
+  the cover, the metadata and a page count measured from your own device's progress.
+- **Serves the library as an OPDS catalog**, so a device can browse and download from it. A book
+  downloaded that way is recognised the moment you start reading it.
 - **Keeps a history** of every position a document went through, and can put a document back into an
   earlier one.
 - **Deploys as a single executable** with the web interface compiled in. No Redis, no Nginx, no Node.
@@ -40,6 +44,8 @@ account and KOReader has no way to ask for one.
 4. Log in with the credential from step 2.
 5. Enable **automatically keep documents in sync**, set **periodically sync every # pages** to 2 and
    **Document matching method** to "Binary".
+6. Optionally, add `https://your-host/opds` under **Search → OPDS catalog**, with the same credential,
+   to browse and download your library from the device.
 
 ## Running it
 

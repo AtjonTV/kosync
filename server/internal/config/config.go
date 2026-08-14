@@ -47,6 +47,16 @@ type Config struct {
 	// e-reader page actually holds on the reference data, well below the ~250
 	// usually quoted for print.
 	BooksWordsPerPage int `env:"BOOKS_WORDS_PER_PAGE" default:"155"`
+
+	// EnableOpds serves the library as an OPDS catalog. It is on by default:
+	// the catalog shows one account its own books and needs the same credential
+	// the device already syncs with, so it exposes nothing the sync API does not.
+	EnableOpds bool `env:"ENABLE_OPDS" default:"true"`
+
+	// OpdsPageSize is how many books one page of a catalog feed holds. E-readers
+	// parse the whole page before drawing any of it, so this trades a moment on
+	// a large library against a page turn on a small one.
+	OpdsPageSize int `env:"OPDS_PAGE_SIZE" default:"50"`
 }
 
 // New loads the configuration from "./kosync.env" (if present) and the environment.
@@ -95,6 +105,9 @@ func (c *Config) Normalize() {
 	}
 	if c.BooksWordsPerPage < 1 {
 		c.BooksWordsPerPage = 155
+	}
+	if c.OpdsPageSize < 1 {
+		c.OpdsPageSize = 50
 	}
 }
 

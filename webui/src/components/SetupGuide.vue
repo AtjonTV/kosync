@@ -9,6 +9,10 @@ import { computed } from 'vue'
 // KOReader appends its own paths to whatever it is given, so the device has to
 // be pointed at the "/koreader" prefix rather than at the site root.
 const syncServer = computed(() => `${window.location.origin}/koreader`)
+
+// The catalog is a standard other readers speak too, which is why it does not
+// sit under the "/koreader" prefix.
+const catalog = computed(() => `${window.location.origin}/opds`)
 </script>
 
 <template>
@@ -36,6 +40,17 @@ const syncServer = computed(() => `${window.location.origin}/koreader`)
         <li>Repeat steps 3 to 7 on every device, using the same credential or a new one.</li>
         <li>Read books.</li>
       </ol>
+
+      <div class="mt-6 pt-6 border-t border-surface-200 dark:border-surface-700">
+        <p class="mb-3 font-semibold">Getting books onto a device</p>
+        <p class="mb-3 text-surface-700 dark:text-surface-300">
+          Your library is also an OPDS catalog. In KOReader, open
+          <strong>Search &rarr; OPDS catalog</strong>, add a new catalog with the address
+          <code class="px-1 rounded bg-surface-100 dark:bg-surface-800">{{ catalog }}</code>
+          and the same credential from step 2. Books downloaded from there are recognised the moment
+          you start reading them, so their progress and statistics arrive without an upload.
+        </p>
+      </div>
     </template>
   </Card>
 </template>

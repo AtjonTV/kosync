@@ -1,6 +1,6 @@
 # API
 
-KOsync has three groups of endpoints.
+KOsync has four groups of endpoints.
 
 ## 1. The KOReader protocol, under `/koreader`
 
@@ -88,6 +88,10 @@ reports imply, and `page_count` is the fallback from the word count. Both are re
 measurement in particular refuses to be set by hand, because a number nobody measured would then sit
 in front of every statistic reckoned in pages. See [analytics.md](analytics.md).
 
+A third hash, `hash_catalog`, is derived from the title rather than from the file: it is the KOReader
+filename hash of the name the OPDS catalog serves the book under. It follows a rename, and like the
+other two it is refused on update.
+
 ### Book statistics
 
 `reading_book_days` is `reading_days` keyed by book as well as by day, and is read and subscribed to
@@ -113,7 +117,71 @@ refused, and of the fields only `name` may be changed.
 await pb.collection('devices').update(id, { name: 'Boox Go 7' })
 ```
 
-## 3. The KOsync API, under `/api/kosync`
+## 3. The OPDS catalog, under `/opds`
+
+The library as a catalog a reading device can browse and download from. OPDS 2.0, which is the
+Readium manifest model in JSON, against the KOReader v2026.07 baseline. It is on unless `ENABLE_OPDS`
+says otherwise.
+
+The prefix is `/opds` rather than `/koreader/opds`: `/koreader` exists to isolate that reader's own
+header protocol, and OPDS is a standard other readers speak.
+
+| Method | Route | Description |
+| --- | --- | --- |
+| GET | `/opds` | the catalog: the three shelves, and the search template |
+| GET | `/opds/reading` | books started and not finished, most recently read first |
+| GET | `/opds/recent` | the library, newest upload first |
+| GET | `/opds/books` | the whole library, by title |
+| GET | `/opds/search?query=…` | books whose title or author matches |
+| GET | `/opds/books/{id}/download/{name}` | the EPUB itself |
+| GET | `/opds/books/{id}/cover` | the full cover image |
+| GET | `/opds/books/{id}/thumbnail` | the cover at 200x300, generated on first request |
+
+**Authentication is HTTP Basic** against `koreader_accounts` — the same credential the device syncs
+with, and nothing new to create. Basic delivers the plain password, which the server hashes with MD5
+before verifying against the stored bcrypt digest, so the existing verified-credential cache serves
+both. A request without one is answered `401` with an `application/opds-authentication+json` body
+naming the scheme, so a conformant reader can put up the right prompt instead of guessing.
+
+Feeds are `application/opds+json`. A list of books is paginated with `?page=` (one based), and says
+where it is:
+
+```json
+{
+  "metadata": { "title": "All books", "numberOfItems": 10, "itemsPerPage": 50, "currentPage": 1 },
+  "links": [ { "rel": "next", "href": "https://host/opds/books?page=2", "type": "application/opds+json" } ],
+  "publications": [ {
+    "metadata": {
+      "@type": "http://schema.org/Book",
+      "identifier": "urn:isbn:9783423426091",
+      "title": "Zeit des Sturms",
+      "author": [ { "name": "Andrzej Sapkowski" } ],
+      "language": "de",
+      "numberOfPages": 700
+    },
+    "links": [ {
+      "rel": "http://opds-spec.org/acquisition/open-access",
+      "href": "https://host/opds/books/fe0p6d412uhhld6/download/Zeit%20des%20Sturms.epub",
+      "type": "application/epub+zip"
+    } ],
+    "images": [ { "href": "https://host/opds/books/fe0p6d412uhhld6/cover" } ]
+  } ]
+}
+```
+
+Two things worth knowing:
+
+**Acquisition does not go through PocketBase's file URLs.** `/api/files/...` wants a short lived token
+as a query parameter, obtained from an endpoint no OPDS client has heard of. The catalog streams from
+its own routes instead, behind the same Basic authentication as the feed that pointed at them.
+
+**The name in the acquisition URL is derived from the title**, not from the file as it was uploaded,
+and it is sent again as the `Content-Disposition`. That is what makes `hash_catalog` predictable: a
+reader set to identify documents by filename is recognised from its very first push, with no upload
+and no manual linking. A reader set to the binary method is recognised anyway, because the file it
+downloaded is the file the server holds.
+
+## 4. The KOsync API, under `/api/kosync`
 
 The few operations the generated collection API cannot express. All of them require an account
 session (`Authorization: <token>`).

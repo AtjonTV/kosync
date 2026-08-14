@@ -49,6 +49,17 @@ func Register(app core.App, conf *config.Config) {
 		return e.Next()
 	})
 
+	// The catalog serves a book under a name derived from its title, so the hash
+	// of that name has to be recomputed whenever the title changes. These are the
+	// plain record hooks rather than the request ones so that a book created by
+	// the importer or by a test gets the hash too.
+	setCatalogHash := func(e *core.RecordEvent) error {
+		e.Record.Set(schema.FieldHashCatalog, CatalogHash(e.Record))
+		return e.Next()
+	}
+	app.OnRecordCreate(schema.CollectionBooks).BindFunc(setCatalogHash)
+	app.OnRecordUpdate(schema.CollectionBooks).BindFunc(setCatalogHash)
+
 	// The derived fields describe the file, so they cannot be edited away from
 	// it. Title and authors are deliberately not in this list: correcting
 	// publisher metadata is the owner's business.
@@ -71,6 +82,15 @@ func Register(app core.App, conf *config.Config) {
 					nil,
 				)
 			}
+		}
+
+		// The catalog hash follows the title, and a hand-set value would claim
+		// the book is served under a name it is not.
+		if _, present := info.Body[schema.FieldHashCatalog]; present {
+			return e.BadRequestError(
+				fmt.Sprintf("%q follows the title and cannot be set by hand; rename the book instead.", schema.FieldHashCatalog),
+				nil,
+			)
 		}
 
 		// The measurement is taken from the progress the devices pushed. Letting

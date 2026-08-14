@@ -23,6 +23,7 @@ import (
 	"git.obth.eu/atjontv/kosync/internal/importer"
 	"git.obth.eu/atjontv/kosync/internal/koreader"
 	"git.obth.eu/atjontv/kosync/internal/kosyncapi"
+	"git.obth.eu/atjontv/kosync/internal/opds"
 	"git.obth.eu/atjontv/kosync/internal/webui"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/apis"
@@ -52,11 +53,15 @@ func main() {
 		Dir:          "internal/migrations",
 	})
 
-	koreader.Register(app, conf)
+	// The catalog authenticates with the same device credentials as the sync
+	// protocol, through the same verified-credential cache, so it is handed the
+	// KOReader handler rather than reaching for the credentials itself.
+	sync := koreader.Register(app, conf)
 	kosyncapi.Register(app, conf)
 	analytics.Register(app, conf)
 	books.Register(app, conf)
 	devices.Register(app)
+	opds.Register(app, conf, sync)
 
 	app.RootCmd.AddCommand(importer.NewCommand(app, conf))
 

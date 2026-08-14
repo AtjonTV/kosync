@@ -27,6 +27,8 @@ file. See [`server/kosync.env.example`](../server/kosync.env.example) for a copy
 | `KOREADER_AUTH_CACHE_TTL_SECONDS` | `300` | lifetime of a verified device credential in memory, `0` disables |
 | `KOREADER_AUTH_CACHE_ENTRIES` | `1024` | how many credentials are cached at most |
 | `BOOKS_WORDS_PER_PAGE` | `155` | fallback reading density for books whose page count cannot be measured |
+| `ENABLE_OPDS` | `true` | serve the library as an OPDS catalog at `/opds` |
+| `OPDS_PAGE_SIZE` | `50` | how many books one page of a catalog feed holds |
 
 An invalid value falls back to its default instead of stopping the server.
 
@@ -39,6 +41,17 @@ Verifying bcrypt on every push is expensive, so a successful verification is rem
 Two things this does not do: it never caches a failed attempt, so guessing a password still costs the
 full verification every time; and it never keeps a rotated, disabled or deleted credential alive,
 because those changes drop the cached entry immediately.
+
+## About the catalog
+
+`ENABLE_OPDS` is on by default. The catalog shows one account its own books and asks for the same
+device credential that account already syncs with, so it exposes nothing the sync API does not; turn
+it off if you would rather not have the endpoint there at all.
+
+The links inside a feed are absolute, and they are built from the address the request arrived on so
+that a reader gets back the name it reached the server by. Behind a reverse proxy that means
+`X-Forwarded-Proto` and `X-Forwarded-Host` have to be set, or the acquisition links will point at
+whatever the proxy dialled — usually an address the device cannot reach.
 
 ## Settings that are gone
 

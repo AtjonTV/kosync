@@ -79,6 +79,13 @@ separate indexed columns so a progress push can be matched to a book by either. 
 SHA-256 of the whole file and is unique per owner, so uploading the same file twice is refused rather
 than duplicated; two owners uploading the same book each keep their own copy.
 
+`hash_catalog` is a third indexed column and the odd one out: it is a filename hash again, but of the
+name the OPDS catalog serves the book under rather than the name it was uploaded with. Those are
+different strings — the uploader's name is whatever their file happened to be called, and the served
+name is derived from the title — so a reader that downloaded from the catalog and identifies
+documents by name needs its own column to be found by. It follows a rename, which does leave a device
+that downloaded the book earlier holding the old name; the binary hash still covers that device.
+
 `page_count` is a fallback, derived from the word count at `BOOKS_WORDS_PER_PAGE`. An EPUB is
 reflowable and has no pages of its own, so a count measured from a reader's own progress is better
 wherever one can be had — see [analytics.md](analytics.md). `measured_pages` holds that measurement

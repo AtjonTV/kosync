@@ -48,10 +48,15 @@ const (
 )
 
 // Shared field names.
+//
+// FieldCreated and FieldUpdated are the autodate fields every KOsync collection
+// carries; PocketBase names them and maintains them.
 const (
 	FieldOwner      = "owner"
 	FieldDate       = "date"
 	FieldLastReadAt = "last_read_at"
+	FieldCreated    = "created"
+	FieldUpdated    = "updated"
 )
 
 // koreader_accounts field names.
@@ -119,8 +124,15 @@ const (
 	// KOReader identifies a book by. They are separate indexed columns rather
 	// than one JSON blob because matching a progress push means looking a book
 	// up by either of them.
+	//
+	// FieldHashCatalog is the filename hash again, of the name the OPDS catalog
+	// serves the book under rather than the name it was uploaded with. A reader
+	// set to the filename method hashes the name on its own disk, and that is
+	// the name the catalog put there — which is a different string from the one
+	// the uploader happened to use.
 	FieldHashBinary   = "hash_binary"
 	FieldHashFilename = "hash_filename"
+	FieldHashCatalog  = "hash_catalog"
 
 	// FieldMeasuredPages and FieldMeasuredDevice hold the page count recovered
 	// from the progress a device pushed, and which device it came from. Zero

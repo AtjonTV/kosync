@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"git.obth.eu/atjontv/kosync/internal/epub"
 	"git.obth.eu/atjontv/kosync/internal/migrations"
 	"git.obth.eu/atjontv/kosync/internal/schema"
 	"git.obth.eu/atjontv/kosync/internal/testutil"
@@ -290,5 +291,42 @@ func TestBackfillDevicesIsIdempotent(t *testing.T) {
 	}
 	if len(registered) != 1 {
 		t.Errorf("expected the device to be registered once, got %d", len(registered))
+	}
+}
+
+// A library uploaded before the catalog existed has no catalog hash on any of
+// its books, and would go on being unrecognisable to a reader that identifies
+// documents by name until every book was uploaded a second time.
+func TestBackfillGivesOlderBooksACatalogHash(t *testing.T) {
+	app := testutil.NewApp(t)
+	alice := testutil.CreateUser(t, app, testutil.IdUserA, testutil.EmailUserA, testutil.PasswordUsers)
+
+	// Stored without the hooks, which is how a book that predates the catalog
+	// looks: everything derived from the file, nothing derived from the title.
+	book := storeBook(t, app, testutil.PadId("booka"), alice.Id, "043f11771ef9d191364ac0ba08198d36", "")
+	if book.GetString(schema.FieldHashCatalog) != "" {
+		t.Fatal("expected the book to start without a catalog hash")
+	}
+
+	before := book.GetDateTime(schema.FieldUpdated)
+
+	for range 2 {
+		if err := migrations.BackfillCatalogHashes(app); err != nil {
+			t.Fatalf("backfill the catalog hashes: %v", err)
+		}
+	}
+
+	stored, err := app.FindRecordById(schema.CollectionBooks, book.Id)
+	if err != nil {
+		t.Fatalf("reload the book: %v", err)
+	}
+
+	if want := epub.FilenameMD5("Zeit des Sturms.epub"); stored.GetString(schema.FieldHashCatalog) != want {
+		t.Errorf("expected the hash %q, got %q", want, stored.GetString(schema.FieldHashCatalog))
+	}
+	// A whole library reporting itself as edited today, because a column was
+	// added, would be a lie told by a migration.
+	if got := stored.GetDateTime(schema.FieldUpdated); got.String() != before.String() {
+		t.Errorf("expected the book not to look edited, %q became %q", before.String(), got.String())
 	}
 }

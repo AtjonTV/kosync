@@ -8,26 +8,33 @@ package books
 
 import (
 	"fmt"
+	"strings"
 
 	"git.obth.eu/atjontv/kosync/internal/schema"
 	"github.com/pocketbase/pocketbase/core"
 )
 
+// hashFields are the columns a document hash may be found in. A reader sends
+// whichever hash its checksum method produces and the server cannot tell which
+// kind it is looking at — they are 32 hex characters either way — so all three
+// are tried.
+var hashFields = []string{schema.FieldHashBinary, schema.FieldHashFilename, schema.FieldHashCatalog}
+
 // FindForDocument returns the owner's book that a document hash identifies, or
 // nil when there is none.
-//
-// KOReader sends whichever hash its checksum method produces, and the server
-// cannot tell which of the two it is looking at, so both columns are tried. A
-// hash is 32 hex characters either way.
 func FindForDocument(app core.App, owner, documentHash string) (*core.Record, error) {
 	if owner == "" || documentHash == "" {
 		return nil, nil
 	}
 
+	matches := make([]string, 0, len(hashFields))
+	for _, field := range hashFields {
+		matches = append(matches, field+" = {:hash}")
+	}
+
 	records, err := app.FindRecordsByFilter(
 		schema.CollectionBooks,
-		fmt.Sprintf("%s = {:owner} && (%s = {:hash} || %s = {:hash})",
-			schema.FieldOwner, schema.FieldHashBinary, schema.FieldHashFilename),
+		fmt.Sprintf("%s = {:owner} && (%s)", schema.FieldOwner, strings.Join(matches, " || ")),
 		"", 1, 0,
 		map[string]any{"owner": owner, "hash": documentHash},
 	)
@@ -91,26 +98,27 @@ func linkDocument(app core.App, document *core.Record) error {
 // were already recording progress through it.
 func linkExistingDocuments(app core.App, book *core.Record) error {
 	owner := book.GetString(schema.FieldOwner)
-	hashes := []any{}
-	for _, field := range []string{schema.FieldHashBinary, schema.FieldHashFilename} {
-		if hash := book.GetString(field); hash != "" {
-			hashes = append(hashes, hash)
+	params := map[string]any{"owner": owner}
+	matches := []string{}
+	for index, field := range hashFields {
+		hash := book.GetString(field)
+		if hash == "" {
+			continue
 		}
+		name := fmt.Sprintf("hash%d", index)
+		params[name] = hash
+		matches = append(matches, fmt.Sprintf("%s = {:%s}", schema.FieldDocument, name))
 	}
-	if owner == "" || len(hashes) == 0 {
+	if owner == "" || len(matches) == 0 {
 		return nil
 	}
 
 	documents, err := app.FindRecordsByFilter(
 		schema.CollectionDocuments,
-		fmt.Sprintf("%s = {:owner} && %s = '' && (%s = {:binary} || %s = {:filename})",
-			schema.FieldOwner, schema.FieldBook, schema.FieldDocument, schema.FieldDocument),
+		fmt.Sprintf("%s = {:owner} && %s = '' && (%s)",
+			schema.FieldOwner, schema.FieldBook, strings.Join(matches, " || ")),
 		"", 0, 0,
-		map[string]any{
-			"owner":    owner,
-			"binary":   book.GetString(schema.FieldHashBinary),
-			"filename": book.GetString(schema.FieldHashFilename),
-		},
+		params,
 	)
 	if err != nil {
 		return err

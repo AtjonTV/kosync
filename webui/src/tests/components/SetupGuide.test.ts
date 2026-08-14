@@ -33,6 +33,16 @@ describe('SetupGuide', () => {
     expect(wrapper.text()).toContain('http://localhost/koreader')
   })
 
+  // The catalog is a standard other readers speak, so it does not sit under the
+  // /koreader prefix, and an address off by that one segment finds nothing.
+  it('points the OPDS catalog at /opds', () => {
+    const wrapper = mount(SetupGuide, {
+      global: { plugins: [PrimeVue], components: { Card } },
+    })
+
+    expect(wrapper.text()).toContain('http://localhost/opds')
+  })
+
   it('tells the reader that registration happens in the web interface', () => {
     const wrapper = mount(SetupGuide, {
       global: { plugins: [PrimeVue], components: { Card } },

@@ -69,6 +69,22 @@ func (h *Handler) requireAccount(e *core.RequestEvent) error {
 	return e.Next()
 }
 
+// AuthenticateDevice verifies a device credential on behalf of another route
+// group, and is how the OPDS catalog authenticates without a second credential
+// store or a second cache.
+//
+// It takes the MD5 digest rather than the password because that is what is
+// stored — the caller decides how it came by one. A caller holding a plain
+// password (HTTP Basic sends one) hashes it first.
+func (h *Handler) AuthenticateDevice(username, md5hex string) (accountId, ownerId string, err error) {
+	account, err := h.authenticate(username, md5hex)
+	if err != nil {
+		return "", "", err
+	}
+
+	return account.Id, account.OwnerId, nil
+}
+
 // authenticate verifies the credentials against the cache first and the
 // database second.
 func (h *Handler) authenticate(username, md5hex string) (*Account, error) {

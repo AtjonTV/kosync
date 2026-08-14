@@ -513,8 +513,10 @@ Then the later ideas, in dependency order:
 Phases 9 and 10 are independent of each other and can be built in either order; §16 explains why doing
 10 first makes 9 exact rather than heuristic for anything downloaded from the catalog.
 
-Phases 8, 9, 12, 15, 16 and 17 are built; §16.6, §18, §19 and §21 record what each of them turned
-into, and §17 is now a description of what the interface does rather than what it should do.
+Phases 8, 9, 10, 12, 15, 16 and 17 are built; §16.6, §18, §19, §21 and §22 record what each of them
+turned into, and §17 is now a description of what the interface does rather than what it should do.
+Phase 10 landed after 9 rather than before it, so the exactness §16 wanted from that ordering arrived
+as a third stored hash instead — see §22.1.
 
 Phases 15 and 16 are interface work rather than new capability, and are described in §17. They are
 listed last because nothing depends on them, but 15 is worth doing before the documents table grows
@@ -1088,3 +1090,73 @@ Backfilled from the existing pushes, over both `documents` and `document_history
 finished a book months ago never pushes again, so a registry that only fills itself going forward would
 never learn its name. On the production copy it registered three devices — including one neither of us
 had thought about, a desktop KOReader reporting itself as `Flatpak`.
+
+---
+
+## 22. The OPDS catalog (phase 10)
+
+Built. §16.4 planned it and every decision there survived contact; what follows is what the code does
+and the two things the plan did not anticipate.
+
+**The catalog is the other half of matching.** Phase 9 links a push to a book by hash, and §16.3 named
+the consequence: another retailer's copy of the same title is different bytes and a different name, so
+it matches nothing. The answer the plan gave was "read the file you downloaded from here" — which only
+works once there is a here to download from. There now is, and the loop closes: a book acquired from
+the catalog is byte-identical to the one the server holds, so its binary hash is known before the
+device has read a word of it.
+
+**Three shelves, and the third is the argument.** `/opds/books` by title and `/opds/recent` by upload
+are what any catalog has. `/opds/reading` — started and not finished, most recently read first — is
+the one a plain file share cannot offer, because it needs the progress this server exists to collect.
+Setting up a second device and finding the book you are in the middle of, already at the right page,
+is the whole product in one gesture. The join can return a book twice, when two document hashes point
+at one book, so it groups and takes the later position of the two.
+
+**Basic auth over the existing credential.** The stored value is bcrypt over MD5, and Basic delivers
+the plain password, so hashing it with MD5 first verifies against what is already there. The catalog
+is handed the KOReader handler rather than reaching for the credentials itself, which means one
+verified-credential cache for both surfaces and no second thing for a person to create. A 401 carries
+an `application/opds-authentication+json` body, so a reader prompts rather than guesses.
+
+### 22.1 The field the plan did not have
+
+§16.3 said acquisition "must serve a name derived from the record, not from whatever the file was
+called at upload", and it was right, but it did not follow the consequence through: `hash_filename`
+already holds the hash of the uploaded name, and the served name is a different string. One column
+cannot hold both, and both are worth holding — one for "I uploaded the very file I read", the other
+for "I read the file I downloaded from here".
+
+So `books` gained a third indexed hash, `hash_catalog`, derived from the title and recomputed whenever
+the title changes. Matching tries all three. A rename does leave a device that downloaded earlier
+holding the old name, and that device falls back to the binary hash, which is the default setting
+anyway.
+
+### 22.2 Verified end to end
+
+On a copy of the production database, ten books:
+
+- The migration gave every one of them a catalog hash. `Zeit des Sturms` → `Zeit des Sturms.epub` →
+  `5c75dcc791ef1ac8e5bde189a28a4999`, which is the MD5 of that name and nothing else.
+- `/opds/reading` returned exactly the three books with a linked document between 0 and 1 — Metro, the
+  Witcher omnibus at 83.8%, and Deutsche Sagen — and excluded the four finished ones.
+- The downloaded EPUB was byte-identical to the stored file (SHA-256), and its binary hash came back
+  `043f11771ef9d191364ac0ba08198d36`: the same string the production database has recorded as that
+  document's identity since long before any of this was written.
+- A push carrying the catalog filename hash created a document that was linked to the right book on
+  arrival, with no upload and no manual step.
+- The thumbnail route turned a 797x1240, 588 KB cover into 200x300 and 38 KB. Over a device's wifi
+  that ratio is the difference between a catalog that opens and one that does not.
+
+### 22.3 Deliberately not built
+
+**The Atom 1.2 renderer.** §16.4 said to build the feed as a tree behind a renderer interface and not
+to write the second renderer up front. Both halves were followed: `Feed`, `Publication` and `Link` are
+what the catalog thinks in, `JSONRenderer` is what OPDS 2.0 puts on the wire, and `Feed.Id` exists
+unused by the JSON renderer because Atom would need it.
+
+**Uploading through the catalog.** OPDS 2.0 can describe it, and it would mean a device could push a
+book up as well as pull one down. Nothing asks for it yet, and the metadata extraction on upload is a
+request hook that assumes the web interface's multipart shape.
+
+**A per-owner storage quota.** §16.2 listed it as belonging in config alongside the upload cap, and it
+still does. A catalog makes the library more worth filling, so this gets more relevant, not less.
