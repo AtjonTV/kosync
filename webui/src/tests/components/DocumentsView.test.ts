@@ -76,15 +76,15 @@ function book(): Book {
 
 const plugins = () => [PrimeVue, ToastService, ConfirmationService]
 
-function mountView(documents: DocumentWithHistory[]) {
+function mountView(documents: DocumentWithHistory[], loaded = true) {
   return mount(DocumentsView, {
     global: {
       plugins: [
         createTestingPinia({
           createSpy: vi.fn,
           initialState: {
-            documents: { documents, loaded: true },
-            books: { books: [book()], loaded: true },
+            documents: { documents, loaded },
+            books: { books: [book()], loaded },
           },
         }),
         ...plugins(),
@@ -131,6 +131,23 @@ describe('DocumentsView', () => {
     const wrapper = mountView([record({ book: '' })])
 
     expect(wrapper.findComponent({ name: 'FileUpload' }).exists()).toBe(true)
+  })
+
+  // An empty store on the way to being filled must not be reported as an empty
+  // library. Until it has loaded there is no answer to give, only a wait.
+  it('waits rather than claiming the library is empty', () => {
+    const wrapper = mountView([], false)
+
+    expect(wrapper.findComponent({ name: 'ProgressSpinner' }).exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('Nothing has been matched to a book yet')
+    expect(wrapper.text()).not.toContain('In your library')
+  })
+
+  it('shows the lists once both the documents and the books are in', () => {
+    const wrapper = mountView([record()])
+
+    expect(wrapper.findComponent({ name: 'ProgressSpinner' }).exists()).toBe(false)
+    expect(wrapper.text()).toContain('In your library')
   })
 })
 

@@ -71,9 +71,34 @@ const uploadFiles = async (event: FileUploadUploaderEvent) => {
   }
 }
 
+/**
+ * Whether there is anything true to show yet.
+ *
+ * This is "has loaded" rather than "is not loading", because the two are not the
+ * same on the first frame: the load starts in onMounted, which runs after the
+ * first render, and for that one frame nothing is loading and nothing is loaded.
+ * Asking the negative question there would paint "no documents" over a library
+ * that is on its way.
+ *
+ * The books count too. They carry the covers and the links, and a list that
+ * appears without them and fills in a moment later reads as a page still making
+ * up its mind.
+ */
+const ready = computed(() => documents.loaded && books.loaded)
+
+const loadFailure = ref('')
+
 const start = async () => {
-  await Promise.all([documents.load(), books.load()])
-  await Promise.all([documents.subscribe(), books.subscribe()])
+  loadFailure.value = ''
+
+  try {
+    await Promise.all([documents.load(), books.load()])
+    await Promise.all([documents.subscribe(), books.subscribe()])
+  } catch (error) {
+    // Without this the page would wait for something that is never coming, and
+    // a spinner that never stops says less than no page at all.
+    loadFailure.value = errorMessage(error, 'Your documents could not be loaded.')
+  }
 }
 
 const stop = () => {
@@ -107,73 +132,82 @@ onUnmounted(stop)
       </div>
     </Message>
 
-    <Card
-      v-if="missing.length"
-      class="bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-700"
-    >
-      <template #title>
-        <div class="flex justify-between items-center gap-4">
-          <span class="text-xl font-semibold">
-            Not in your library
-            <span class="text-surface-500 dark:text-surface-400">({{ missing.length }})</span>
-          </span>
-          <FileUpload
-            mode="basic"
-            name="file"
-            accept=".epub,application/epub+zip"
-            :multiple="true"
-            :auto="true"
-            :custom-upload="true"
-            :disabled="uploading"
-            choose-label="Add EPUB"
-            choose-icon="pi pi-upload"
-            @uploader="uploadFiles"
+    <Message v-if="loadFailure" severity="error">{{ loadFailure }}</Message>
+
+    <div v-else-if="!ready" class="p-12 flex justify-center" aria-busy="true">
+      <ProgressSpinner style="width: 2.5rem; height: 2.5rem" aria-label="Loading your documents" />
+    </div>
+
+    <template v-else>
+      <Card
+        v-if="missing.length"
+        class="bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-700"
+      >
+        <template #title>
+          <div class="flex justify-between items-center gap-4">
+            <span class="text-xl font-semibold">
+              Not in your library
+              <span class="text-surface-500 dark:text-surface-400">({{ missing.length }})</span>
+            </span>
+            <FileUpload
+              mode="basic"
+              name="file"
+              accept=".epub,application/epub+zip"
+              :multiple="true"
+              :auto="true"
+              :custom-upload="true"
+              :disabled="uploading"
+              choose-label="Add EPUB"
+              choose-icon="pi pi-upload"
+              @uploader="uploadFiles"
+            />
+          </div>
+        </template>
+        <template #content>
+          <p class="mb-4 text-surface-600 dark:text-surface-400">
+            These have been read on a device, but no EPUB here matches them, so there is no cover,
+            no page count and no per-book statistics for them. Upload the very file you read: the
+            match is made on the file's contents, so another copy of the same title will not do.
+            Anything that matches moves into your library on its own, keeping the reading it already
+            has.
+          </p>
+
+          <DocumentsList :documents="missing" :view-mode="viewMode" />
+        </template>
+      </Card>
+
+      <Message v-else-if="documents.documents.length" severity="success">
+        Every document has its book in your library.
+      </Message>
+
+      <Card
+        class="bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-700"
+      >
+        <template #title>
+          <div class="flex justify-between items-center gap-4">
+            <span class="text-xl font-semibold">
+              In your library
+              <span class="text-surface-500 dark:text-surface-400">({{ matched.length }})</span>
+            </span>
+            <RouterLink :to="{ name: 'library' }" class="text-sm hover:underline">
+              Go to the library
+            </RouterLink>
+          </div>
+        </template>
+        <template #content>
+          <p class="mb-4 text-surface-600 dark:text-surface-400">
+            Matched to an uploaded book. The library is the better place to read these — this list
+            is here for the things underneath, like the position a device last pushed and the
+            history behind it.
+          </p>
+
+          <DocumentsList
+            :documents="matched"
+            :view-mode="viewMode"
+            empty-message="Nothing has been matched to a book yet."
           />
-        </div>
-      </template>
-      <template #content>
-        <p class="mb-4 text-surface-600 dark:text-surface-400">
-          These have been read on a device, but no EPUB here matches them, so there is no cover, no
-          page count and no per-book statistics for them. Upload the very file you read: the match
-          is made on the file's contents, so another copy of the same title will not do. Anything
-          that matches moves into your library on its own, keeping the reading it already has.
-        </p>
-
-        <DocumentsList :documents="missing" :view-mode="viewMode" />
-      </template>
-    </Card>
-
-    <Message v-else-if="documents.documents.length" severity="success">
-      Every document has its book in your library.
-    </Message>
-
-    <Card
-      class="bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-700"
-    >
-      <template #title>
-        <div class="flex justify-between items-center gap-4">
-          <span class="text-xl font-semibold">
-            In your library
-            <span class="text-surface-500 dark:text-surface-400">({{ matched.length }})</span>
-          </span>
-          <RouterLink :to="{ name: 'library' }" class="text-sm hover:underline">
-            Go to the library
-          </RouterLink>
-        </div>
-      </template>
-      <template #content>
-        <p class="mb-4 text-surface-600 dark:text-surface-400">
-          Matched to an uploaded book. The library is the better place to read these — this list is
-          here for the things underneath, like the position a device last pushed and the history
-          behind it.
-        </p>
-
-        <DocumentsList
-          :documents="matched"
-          :view-mode="viewMode"
-          empty-message="Nothing has been matched to a book yet."
-        />
-      </template>
-    </Card>
+        </template>
+      </Card>
+    </template>
   </div>
 </template>
