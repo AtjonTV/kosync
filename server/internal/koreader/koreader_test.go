@@ -14,6 +14,7 @@ import (
 
 	"git.obth.eu/atjontv/kosync/internal/config"
 	"git.obth.eu/atjontv/kosync/internal/documents"
+	"git.obth.eu/atjontv/kosync/internal/epub"
 	"git.obth.eu/atjontv/kosync/internal/koreader"
 	"git.obth.eu/atjontv/kosync/internal/schema"
 	"git.obth.eu/atjontv/kosync/internal/testutil"
@@ -486,6 +487,125 @@ func TestGetProgressFollowsAMerge(t *testing.T) {
 			// as a whole has reached.
 			`"document":"` + mergedAwayHash + `"`,
 			`"percentage":0.25`,
+		},
+	}
+
+	scenario.Test(t)
+}
+
+// pushWithMetadata is a progress push from a device that has "send document
+// metadata" turned on.
+func pushWithMetadata(hash, filename, title, authors string) string {
+	return `{"document":"` + hash + `","progress":"/body/DocFragment[1]","percentage":0.3,` +
+		`"device":"Kobo Clara","device_id":"ABCDEF","metadata":{` +
+		`"filename":"` + filename + `","title":"` + title + `","authors":"` + authors + `"}}`
+}
+
+func TestPutProgressRecordsTheDocumentMetadata(t *testing.T) {
+	const newHash = "5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c"
+
+	scenario := tests.ApiScenario{
+		Name:            "a push with metadata names the document",
+		Method:          http.MethodPut,
+		URL:             "/koreader/syncs/progress",
+		Body:            strings.NewReader(pushWithMetadata(newHash, "Metro 2033.epub", "Metro 2033", "Dmitry Glukhovsky")),
+		Headers:         deviceHeaders(testutil.KoUsernameA, testutil.KoPasswordA),
+		TestAppFactory:  newApp,
+		ExpectedStatus:  http.StatusOK,
+		ExpectedContent: []string{`"document":"` + newHash + `"`},
+		AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
+			document, err := app.FindFirstRecordByFilter(schema.CollectionDocuments,
+				"document = {:hash}", dbx.Params{"hash": newHash})
+			if err != nil {
+				t.Fatalf("failed to load the pushed document: %v", err)
+			}
+
+			if got := document.GetString(schema.FieldTitle); got != "Metro 2033" {
+				t.Errorf("expected the reported title, got %q", got)
+			}
+			if got := document.GetString(schema.FieldFilename); got != "Metro 2033.epub" {
+				t.Errorf("expected the reported filename, got %q", got)
+			}
+			if got := document.GetString(schema.FieldDocumentAuthors); got != "Dmitry Glukhovsky" {
+				t.Errorf("expected the reported authors, got %q", got)
+			}
+			// The hash of the name, so a book stored under it can be found by an
+			// indexed comparison.
+			if got := document.GetString(schema.FieldFilenameHash); got != epub.FilenameMD5("Metro 2033.epub") {
+				t.Errorf("expected the filename hash, got %q", got)
+			}
+		},
+	}
+
+	scenario.Test(t)
+}
+
+// A push without the setting turned on is the ordinary case and must stay
+// exactly as it was.
+func TestPutProgressWithoutMetadataStoresNothingExtra(t *testing.T) {
+	const newHash = "6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d"
+
+	scenario := tests.ApiScenario{
+		Name:   "a push with no metadata is unchanged",
+		Method: http.MethodPut,
+		URL:    "/koreader/syncs/progress",
+		Body: strings.NewReader(`{"document":"` + newHash + `","progress":"/body","percentage":0.1,` +
+			`"device":"Kobo","device_id":"ABC"}`),
+		Headers:         deviceHeaders(testutil.KoUsernameA, testutil.KoPasswordA),
+		TestAppFactory:  newApp,
+		ExpectedStatus:  http.StatusOK,
+		ExpectedContent: []string{`"document":"` + newHash + `"`},
+		AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
+			document, err := app.FindFirstRecordByFilter(schema.CollectionDocuments,
+				"document = {:hash}", dbx.Params{"hash": newHash})
+			if err != nil {
+				t.Fatalf("failed to load the pushed document: %v", err)
+			}
+			for _, field := range []string{schema.FieldFilename, schema.FieldFilenameHash, schema.FieldDocumentAuthors} {
+				if got := document.GetString(field); got != "" {
+					t.Errorf("expected %q to stay empty, got %q", field, got)
+				}
+			}
+		},
+	}
+
+	scenario.Test(t)
+}
+
+// The title is the one thing on a document a person can edit, so a device that
+// keeps sending the publisher's title must not undo a rename.
+func TestPutProgressDoesNotOverwriteAChosenTitle(t *testing.T) {
+	scenario := tests.ApiScenario{
+		Name:           "a reported title does not replace one that was set",
+		Method:         http.MethodPut,
+		URL:            "/koreader/syncs/progress",
+		Body:           strings.NewReader(pushWithMetadata(testutil.DocumentHashA, "whatever.epub", "The Publisher's Title", "")),
+		Headers:        deviceHeaders(testutil.KoUsernameA, testutil.KoPasswordA),
+		TestAppFactory: newApp,
+		BeforeTestFunc: func(t testing.TB, app *tests.TestApp, _ *core.ServeEvent) {
+			document, err := app.FindRecordById(schema.CollectionDocuments, testutil.IdDocumentA)
+			if err != nil {
+				t.Fatalf("failed to load the fixture document: %v", err)
+			}
+			document.Set(schema.FieldTitle, "What I Called It")
+			if err := app.Save(document); err != nil {
+				t.Fatalf("failed to name the document: %v", err)
+			}
+		},
+		ExpectedStatus:  http.StatusOK,
+		ExpectedContent: []string{`"document":"` + testutil.DocumentHashA + `"`},
+		AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
+			document, err := app.FindRecordById(schema.CollectionDocuments, testutil.IdDocumentA)
+			if err != nil {
+				t.Fatalf("failed to reload the document: %v", err)
+			}
+			if got := document.GetString(schema.FieldTitle); got != "What I Called It" {
+				t.Errorf("the chosen title was overwritten, it is now %q", got)
+			}
+			// The filename is not editable, so it is kept up to date.
+			if got := document.GetString(schema.FieldFilename); got != "whatever.epub" {
+				t.Errorf("expected the filename to be recorded, got %q", got)
+			}
 		},
 	}
 

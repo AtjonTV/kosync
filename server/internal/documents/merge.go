@@ -16,6 +16,7 @@ import (
 	"git.obth.eu/atjontv/kosync/internal/schema"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/types"
 )
 
 // ErrNothingToMerge is returned when the merge was given no document other than
@@ -46,6 +47,7 @@ var ErrNothingToMerge = errors.New("no other document to merge")
 // The target keeps its own hash, and takes on a book or a title only where it
 // had none: merging must not quietly relabel the document the caller chose to
 // keep.
+//
 // It returns how many documents were folded in, which is not always as many as
 // were named: the target itself and any repeat are ignored rather than refused.
 func Merge(app core.App, ownerId, targetId string, sourceIds []string) (int, error) {
@@ -78,7 +80,7 @@ func Merge(app core.App, ownerId, targetId string, sourceIds []string) (int, err
 		// Read before anything moves: afterwards the source documents are gone
 		// and their history hangs off the target, so there is no way back to the
 		// days the merge touched.
-		days, err := affectedDays(txApp, append(ids(sources), target.Id))
+		days, err := affectedDays(txApp, ownerId, append(ids(sources), target.Id))
 		if err != nil {
 			return err
 		}
@@ -247,9 +249,13 @@ func setAlias(app core.App, ownerId, documentHash, documentId string) error {
 	return app.Save(record)
 }
 
-// affectedDays lists the UTC days on which any of the given documents were read,
-// current states and history together.
-func affectedDays(app core.App, documentIds []string) ([]string, error) {
+// affectedDays lists the days on which any of the given documents were read,
+// current states and history together, in the owner's timezone.
+//
+// The instants come out of the database and the days are worked out here,
+// because a stored timestamp is UTC and a reading day is not — see
+// internal/timezone.
+func affectedDays(app core.App, ownerId string, documentIds []string) ([]string, error) {
 	values := make([]any, len(documentIds))
 	for index, id := range documentIds {
 		values[index] = id
@@ -263,16 +269,15 @@ func affectedDays(app core.App, documentIds []string) ([]string, error) {
 		{schema.CollectionDocumentHistory, schema.FieldDocumentRef},
 	}
 
-	unique := map[string]bool{}
-	days := []string{}
+	moments := []types.DateTime{}
 
 	for _, source := range sources {
 		rows := []struct {
-			Day string `db:"day"`
+			LastReadAt types.DateTime `db:"last_read_at"`
 		}{}
 
 		err := app.DB().
-			Select("DISTINCT substr([[" + schema.FieldLastReadAt + "]], 1, 10) AS day").
+			Select("DISTINCT [[" + schema.FieldLastReadAt + "]] AS last_read_at").
 			From(source.collection).
 			Where(dbx.In(source.column, values...)).
 			All(&rows)
@@ -281,15 +286,11 @@ func affectedDays(app core.App, documentIds []string) ([]string, error) {
 		}
 
 		for _, row := range rows {
-			if row.Day == "" || unique[row.Day] {
-				continue
-			}
-			unique[row.Day] = true
-			days = append(days, row.Day)
+			moments = append(moments, row.LastReadAt)
 		}
 	}
 
-	return days, nil
+	return analytics.LocalDays(analytics.OwnerLocation(app, ownerId), moments), nil
 }
 
 // ids returns the ids of the given records.

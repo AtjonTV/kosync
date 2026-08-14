@@ -32,8 +32,9 @@ func (s DayStats) IsEmpty() bool {
 
 // dayStatsQuery computes one day for one user from the raw progress records.
 //
-// PocketBase stores dates as UTC text ("YYYY-MM-DD HH:MM:SS.sssZ"), so the day
-// of a record is simply its first ten characters.
+// The day is a half-open range of UTC instants rather than a text prefix,
+// because a reading day belongs to the reader's zone and not to the one the
+// timestamps happen to be stored in. See dayBounds.
 //
 // The three numbers it produces:
 //   - update_count: how many distinct progress moments the day contains.
@@ -57,7 +58,7 @@ const dayStatsQuery = `
 		WHERE [[owner]] = {:owner}
 	),
 	day_states AS (
-		SELECT * FROM all_states WHERE substr(last_read_at, 1, 10) = {:date}
+		SELECT * FROM all_states WHERE last_read_at >= {:start} AND last_read_at < {:end}
 	),
 	per_document AS (
 		SELECT
@@ -103,13 +104,15 @@ const dayStatsQuery = `
 func ComputeDay(app core.App, ownerId, date string, sessionGap time.Duration) (DayStats, error) {
 	stats := DayStats{}
 
-	err := app.DB().
+	params, err := dayBounds(app, ownerId, date)
+	if err != nil {
+		return DayStats{}, fmt.Errorf("resolve the day %s of %s: %w", date, ownerId, err)
+	}
+	params["gap"] = sessionGap.Milliseconds()
+
+	err = app.DB().
 		NewQuery(dayStatsQuery).
-		Bind(dbx.Params{
-			"owner": ownerId,
-			"date":  date,
-			"gap":   sessionGap.Milliseconds(),
-		}).
+		Bind(params).
 		One(&stats)
 	if err != nil {
 		return DayStats{}, fmt.Errorf("compute statistics for %s on %s: %w", ownerId, date, err)

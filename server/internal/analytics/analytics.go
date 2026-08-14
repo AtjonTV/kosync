@@ -31,6 +31,7 @@ const (
 func Register(app core.App, conf *config.Config) *Worker {
 	registerEnqueueHooks(app)
 	registerBookHooks(app)
+	registerTimezoneHooks(app)
 
 	worker := NewWorker(app, conf)
 

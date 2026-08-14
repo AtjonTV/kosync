@@ -15,6 +15,7 @@ import (
 	"git.obth.eu/atjontv/kosync/internal/schema"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/types"
 )
 
 // monthLayout is how a rollup month is written.
@@ -163,32 +164,43 @@ func findMonth(app core.App, ownerId, month string) (*core.Record, error) {
 func Reconcile(app core.App, conf *config.Config, now time.Time) (int, error) {
 	since := now.UTC().AddDate(0, 0, -conf.AnalyticsReconcileDays).Format(dateTimeLayout)
 
-	pairs := []struct {
-		Owner string `db:"owner"`
-		Date  string `db:"date"`
+	// Grouped by owner because the day an instant belongs to depends on whose
+	// instant it is, and two accounts can be in two zones.
+	rows := []struct {
+		Owner      string         `db:"owner"`
+		LastReadAt types.DateTime `db:"last_read_at"`
 	}{}
 
 	err := app.DB().
 		NewQuery(`
-			SELECT [[owner]] AS owner, substr([[last_read_at]], 1, 10) AS date
+			SELECT [[owner]] AS owner, [[last_read_at]] AS last_read_at
 			FROM {{` + schema.CollectionDocuments + `}}
 			WHERE [[last_read_at]] >= {:since}
 			UNION
-			SELECT [[owner]] AS owner, substr([[last_read_at]], 1, 10) AS date
+			SELECT [[owner]] AS owner, [[last_read_at]] AS last_read_at
 			FROM {{` + schema.CollectionDocumentHistory + `}}
 			WHERE [[last_read_at]] >= {:since}
 		`).
 		Bind(dbx.Params{"since": since}).
-		All(&pairs)
+		All(&rows)
 	if err != nil {
 		return 0, err
 	}
 
-	for _, pair := range pairs {
-		if err := Enqueue(app, pair.Owner, pair.Date); err != nil {
-			return 0, err
+	byOwner := map[string][]types.DateTime{}
+	for _, row := range rows {
+		byOwner[row.Owner] = append(byOwner[row.Owner], row.LastReadAt)
+	}
+
+	queued := 0
+	for owner, moments := range byOwner {
+		for _, date := range LocalDays(OwnerLocation(app, owner), moments) {
+			if err := Enqueue(app, owner, date); err != nil {
+				return 0, err
+			}
+			queued++
 		}
 	}
 
-	return len(pairs), nil
+	return queued, nil
 }

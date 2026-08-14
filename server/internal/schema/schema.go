@@ -65,6 +65,14 @@ const (
 	FieldUpdated    = "updated"
 )
 
+// users field names.
+//
+// FieldTimezone is an IANA name such as "Europe/Vienna". It is what a reading
+// day is reckoned in: every timestamp here is UTC, because the sync protocol
+// carries no clock, so this is the only thing that says when the reader's day
+// began.
+const FieldTimezone = "timezone"
+
 // koreader_accounts field names.
 const (
 	FieldUsername = "username"
@@ -91,6 +99,18 @@ const (
 	// FieldBook links a document to the uploaded EPUB it is progress through,
 	// empty until a matching book exists.
 	FieldBook = "book"
+
+	// FieldFilename and FieldDocumentAuthors are what the device says the file
+	// is, sent only when KOReader's "send document metadata" setting is on. They
+	// describe a document that may never be matched to a book, which is the case
+	// they exist for: an unmatched document has no other name than its hash.
+	//
+	// FieldFilenameHash is the KOReader filename hash of FieldFilename, stored so
+	// that a book can be matched to it by an indexed comparison rather than by
+	// hashing every row.
+	FieldFilename        = "filename"
+	FieldFilenameHash    = "filename_hash"
+	FieldDocumentAuthors = "authors"
 )
 
 // devices field names.

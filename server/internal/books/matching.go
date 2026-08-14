@@ -23,20 +23,47 @@ var hashFields = []string{schema.FieldHashBinary, schema.FieldHashFilename, sche
 // FindForDocument returns the owner's book that a document hash identifies, or
 // nil when there is none.
 func FindForDocument(app core.App, owner, documentHash string) (*core.Record, error) {
-	if owner == "" || documentHash == "" {
+	return FindForHashes(app, owner, documentHash)
+}
+
+// FindForHashes returns the owner's book that any of the given hashes
+// identifies.
+//
+// More than one is worth trying because a device can tell the server two things
+// about the same file: the hash it identifies the document by, and — when it is
+// set to send metadata — the name the file has on its disk, which hashes to
+// something a book may also be stored under. Both are exact comparisons against
+// an indexed column; neither is a guess at a title.
+func FindForHashes(app core.App, owner string, hashes ...string) (*core.Record, error) {
+	if owner == "" {
 		return nil, nil
 	}
 
-	matches := make([]string, 0, len(hashFields))
-	for _, field := range hashFields {
-		matches = append(matches, field+" = {:hash}")
+	params := map[string]any{"owner": owner}
+	matches := []string{}
+	seen := map[string]bool{}
+
+	for index, hash := range hashes {
+		if hash == "" || seen[hash] {
+			continue
+		}
+		seen[hash] = true
+
+		name := fmt.Sprintf("hash%d", index)
+		params[name] = hash
+		for _, field := range hashFields {
+			matches = append(matches, fmt.Sprintf("%s = {:%s}", field, name))
+		}
+	}
+	if len(matches) == 0 {
+		return nil, nil
 	}
 
 	records, err := app.FindRecordsByFilter(
 		schema.CollectionBooks,
 		fmt.Sprintf("%s = {:owner} && (%s)", schema.FieldOwner, strings.Join(matches, " || ")),
 		"", 1, 0,
-		map[string]any{"owner": owner, "hash": documentHash},
+		params,
 	)
 	if err != nil {
 		return nil, err
@@ -68,6 +95,22 @@ func registerMatching(app core.App) {
 		return e.Next()
 	})
 
+	// A device that has just been told to send metadata reports a filename for a
+	// document that already exists, so the create hook above has been and gone.
+	// This is deliberately not "match on every update": it fires only when the
+	// reported name has actually changed, which is once.
+	app.OnRecordUpdate(schema.CollectionDocuments).BindFunc(func(e *core.RecordEvent) error {
+		hash := e.Record.GetString(schema.FieldFilenameHash)
+		if hash != "" && hash != e.Record.Original().GetString(schema.FieldFilenameHash) {
+			if err := linkDocument(e.App, e.Record); err != nil {
+				e.App.Logger().Warn("could not match a renamed document to a book",
+					"document", e.Record.GetString(schema.FieldDocument), "error", err)
+			}
+		}
+
+		return e.Next()
+	})
+
 	app.OnRecordAfterCreateSuccess(schema.CollectionBooks).BindFunc(func(e *core.RecordEvent) error {
 		if err := linkExistingDocuments(e.App, e.Record); err != nil {
 			e.App.Logger().Warn("could not link existing documents to an uploaded book",
@@ -84,7 +127,11 @@ func linkDocument(app core.App, document *core.Record) error {
 		return nil
 	}
 
-	book, err := FindForDocument(app, document.GetString(schema.FieldOwner), document.GetString(schema.FieldDocument))
+	book, err := FindForHashes(app,
+		document.GetString(schema.FieldOwner),
+		document.GetString(schema.FieldDocument),
+		document.GetString(schema.FieldFilenameHash),
+	)
 	if err != nil || book == nil {
 		return err
 	}
@@ -107,7 +154,13 @@ func linkExistingDocuments(app core.App, book *core.Record) error {
 		}
 		name := fmt.Sprintf("hash%d", index)
 		params[name] = hash
-		matches = append(matches, fmt.Sprintf("%s = {:%s}", schema.FieldDocument, name))
+		// Either the hash the device identifies the document by, or the hash of
+		// the filename it reported. A book can be stored under a name a device
+		// happens to have the same file under.
+		matches = append(matches,
+			fmt.Sprintf("%s = {:%s}", schema.FieldDocument, name),
+			fmt.Sprintf("%s = {:%s}", schema.FieldFilenameHash, name),
+		)
 	}
 	if owner == "" || len(matches) == 0 {
 		return nil

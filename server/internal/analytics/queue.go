@@ -10,12 +10,14 @@ import (
 	"time"
 
 	"git.obth.eu/atjontv/kosync/internal/schema"
+	"git.obth.eu/atjontv/kosync/internal/timezone"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 )
 
-// DateLayout is how a statistics day is written, in UTC.
-const DateLayout = "2006-01-02"
+// DateLayout is how a statistics day is written. The day it names belongs to the
+// owner's timezone, not to UTC — see internal/timezone.
+const DateLayout = timezone.DateLayout
 
 // dateTimeLayout is how PocketBase stores a date column.
 const dateTimeLayout = "2006-01-02 15:04:05.000Z"
@@ -46,9 +48,14 @@ func Enqueue(app core.App, ownerId string, date string) error {
 	return err
 }
 
-// EnqueueTime marks the day the given moment falls on, in UTC.
+// EnqueueTime marks the day the given moment falls on, in the owner's zone.
+//
+// The zone is what makes this a lookup rather than a format call: an evening in
+// Vienna is already tomorrow in UTC, and queueing the UTC day would recompute a
+// day the reader has not lived yet while leaving the one they just read on
+// stale.
 func EnqueueTime(app core.App, ownerId string, moment time.Time) error {
-	return Enqueue(app, ownerId, moment.UTC().Format(DateLayout))
+	return Enqueue(app, ownerId, timezone.DayOf(OwnerLocation(app, ownerId), moment))
 }
 
 // queueItem is one pending recomputation.

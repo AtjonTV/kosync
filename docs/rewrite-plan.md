@@ -1269,3 +1269,80 @@ none, so that merging never quietly relabels the document the person chose to ke
 The dialog offers every other document, matched and unmatched alike. Filtering to the unmatched ones
 would have been tidier and would have hidden exactly the pair this exists for, since the usual split
 has one half in the library and one half out of it.
+
+---
+
+## 24. Timezones and document metadata
+
+Two changes that arrived together because reading the KOReader sync plugin answered both at once.
+
+### 24.1 The protocol has no clock
+
+The question was whether KOReader tells the server what time the device thinks it is. It does not,
+and this is worth writing down because it is the kind of thing that gets assumed rather than checked.
+
+`KOSyncClient.lua` sends three headers — `accept`, `x-auth-user`, `x-auth-key` — and a body of
+`document`, `progress`, `percentage`, `device`, `device_id`, plus an optional `metadata`. No
+timestamp, no offset, no zone. An HTTP `Date` is defined to be GMT, so it would carry nothing even if
+it were there. What KOsync stores as `last_read_at` is `time.Now().UTC()` at the moment the push
+lands: not the device's reading time, the server's receive time.
+
+So the zone cannot come from the device. It comes from the browser, at registration, via
+`Intl.DateTimeFormat().resolvedOptions().timeZone` — no prompt, no library — and lives on the
+account, editable afterwards.
+
+### 24.2 Why this was not free
+
+Everything computed in UTC was not a decision, it was the absence of one, and it had already spread.
+`analytics.Enqueue` formatted the day in UTC and seven queries compared `substr(last_read_at, 1, 10)`
+against a date. Giving an account a zone means all of that moves.
+
+The replacement is a half-open range of UTC instants, `dayBounds`, rather than an offset applied
+inside SQL. An offset is wrong twice a year — the last Sunday in March is 23 hours long in Vienna and
+the last in October is 25 — and a range is not. It is also the faster form, because `last_read_at` is
+indexed and a range reads the index while a substring cannot, so the correctness fix paid for itself.
+
+Two places go the other way, turning instants back into day labels, and they do it in Go rather than
+in SQL because SQLite has no notion of a zone that observes daylight saving. The zone database itself
+is compiled in with `import _ "time/tzdata"`, because a container built from a minimal base has no
+`/usr/share/zoneinfo` and every account would otherwise fall back to UTC silently — the same bug
+arriving by a different route.
+
+### 24.3 Changing a zone is a recomputation, not a reinterpretation
+
+Moving the boundaries makes every stored day wrong at once, so the change requeues every day the
+account has ever read, plus the days the old boundaries produced, which nothing else would ever
+revisit. It is done in an update hook rather than at the one moment a person first picks a zone,
+which means the first choice and every later one go through the same code — the only way the later
+ones can be trusted.
+
+Nothing is lost: it is all recomputed from `documents` and `document_history`, which this never
+touches. But numbers move, and the interface says so before the change rather than after.
+
+The retention cutoff is the one place left approximate. It compares a UTC-derived date against stored
+local dates for every account at once, so it can be a day out at the boundary. For a window measured
+in hundreds of days that is not worth a per-account pass, and saying so is better than a comment that
+implies it is exact.
+
+### 24.4 The metadata KOReader was willing to send all along
+
+Found while reading the plugin for the timezone answer: a setting called "Send document metadata",
+off by default, whose help text says the data "is ignored by the official sync server but may be used
+by custom sync servers". That is this server exactly, and `ProgressRequest` had never read it.
+
+It earns its place on the unmatched documents. A document that matches no uploaded book has no name
+but its hash, and those are precisely the ones the documents page is for. So `documents` gained
+`filename`, `authors` and `filename_hash`.
+
+The three are treated differently on purpose. The filename is overwritten on every push, because it
+describes the file as it is on the device now. The authors likewise. The title is only ever filled in
+— it is the one thing on a document a person can edit, and a device that keeps sending the
+publisher's title must not undo a rename on the next sync, which is the same rule the device names
+already follow.
+
+`filename_hash` is the KOReader filename hash of the reported name, which makes it a second exact key
+to match a book by: a device identifying documents by content still says what the file is called, and
+a book may be stored under that name. Exact comparison against an indexed column, not a guess at a
+title — the project's stance on matching has not moved. The match also runs when a name first arrives
+rather than only when a document is created, so turning the setting on links the documents that are
+already there instead of only the next one.

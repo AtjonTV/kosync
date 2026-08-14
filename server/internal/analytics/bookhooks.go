@@ -10,6 +10,7 @@ import (
 	"git.obth.eu/atjontv/kosync/internal/schema"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
+	"github.com/pocketbase/pocketbase/tools/types"
 )
 
 // registerBookHooks queues the days whose page counts a book changes.
@@ -61,22 +62,25 @@ func enqueueDocumentDays(app core.App, document *core.Record) {
 		return
 	}
 
-	dates := []struct {
-		Date string `db:"date"`
+	// The instants, not the days. Turning one into the other needs a zone that
+	// observes daylight saving, which SQLite has no notion of, so it happens in
+	// Go — see localDays.
+	moments := []struct {
+		LastReadAt types.DateTime `db:"last_read_at"`
 	}{}
 
 	err := app.DB().
 		NewQuery(`
-			SELECT DISTINCT substr([[last_read_at]], 1, 10) AS date
+			SELECT DISTINCT [[last_read_at]] AS last_read_at
 			FROM {{` + schema.CollectionDocuments + `}}
 			WHERE [[id]] = {:document}
 			UNION
-			SELECT DISTINCT substr([[last_read_at]], 1, 10) AS date
+			SELECT DISTINCT [[last_read_at]] AS last_read_at
 			FROM {{` + schema.CollectionDocumentHistory + `}}
 			WHERE [[document_ref]] = {:document}
 		`).
 		Bind(dbx.Params{"document": document.Id}).
-		All(&dates)
+		All(&moments)
 	if err != nil {
 		app.Logger().Warn("failed to list the days of a document",
 			"document", document.Id, "error", err)
@@ -84,8 +88,13 @@ func enqueueDocumentDays(app core.App, document *core.Record) {
 		return
 	}
 
-	for _, row := range dates {
-		enqueueQuietly(app, owner, row.Date)
+	read := make([]types.DateTime, len(moments))
+	for index, row := range moments {
+		read[index] = row.LastReadAt
+	}
+
+	for _, date := range LocalDays(OwnerLocation(app, owner), read) {
+		enqueueQuietly(app, owner, date)
 	}
 }
 

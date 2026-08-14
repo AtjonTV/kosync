@@ -14,6 +14,7 @@ import (
 
 	"git.obth.eu/atjontv/kosync/internal/books"
 	"git.obth.eu/atjontv/kosync/internal/config"
+	"git.obth.eu/atjontv/kosync/internal/epub"
 	"git.obth.eu/atjontv/kosync/internal/koreader"
 	"git.obth.eu/atjontv/kosync/internal/schema"
 	"git.obth.eu/atjontv/kosync/internal/testutil"
@@ -245,4 +246,85 @@ func TestProgressPushFromADeviceIsLinked(t *testing.T) {
 		},
 	}
 	scenario.Test(t)
+}
+
+// A device set to identify documents by their contents still tells the server
+// what the file is called, when it is set to send metadata. That name hashes to
+// something a book may be stored under, which links a document that the
+// document hash alone would never have matched.
+func TestAPushIsMatchedByTheReportedFilename(t *testing.T) {
+	const pushed = "b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1"
+	const onDisk = "Zeit des Sturms.epub"
+
+	scenario := tests.ApiScenario{
+		Name:   "the reported filename finds the book",
+		Method: http.MethodPut,
+		URL:    "/koreader/syncs/progress",
+		Body: strings.NewReader(`{"document":"` + pushed + `","progress":"/body","percentage":0.2,` +
+			`"device":"Boox","device_id":"BX1","metadata":{"filename":"` + onDisk + `"}}`),
+		Headers: map[string]string{
+			koreader.HeaderAuthUser: testutil.KoUsernameA,
+			koreader.HeaderAuthKey:  testutil.Md5Hex(testutil.KoPasswordA),
+			"Content-Type":          "application/json",
+		},
+		TestAppFactory: func(t testing.TB) *tests.TestApp {
+			app := testutil.SeededApp(t)
+			conf := &config.Config{}
+			conf.Normalize()
+			books.Register(app, conf)
+			koreader.Register(app, conf)
+
+			// The book knows nothing about the hash being pushed — only about
+			// the name.
+			createBook(t, app, testutil.PadId("booky"), testutil.IdUserA, "notthisone", epub.FilenameMD5(onDisk))
+
+			return app
+		},
+		ExpectedStatus:  http.StatusOK,
+		ExpectedContent: []string{`"document":"` + pushed + `"`},
+		AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
+			document, err := app.FindFirstRecordByData(schema.CollectionDocuments, schema.FieldDocument, pushed)
+			if err != nil {
+				t.Fatalf("the push did not create a document: %v", err)
+			}
+			if got := document.GetString(schema.FieldBook); got != testutil.PadId("booky") {
+				t.Errorf("the pushed document is linked to %q, want the book with that filename", got)
+			}
+		},
+	}
+	scenario.Test(t)
+}
+
+// Turning the setting on happens long after the document exists, so the match
+// has to be made when the name first arrives rather than only on create.
+func TestANameArrivingLaterMatchesTheBook(t *testing.T) {
+	app := testutil.SeededApp(t)
+	conf := &config.Config{}
+	conf.Normalize()
+	books.Register(app, conf)
+
+	const onDisk = "Der letzte Wunsch.epub"
+	createBook(t, app, testutil.PadId("bookl"), testutil.IdUserA, "somethingelse", epub.FilenameMD5(onDisk))
+
+	document, err := app.FindRecordById(schema.CollectionDocuments, testutil.IdDocumentA)
+	if err != nil {
+		t.Fatalf("failed to load the fixture document: %v", err)
+	}
+	if got := document.GetString(schema.FieldBook); got != "" {
+		t.Fatalf("expected the fixture document to be unmatched, it has %q", got)
+	}
+
+	document.Set(schema.FieldFilename, onDisk)
+	document.Set(schema.FieldFilenameHash, epub.FilenameMD5(onDisk))
+	if err := app.Save(document); err != nil {
+		t.Fatalf("failed to save the reported name: %v", err)
+	}
+
+	reloaded, err := app.FindRecordById(schema.CollectionDocuments, testutil.IdDocumentA)
+	if err != nil {
+		t.Fatalf("failed to reload the document: %v", err)
+	}
+	if got := reloaded.GetString(schema.FieldBook); got != testutil.PadId("bookl") {
+		t.Errorf("expected the document to be matched once the name arrived, got %q", got)
+	}
 }

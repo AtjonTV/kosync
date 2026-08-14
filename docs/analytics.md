@@ -26,9 +26,35 @@ in an open dashboard on its own.
 If an enqueue is ever lost, a weekly job re-queues the last `ANALYTICS_RECONCILE_DAYS` days of
 everybody who read recently, so a stale row heals by itself.
 
-## What the numbers mean
+## Which day a reading belongs to
 
-Everything is computed in **UTC**.
+Every timestamp KOsync holds is UTC, and it has to be: the KOReader sync protocol carries no clock at
+all. The body of a progress push is the document, the position and the device, the headers are
+authentication, and there is nothing in either to say what time the device thinks it is. The
+timestamp on a document is the moment the push reached the server.
+
+A reading day, though, has to be the reader's day. So an account carries a `timezone` — an IANA name
+such as `Europe/Vienna` — and every day boundary is reckoned in it. An account that has never set one
+uses UTC, which is what the timestamps already are, so nothing about it is shifted.
+
+The conversion is a half-open range of UTC instants rather than an offset applied to the stored text,
+and that is not a detail. An offset would be wrong twice a year: the last Sunday in March is 23 hours
+long in Vienna and the last in October is 25, and only a range says so. It also happens to be the
+faster question, because `last_read_at` is indexed and a range reads the index while a substring
+cannot.
+
+**Changing the timezone recomputes everything.** Moving the boundaries makes every stored day wrong at
+once, so the change queues every day the account has ever read — plus the days the old boundaries
+produced, which nothing else would ever revisit. Nothing is lost, because it is all recomputed from
+`documents` and `document_history`, which are untouched. But some numbers move: an evening session
+that used to count as the next day moves back, which can join two streaks into one or split a day's
+pages across two.
+
+The retention cutoff is the one place this is approximate. It compares a UTC-derived date against
+stored local dates for every account at once, so it can be a day out at the boundary — which for a
+window measured in hundreds of days is not worth a per-account pass.
+
+## What the numbers mean
 
 **`update_count`** — the number of distinct moments a progress was recorded that day.
 

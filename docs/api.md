@@ -40,6 +40,51 @@ Content-Type: application/json
 
 and is answered with `{"document": "...", "timestamp": 1772366400}`.
 
+### Document metadata
+
+KOReader has a setting called **"Send document metadata"**, off by default, which adds a `metadata`
+object to every push:
+
+```json
+{
+  "document": "043f11771ef9d191364ac0ba08198d36",
+  "percentage": 0.42,
+  "metadata": {
+    "filename": "Metro 2033.epub",
+    "title": "Metro 2033",
+    "authors": "Dmitry Glukhovsky"
+  }
+}
+```
+
+The official sync server ignores it; KOsync uses it, and it is worth turning on. It is what gives a
+name to the documents that never match an uploaded book — the ones the documents page exists for,
+which otherwise have nothing to be called but a 32 character hash.
+
+Three things happen with it, and the difference between them matters:
+
+- **`filename` is recorded on every push.** It describes the file as it is on the device now, so a
+  rename there shows here.
+- **`title` is only ever filled in, never replaced.** The title is the one thing on a document a
+  person can edit, and a device that keeps sending the publisher's title must not undo a rename on
+  the next sync.
+- **The filename is hashed the way KOReader hashes one**, into `filename_hash`, and a book stored
+  under that hash is matched to the document. This is an exact comparison against an indexed column,
+  not a guess at a title. It also runs when the name first arrives rather than only when the document
+  is created, so turning the setting on links what is already there.
+
+Nothing is ever cleared: an absent field means the device did not say, not that the answer is
+nothing.
+
+### Timezones, or the lack of one
+
+The protocol carries no clock. There is no timestamp in the body, and the only headers are `accept`
+and the two authentication ones — and an HTTP `Date` would be GMT anyway. The timestamp KOsync stores
+is `time.Now().UTC()` at the moment the push lands.
+
+That is why the reader's timezone is a property of the *account*, taken from the browser at
+registration. See [analytics.md](analytics.md) for what it changes.
+
 A pull answers with the same fields plus `timestamp`, in **Unix seconds**. KOsync 1 returned its
 internal 1/10000 second unit here, which no KOReader build expects; a client written against that
 quirk needs adjusting.

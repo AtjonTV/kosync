@@ -6,7 +6,7 @@
 
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { pb, Collections, errorMessage } from '@/pb'
+import { pb, Collections, errorMessage, browserTimezone } from '@/pb'
 
 /**
  * The signed in account.
@@ -25,6 +25,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const email = computed(() => (record.value?.email as string | undefined) ?? '')
   const displayName = computed(() => (record.value?.name as string) || email.value)
+  const timezone = computed(() => (record.value?.timezone as string) || 'UTC')
 
   async function login(identity: string, password: string): Promise<void> {
     await pb.collection(Collections.users).authWithPassword(identity, password)
@@ -36,6 +37,11 @@ export const useAuthStore = defineStore('auth', () => {
       password,
       passwordConfirm: password,
       name,
+      // The one moment this can be learned without asking. Devices never say
+      // what time they think it is, so without this every reading day would
+      // begin at UTC midnight — which for most of the world is the middle of an
+      // evening's reading.
+      timezone: browserTimezone(),
     })
     await login(email, password)
 
@@ -84,6 +90,20 @@ export const useAuthStore = defineStore('auth', () => {
     await pb.collection(Collections.users).requestEmailChange(newEmail)
   }
 
+  /**
+   * Changes the zone the account's reading days are reckoned in.
+   *
+   * The server requeues every day the account has ever read when this changes,
+   * so the numbers on the dashboard are recomputed rather than reinterpreted.
+   * That takes as long as the statistics worker takes to drain its queue.
+   */
+  async function changeTimezone(zone: string): Promise<void> {
+    const id = record.value?.id
+    if (!id) throw new Error('You are not signed in.')
+
+    record.value = await pb.collection(Collections.users).update(id, { timezone: zone })
+  }
+
   function logout(): void {
     pb.authStore.clear()
   }
@@ -111,6 +131,8 @@ export const useAuthStore = defineStore('auth', () => {
     requestPasswordReset,
     changePassword,
     requestEmailChange,
+    timezone,
+    changeTimezone,
     logout,
     refresh,
     errorMessage,

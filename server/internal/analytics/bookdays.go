@@ -64,7 +64,7 @@ const bookDayStatsQuery = `
 		WHERE h.[[owner]] = {:owner} AND d.[[book]] != ''
 	),
 	day_states AS (
-		SELECT * FROM all_states WHERE substr(last_read_at, 1, 10) = {:date}
+		SELECT * FROM all_states WHERE last_read_at >= {:start} AND last_read_at < {:end}
 	),
 	per_document AS (
 		SELECT
@@ -133,13 +133,15 @@ const bookDayStatsQuery = `
 func ComputeBookDays(app core.App, ownerId, date string, sessionGap time.Duration) ([]BookDayStats, error) {
 	rows := []BookDayStats{}
 
-	err := app.DB().
+	params, err := dayBounds(app, ownerId, date)
+	if err != nil {
+		return nil, fmt.Errorf("resolve the day %s of %s: %w", date, ownerId, err)
+	}
+	params["gap"] = sessionGap.Milliseconds()
+
+	err = app.DB().
 		NewQuery(bookDayStatsQuery).
-		Bind(dbx.Params{
-			"owner": ownerId,
-			"date":  date,
-			"gap":   sessionGap.Milliseconds(),
-		}).
+		Bind(params).
 		All(&rows)
 	if err != nil {
 		return nil, fmt.Errorf("compute book statistics for %s on %s: %w", ownerId, date, err)
@@ -252,19 +254,28 @@ func MeasureBooksOfDay(app core.App, ownerId, date string) {
 		Book string `db:"book"`
 	}{}
 
-	err := app.DB().
+	params, err := dayBounds(app, ownerId, date)
+	if err != nil {
+		app.Logger().Warn("failed to resolve a reading day",
+			"owner", ownerId, "date", date, "error", err)
+
+		return
+	}
+
+	err = app.DB().
 		NewQuery(`
 			SELECT DISTINCT d.[[book]] AS book
 			FROM {{` + schema.CollectionDocuments + `}} d
 			WHERE d.[[owner]] = {:owner} AND d.[[book]] != '' AND (
-				substr(d.[[last_read_at]], 1, 10) = {:date}
+				(d.[[last_read_at]] >= {:start} AND d.[[last_read_at]] < {:end})
 				OR EXISTS (
 					SELECT 1 FROM {{` + schema.CollectionDocumentHistory + `}} h
-					WHERE h.[[document_ref]] = d.[[id]] AND substr(h.[[last_read_at]], 1, 10) = {:date}
+					WHERE h.[[document_ref]] = d.[[id]]
+					  AND h.[[last_read_at]] >= {:start} AND h.[[last_read_at]] < {:end}
 				)
 			)
 		`).
-		Bind(dbx.Params{"owner": ownerId, "date": date}).
+		Bind(params).
 		All(&ids)
 	if err != nil {
 		app.Logger().Warn("failed to list the books read on a day",

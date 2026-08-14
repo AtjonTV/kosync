@@ -16,6 +16,11 @@ The PocketBase auth collection, used for the web interface. Email is required, b
 recovery goes through it. Rules: everybody may register (unless `DISABLE_REGISTRATION` is set),
 everybody may only see and change themselves.
 
+`timezone` holds an IANA name such as `Europe/Vienna`, and is what the statistics days are reckoned
+in. The browser supplies it at registration, because nothing else can: the KOReader protocol carries
+no clock. It defaults to `UTC`, and changing it requeues every day the account has ever read — see
+[analytics.md](analytics.md).
+
 ### `koreader_accounts`
 
 The credentials a device signs in with.
@@ -47,6 +52,8 @@ The current reading position, one record per owner and document hash.
 | `last_device`, `last_device_id` | text | |
 | `last_read_at` | date | |
 | `source_account` | relation → `koreader_accounts` | which credential pushed last; deleting it keeps the document |
+| `filename`, `authors` | text | what the device says the file is, when it is set to send metadata |
+| `filename_hash` | text | the KOReader filename hash of `filename`, indexed so a book can be matched to it |
 
 Unique on `(owner, document)`: the same book synced by two people are two records.
 

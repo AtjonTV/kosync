@@ -17,6 +17,8 @@ vi.mock('@/pb', async () => {
     Collections: actual.Collections,
     KosyncApi: actual.KosyncApi,
     errorMessage: actual.errorMessage,
+    browserTimezone: actual.browserTimezone,
+    timezoneNames: actual.timezoneNames,
     fileUrl: actual.fileUrl,
   }
 })

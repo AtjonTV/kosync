@@ -15,6 +15,21 @@ type ProgressRequest struct {
 	Percentage float64 `json:"percentage"`
 	Device     string  `json:"device"`
 	DeviceId   string  `json:"device_id"`
+
+	// Metadata is absent unless the reader has "send document metadata" turned
+	// on, so everything read out of it has to be optional.
+	Metadata *ProgressMetadata `json:"metadata"`
+}
+
+// ProgressMetadata is what KOReader can say about the file being read.
+//
+// The official sync server ignores this; the plugin's own help text says a
+// custom server may use it. The field names are the plugin's and must not
+// change.
+type ProgressMetadata struct {
+	Filename string `json:"filename"`
+	Title    string `json:"title"`
+	Authors  string `json:"authors"`
 }
 
 // ProgressResponse is what a device receives from GET /koreader/syncs/progress/{document}.

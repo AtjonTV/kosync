@@ -17,10 +17,13 @@ vi.mock('@/pb', async () => {
     Collections: actual.Collections,
     KosyncApi: actual.KosyncApi,
     errorMessage: actual.errorMessage,
+    browserTimezone: actual.browserTimezone,
+    timezoneNames: actual.timezoneNames,
   }
 })
 
 import { useAuthStore } from '@/stores/auth'
+import { browserTimezone } from '@/pb'
 
 describe('auth store', () => {
   beforeEach(() => {
@@ -47,6 +50,9 @@ describe('auth store', () => {
       password: 'a-long-enough-password',
       passwordConfirm: 'a-long-enough-password',
       name: 'Newcomer',
+      // Registration is the one moment the zone can be learned without asking:
+      // no device ever tells the server what time it thinks it is.
+      timezone: browserTimezone(),
     })
     expect(pbMockModule.collection('users').authWithPassword).toHaveBeenCalled()
     expect(pbMockModule.collection('users').requestVerification).toHaveBeenCalledWith(
@@ -135,5 +141,28 @@ describe('auth store', () => {
     expect(pbMockModule.collection('users').requestEmailChange).toHaveBeenCalledWith(
       'alice@example.com',
     )
+  })
+
+  it('changes the timezone and keeps the returned record', async () => {
+    pbMockModule.authStore.record = { id: 'user-a', timezone: 'UTC' }
+    pbMockModule
+      .collection('users')
+      .update.mockResolvedValue({ id: 'user-a', timezone: 'Europe/Vienna' })
+
+    const store = useAuthStore()
+    store.record = { id: 'user-a', collectionId: 'c', collectionName: 'users', timezone: 'UTC' }
+    await store.changeTimezone('Europe/Vienna')
+
+    expect(pbMockModule.collection('users').update).toHaveBeenCalledWith('user-a', {
+      timezone: 'Europe/Vienna',
+    })
+    expect(store.timezone).toBe('Europe/Vienna')
+  })
+
+  it('falls back to UTC when the account has no timezone', () => {
+    const store = useAuthStore()
+    store.record = { id: 'user-a', collectionId: 'c', collectionName: 'users' }
+
+    expect(store.timezone).toBe('UTC')
   })
 })

@@ -7,7 +7,7 @@
 import { computed, ref } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'
-import { errorMessage } from '@/pb'
+import { browserTimezone, errorMessage, timezoneNames } from '@/pb'
 
 const auth = useAuthStore()
 const toast = useToast()
@@ -21,6 +21,39 @@ const oldPassword = ref('')
 const newPassword = ref('')
 const passwordError = ref('')
 const passwordBusy = ref(false)
+
+const detected = browserTimezone()
+const zone = ref(auth.timezone)
+const zoneError = ref('')
+const zoneBusy = ref(false)
+
+// The account's own zone is always offered, even on a browser whose engine has
+// no supportedValuesOf: the one name that must be selectable is the one already
+// stored, or the form would silently propose changing it.
+const zones = computed(() =>
+  Array.from(new Set([...timezoneNames(), auth.timezone, detected])).sort((a, b) =>
+    a.localeCompare(b),
+  ),
+)
+
+const changeTimezone = async () => {
+  zoneError.value = ''
+  zoneBusy.value = true
+
+  try {
+    await auth.changeTimezone(zone.value)
+    toast.add({
+      severity: 'success',
+      summary: 'Timezone changed',
+      detail: 'Your statistics are being worked out again.',
+      life: 6000,
+    })
+  } catch (e) {
+    zoneError.value = errorMessage(e, 'The timezone could not be changed.')
+  } finally {
+    zoneBusy.value = false
+  }
+}
 
 const isVerified = computed(() => auth.record?.verified === true)
 
@@ -177,6 +210,52 @@ const changePassword = async () => {
 
           <div>
             <Button type="submit" label="Change password" :loading="passwordBusy" />
+          </div>
+        </form>
+
+        <form class="flex flex-col gap-4" @submit.prevent="changeTimezone">
+          <h3 class="text-lg font-semibold">Timezone</h3>
+
+          <p class="text-sm text-surface-500 dark:text-surface-400">
+            Your reading days begin at midnight here. Your devices never say what time they think it
+            is, so this is the only thing that tells KOsync when your day started.
+          </p>
+
+          <div class="flex flex-col gap-2">
+            <label for="timezone">Reading days are counted in</label>
+            <Select
+              id="timezone"
+              v-model="zone"
+              :options="zones"
+              filter
+              :auto-filter-focus="true"
+              fluid
+            />
+          </div>
+
+          <Message v-if="zone !== auth.timezone" severity="warn" variant="simple">
+            Changing this recomputes every day you have ever read. Nothing is lost, but some numbers
+            will move: an evening that used to count as the next day moves back, which can join two
+            streaks into one or split a day's pages across two.
+          </Message>
+
+          <Message v-if="zoneError" severity="error" variant="simple">{{ zoneError }}</Message>
+
+          <div class="flex items-center gap-3">
+            <Button
+              type="submit"
+              label="Change timezone"
+              :disabled="zone === auth.timezone || zoneBusy"
+              :loading="zoneBusy"
+            />
+            <button
+              v-if="detected !== auth.timezone"
+              type="button"
+              class="text-sm hover:underline text-surface-500 dark:text-surface-400"
+              @click="zone = detected"
+            >
+              Use this browser's ({{ detected }})
+            </button>
           </div>
         </form>
       </div>

@@ -172,6 +172,7 @@ func (h *Handler) putProgress(e *core.RequestEvent) error {
 		document.Set(schema.FieldLastDeviceId, request.DeviceId)
 		document.Set(schema.FieldLastReadAt, now)
 		document.Set(schema.FieldSourceAccount, account.Id)
+		applyMetadata(document, request.Metadata)
 
 		return txApp.Save(document)
 	})

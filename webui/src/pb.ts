@@ -59,6 +59,46 @@ export function fileUrl(
 }
 
 /**
+ * The IANA timezone name this browser is set to, such as "Europe/Vienna".
+ *
+ * This is the only place KOsync can learn it. The KOReader sync protocol
+ * carries no clock at all — the push is a document, a position and a device,
+ * and the headers are authentication — so a reading day would otherwise have to
+ * begin at UTC midnight, which for most of the world falls in the middle of an
+ * evening's reading.
+ *
+ * Falls back to UTC, which is what every stored timestamp already is, so a
+ * browser that will not say leaves the numbers exactly as they were.
+ */
+export function browserTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+  } catch {
+    return 'UTC'
+  }
+}
+
+/**
+ * Every timezone name this browser knows, for choosing one by hand.
+ *
+ * `supportedValuesOf` is not in every engine, so a browser without it gets the
+ * one name that matters — its own — rather than an empty list.
+ */
+export function timezoneNames(): string[] {
+  try {
+    const supported = (
+      Intl as unknown as { supportedValuesOf?: (key: string) => string[] }
+    ).supportedValuesOf?.('timeZone')
+
+    if (supported?.length) return supported
+  } catch {
+    // falls through to the pair below
+  }
+
+  return Array.from(new Set(['UTC', browserTimezone()]))
+}
+
+/**
  * Turns a failed request into a message that can be shown to a person.
  */
 export function errorMessage(error: unknown, fallback = 'Something went wrong.'): string {
