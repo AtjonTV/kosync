@@ -83,6 +83,10 @@ than duplicated; two owners uploading the same book each keep their own copy.
 reflowable and has no pages of its own, so a count measured from a reader's own progress is better
 wherever one can be had — see [analytics.md](analytics.md).
 
+A `documents` row carries a `book` relation, set by the server when the document's hash matches an
+uploaded book. It is empty until such a book exists, and it is cleared rather than cascaded when the
+book is deleted: removing a file must not remove the reading done in it.
+
 ## Backups
 
 PocketBase takes care of them, in the superuser interface under **Settings → Backups**, or through

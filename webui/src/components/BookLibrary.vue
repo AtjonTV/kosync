@@ -8,11 +8,13 @@ import { computed, onMounted, ref } from 'vue'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import { useBooksStore } from '@/stores/books'
+import { useDocumentsStore } from '@/stores/documents'
 import type { Book } from '@/models'
 import type { FileUploadUploaderEvent } from 'primevue/fileupload'
 import { errorMessage, fileUrl } from '@/pb'
 
 const books = useBooksStore()
+const documents = useDocumentsStore()
 const confirm = useConfirm()
 const toast = useToast()
 
@@ -26,6 +28,28 @@ const renameError = ref('')
 const busy = ref(false)
 
 const sorted = computed(() => [...books.books].sort((a, b) => a.title.localeCompare(b.title)))
+
+/**
+ * How far the reading has got in each book, keyed by book id.
+ *
+ * The link is made by the server: a device pushes a document hash, and a book
+ * carrying that hash claims it. Nothing here needs to know how that is done.
+ */
+const progressByBook = computed(() => {
+  const furthest = new Map<string, number>()
+
+  for (const document of documents.documents) {
+    if (!document.book) continue
+
+    const best = furthest.get(document.book) ?? 0
+    if (document.progress > best) furthest.set(document.book, document.progress)
+  }
+
+  return furthest
+})
+
+const progressOf = (book: Book) => progressByBook.value.get(book.id)
+const percentOf = (book: Book) => Math.round((progressOf(book) ?? 0) * 100)
 
 const coverUrl = (book: Book) => fileUrl(book, book.cover, '200x300')
 const downloadUrl = (book: Book) => fileUrl(book, book.file)
@@ -118,6 +142,9 @@ const remove = (book: Book) => {
 
 onMounted(() => {
   books.load()
+  // The reading progress comes from the documents, which the dashboard loads
+  // too; asking again here keeps the library usable on its own.
+  if (!documents.loaded) documents.load()
 })
 </script>
 
@@ -179,6 +206,19 @@ onMounted(() => {
               class="w-full h-full flex items-center justify-center text-surface-400 dark:text-surface-500"
             >
               <i class="pi pi-book text-4xl"></i>
+            </div>
+
+            <div
+              v-if="progressOf(book) !== undefined"
+              class="absolute inset-x-0 bottom-0 bg-black/60 text-white text-xs px-2 py-1"
+            >
+              <div class="flex justify-between items-center gap-2">
+                <span>{{ percentOf(book) === 100 ? 'Finished' : 'Reading' }}</span>
+                <span class="tabular-nums">{{ percentOf(book) }}%</span>
+              </div>
+              <div class="mt-1 h-1 rounded-full bg-white/25 overflow-hidden">
+                <div class="h-full bg-white" :style="{ width: `${percentOf(book)}%` }"></div>
+              </div>
             </div>
           </div>
 

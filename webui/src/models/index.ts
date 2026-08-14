@@ -24,6 +24,8 @@ export interface DocumentRecord extends BaseRecord {
   last_device_id: string
   last_read_at: string
   source_account: string
+  /** The uploaded book this is progress through, empty when unmatched. */
+  book: string
 }
 
 /** A superseded reading position. */

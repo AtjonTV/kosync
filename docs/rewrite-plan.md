@@ -506,9 +506,15 @@ Then the later ideas, in dependency order:
 | **12. Book statistics** | per-book/day rows, book detail view, notional page counts | 9 + 3 |
 | **13. Achievements** | pages/books/streak rules, SVG icons, repeatable tiers | 12 (page counts) + 3 (daily rows) |
 | **14. Mail** | recovery + achievement notifications via PocketBase SMTP | 13 |
+| **15. Library-first dashboard** | the library becomes the main component on `/`, below the statistics; the documents table moves to a page of its own | 8 |
+| **16. Navigation** | left: home, library, later documents; right: address, account settings and sign out merged into one menu | 15 |
 
 Phases 9 and 10 are independent of each other and can be built in either order; §16 explains why doing
 10 first makes 9 exact rather than heuristic for anything downloaded from the catalog.
+
+Phases 15 and 16 are interface work rather than new capability, and are described in §17. They are
+listed last because nothing depends on them, but 15 is worth doing before the documents table grows
+any more features, since several of them would only have to be moved again.
 
 Two notes on those later phases: EPUB parsing should use a small pure-Go reader over `archive/zip` +
 `encoding/xml` rather than a heavyweight dependency (cover extraction is `container.xml` → OPF →
@@ -817,3 +823,97 @@ stays granted even if the underlying estimate later shifts.
 
 With those in place the library view can show, per book: total reading time, days spent, first and last
 read, percentage complete, and the distribution of reading across days.
+
+---
+
+## 17. Interface restructuring (phases 15 and 16)
+
+Neither of these adds capability; both are about the shape the app presents once there is a library in
+it. Recorded now because the current layout was designed when documents were the only thing to show.
+
+### 17.1 A library-first dashboard (phase 15)
+
+Today `/` is the statistics plus the documents table, and `/library` is a separate page. That has it
+backwards: the library is the thing with covers, and the covers are what make a dashboard worth
+looking at. The intended shape is
+
+- `/` — statistics first, then the library as the main component below them,
+- and the documents table moved to a page of its own.
+
+Worth doing before the documents table gains anything else, since each new feature there is one more
+thing to move.
+
+Two questions to settle when building it, not before: how much of the library belongs on the dashboard
+(everything, or the recently read), and whether the documents page and the library end up merged once
+matching (phase 9) means most documents *are* books. The second question is the more interesting one,
+and the answer probably depends on how many pushes stay unmatched in practice.
+
+### 17.2 Navigation (phase 16)
+
+The top bar grew one control at a time and now reads as a row of unrelated icons. The intended shape is
+
+- **left** — home, library, and later documents, as ordinary navigation,
+- **right** — the address, account settings and sign out collapsed into a single account menu.
+
+That leaves the theme toggle as the only free-standing control on the right, which is where it belongs.
+
+---
+
+## 18. Matching (phase 9)
+
+Built. `documents` gained a `book` relation, and `internal/books/matching.go` links the two.
+
+The link is made in **both directions**, and the second is the common one:
+
+- **on arrival** — a document is created on the first push for a hash, so a lookup at create time
+  costs one indexed query per book rather than one per push; and
+- **retroactively** — uploading a book claims the documents that were already recording progress
+  through it. This is the case that actually happens, since people upload a book after reading it.
+
+Either hash matches. KOReader sends whichever its checksum setting produces and the server cannot tell
+which one it is looking at, so both columns are tried.
+
+Three deliberate choices:
+
+1. **A failed lookup never costs a device its push.** Matching errors are logged and swallowed. The
+   book link is a convenience; the reading position is the thing the user would notice losing.
+2. **The relation does not cascade.** Deleting an uploaded file clears the reference and leaves the
+   document and its history exactly as they were before the book existed. There is a test for it,
+   because that behaviour is PocketBase's rather than ours.
+3. **Matching is owner-scoped.** Two accounts uploading identical bytes each match only their own.
+
+Verified end to end through the running binary, in both directions: a push for an unknown hash arrived
+unmatched, and uploading the EPUB linked it; a book uploaded first claimed the next push immediately.
+
+### 18.1 Two bugs the first version had
+
+Both were reported from a real instance, and neither showed up in the tests as written.
+
+**Books uploaded before matching existed were never linked.** Both hooks fire on records *being
+created*, so a pair that was already sitting in the database when the feature arrived would never be
+brought together — permanently, with re-uploading the file the only way out. Adding the `book` field
+was not enough; the data had to be repaired. `1786838400_backfill_document_book.go` does that once, and
+its query is written out in the migration rather than calling `internal/books`, so what it did cannot
+change under it later. Verified on a database put back into the pre-matching state: the link returned
+on the next start.
+
+**The library only saw the link after a full page reload.** `/library` subscribed to `books` but not to
+`documents`, and the progress on a cover lives on the document — which is precisely what the server
+moves when a book is uploaded. Uploading, or deleting and re-uploading, therefore changed nothing on
+screen until the page was reloaded. `LibraryView` now subscribes to both.
+
+One gap remains by choice: if a match fails transiently, that document stays unlinked until the book is
+re-uploaded, because nothing re-examines existing pairs. A periodic reconcile would close it. It is not
+built, on the grounds that the failure is logged and the cost is a page of missing progress rather than
+lost data — but if unmatched documents ever show up in practice, that is the thing to add.
+
+### 18.2 What phase 9 deliberately left out
+
+The plan's phase 9 also said "unlinked pushes listed separately". That is interface work in the
+documents table, which phase 15 moves to its own page — building it now means building it twice. It
+belongs with that restructure, where the question of whether documents and the library remain separate
+views gets settled anyway.
+
+What did land in the interface is the more interesting half: the library shows reading progress on
+each cover, so a matched book reads as "Reading 63%" or "Finished" at a glance. That is in the new
+component, which is not going anywhere.

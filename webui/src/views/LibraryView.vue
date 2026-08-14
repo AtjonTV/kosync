@@ -7,8 +7,10 @@
 import { computed, onMounted, onUnmounted } from 'vue'
 import BookLibrary from '@/components/BookLibrary.vue'
 import { useBooksStore } from '@/stores/books'
+import { useDocumentsStore } from '@/stores/documents'
 
 const books = useBooksStore()
+const documents = useDocumentsStore()
 
 const summary = computed(() => {
   const count = books.books.length
@@ -17,13 +19,22 @@ const summary = computed(() => {
   return count === 1 ? '1 book' : `${count} books`
 })
 
-onMounted(() => {
-  books.subscribe()
-})
+// The documents are subscribed to as well as the books, because the reading
+// progress shown on a cover lives on the document, and the server moves it:
+// uploading a book links the documents that were already recording progress
+// through it. Without this subscription that link only becomes visible on a
+// full page reload.
+const start = async () => {
+  await Promise.all([books.subscribe(), documents.subscribe()])
+}
 
-onUnmounted(() => {
+const stop = () => {
   books.unsubscribe()
-})
+  documents.unsubscribe()
+}
+
+onMounted(start)
+onUnmounted(stop)
 </script>
 
 <template>

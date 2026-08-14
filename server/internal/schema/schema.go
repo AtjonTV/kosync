@@ -63,6 +63,10 @@ const (
 	FieldLastDevice      = "last_device"
 	FieldLastDeviceId    = "last_device_id"
 	FieldSourceAccount   = "source_account"
+
+	// FieldBook links a document to the uploaded EPUB it is progress through,
+	// empty until a matching book exists.
+	FieldBook = "book"
 )
 
 // reading_days and reading_months field names.

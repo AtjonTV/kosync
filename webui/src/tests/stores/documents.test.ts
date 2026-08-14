@@ -39,6 +39,7 @@ function document(id: string, overrides: Partial<DocumentRecord> = {}): Document
     last_device_id: 'AAA',
     last_read_at: '2026-03-01 10:00:00.000Z',
     source_account: 'account-a',
+    book: '',
     ...overrides,
   }
 }

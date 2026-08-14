@@ -37,8 +37,10 @@ import (
 // replaced with the one the archive used.
 const coverName = "cover"
 
-// Register wires the upload processing into the app.
+// Register wires the upload processing and the document matching into the app.
 func Register(app core.App, conf *config.Config) {
+	registerMatching(app)
+
 	app.OnRecordCreateRequest(schema.CollectionBooks).BindFunc(func(e *core.RecordRequestEvent) error {
 		if err := describe(e.Record, conf); err != nil {
 			return e.BadRequestError(sentence(err.Error()), nil)
@@ -140,7 +142,7 @@ func describe(record *core.Record, conf *config.Config) error {
 	record.Set(schema.FieldHashBinary, binary)
 	// The name the reader has on disk is the one it hashes, so this matches a
 	// device that holds the very file that was uploaded. A copy served from the
-	// catalogue later will need the hash of the name it is served under.
+	// catalog later will need the hash of the name it is served under.
 	record.Set(schema.FieldHashFilename, epub.FilenameMD5(upload.OriginalName))
 	record.Set(schema.FieldWordCount, words)
 	record.Set(schema.FieldPageCount, notionalPages(words, conf.BooksWordsPerPage))
