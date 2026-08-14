@@ -44,6 +44,6 @@ onUnmounted(stop)
       <span class="text-surface-500 dark:text-surface-400">{{ summary }}</span>
     </div>
 
-    <BookLibrary />
+    <BookLibrary heading="" />
   </div>
 </template>

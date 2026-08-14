@@ -862,7 +862,14 @@ around the table it used to be:
 That is phase 9's deferred "unlinked pushes listed separately", finally built, and held back for
 exactly this restructure.
 
-The first attempt got this wrong in an instructive way. The marker and the link were added to the
+The library grid got a fix from the same review. A grid row is as tall as its tallest cell, so the
+Witcher omnibus — whose title runs to six lines — stretched every card beside it and left them
+floating above a gap. Each card now reserves exactly two lines of title and one of author whether it
+fills them or not, clamping the overflow with the full text on hover, and pins its buttons to the
+bottom with `mt-auto`. The page also printed the word "Library" twice, once as its own heading and
+once on the card below it; the card's heading is now a prop the page can empty.
+
+The first attempt at the documents page got something wrong in an instructive way. The marker and the link were added to the
 **table** view — and the grid is the default, so the view most people see said nothing at all beyond a
 count with no way to tell which rows it meant. The list component now takes the documents to render as
 a prop instead of reading the store, so a page decides what a list contains, and both views are

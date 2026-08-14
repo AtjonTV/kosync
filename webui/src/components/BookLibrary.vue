@@ -13,14 +13,22 @@ import type { Book } from '@/models'
 import type { FileUploadUploaderEvent } from 'primevue/fileupload'
 import { errorMessage, fileUrl } from '@/pb'
 
-const props = defineProps<{
-  /**
-   * How many books to show. Unset means all of them, by title, which is what
-   * the library page wants. Set, the dashboard gets the ones most recently read
-   * and a link to the rest — a shelf, not a catalogue.
-   */
-  limit?: number
-}>()
+const props = withDefaults(
+  defineProps<{
+    /**
+     * How many books to show. Unset means all of them, by title, which is what
+     * the library page wants. Set, the dashboard gets the ones most recently
+     * read and a link to the rest — a shelf, not a catalogue.
+     */
+    limit?: number
+    /**
+     * The card's own heading. Empty on a page that already has one, so the word
+     * "Library" is not printed twice above the same grid.
+     */
+    heading?: string
+  }>(),
+  { heading: 'Library' },
+)
 
 const books = useBooksStore()
 const documents = useDocumentsStore()
@@ -200,7 +208,8 @@ onMounted(() => {
   <Card class="bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-700">
     <template #title>
       <div class="flex justify-between items-center gap-4">
-        <span class="text-xl font-semibold">Library</span>
+        <span v-if="props.heading" class="text-xl font-semibold">{{ props.heading }}</span>
+        <span v-else></span>
         <FileUpload
           mode="basic"
           name="file"
@@ -238,7 +247,7 @@ onMounted(() => {
         v-else-if="sorted.length"
         class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-6"
       >
-        <div v-for="book in sorted" :key="book.id" class="flex flex-col gap-2">
+        <div v-for="book in sorted" :key="book.id" class="flex flex-col gap-2 h-full">
           <RouterLink
             :to="{ name: 'book', params: { id: book.id } }"
             class="relative aspect-[2/3] rounded-lg overflow-hidden bg-surface-100 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 block hover:border-primary-400 transition-colors"
@@ -275,11 +284,14 @@ onMounted(() => {
           <div class="flex flex-col gap-1">
             <RouterLink
               :to="{ name: 'book', params: { id: book.id } }"
-              class="font-semibold leading-tight hover:underline"
+              class="font-semibold leading-tight line-clamp-2 min-h-[2.5em] hover:underline"
               :title="book.title"
               >{{ book.title }}</RouterLink
             >
-            <span v-if="authorsOf(book)" class="text-sm text-surface-600 dark:text-surface-400">
+            <span
+              class="text-sm text-surface-600 dark:text-surface-400 leading-tight line-clamp-1 min-h-[1.25em]"
+              :title="authorsOf(book)"
+            >
               {{ authorsOf(book) }}
             </span>
             <span class="text-xs text-surface-500 dark:text-surface-400">
@@ -287,7 +299,7 @@ onMounted(() => {
             </span>
           </div>
 
-          <div class="flex gap-1">
+          <div class="flex gap-1 mt-auto">
             <a :href="downloadUrl(book)" :download="`${book.title}.epub`">
               <Button icon="pi pi-download" variant="text" rounded title="Download" />
             </a>

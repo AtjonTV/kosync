@@ -25,11 +25,11 @@ vi.mock('@/pb', async () => {
   }
 })
 
-function mountLibrary() {
+function mountLibrary(stubLibrary = true) {
   return mount(LibraryView, {
     global: {
       plugins: [createTestingPinia({ createSpy: vi.fn }), PrimeVue],
-      stubs: { BookLibrary: true },
+      stubs: stubLibrary ? { BookLibrary: true } : {},
     },
   })
 }
@@ -52,5 +52,13 @@ describe('LibraryView', () => {
 
     expect(useBooksStore().unsubscribe).toHaveBeenCalled()
     expect(useDocumentsStore().unsubscribe).toHaveBeenCalled()
+  })
+
+  // The page has its own heading and book count, so the card underneath must not
+  // print the word "Library" a second time above the same grid.
+  it('does not repeat its heading on the card', () => {
+    const wrapper = mountLibrary()
+
+    expect(wrapper.findComponent({ name: 'BookLibrary' }).attributes('heading')).toBe('')
   })
 })
