@@ -195,7 +195,7 @@ onMounted(() => {
               @click="openHistory(data)"
             />
             <Button
-              icon="pi pi-object-group"
+              icon="pi pi-link"
               variant="text"
               rounded
               title="Merge with another document"
@@ -299,7 +299,7 @@ onMounted(() => {
                     @click="openHistory(doc)"
                   />
                   <Button
-                    icon="pi pi-object-group"
+                    icon="pi pi-link"
                     variant="text"
                     rounded
                     size="small"

@@ -141,7 +141,7 @@ const submit = async () => {
       <Button label="Cancel" severity="secondary" outlined @click="visible = false" />
       <Button
         label="Merge"
-        icon="pi pi-object-group"
+        icon="pi pi-link"
         :disabled="picked.length === 0 || merging"
         :loading="merging"
         @click="submit"
