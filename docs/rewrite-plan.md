@@ -508,6 +508,7 @@ Then the later ideas, in dependency order:
 | **14. Mail** | recovery + achievement notifications via PocketBase SMTP | 13 |
 | **15. Library-first dashboard** | the library becomes the main component on `/`, below the statistics; the documents table moves to a page of its own | 8 |
 | **16. Navigation** | left: home, library, later documents; right: address, account settings and sign out merged into one menu | 15 |
+| **17. Device names** | editable display names per device, shown wherever a device is named | 12 |
 
 Phases 9 and 10 are independent of each other and can be built in either order; §16 explains why doing
 10 first makes 9 exact rather than heuristic for anything downloaded from the catalog.
@@ -995,3 +996,37 @@ zero pages for everything it had already recorded — the same shape of gap as �
 for it this time rather than by a bug report. `1787011200_queue_book_statistics.go` enqueues every
 stored day once, and the existing worker drains it in the background. On the production copy, 86 days
 went through the queue and produced 88 per-book rows in a few seconds.
+
+---
+
+## 20. Device names (phase 17)
+
+Phase 12 put a device in front of the reader for the first time — a measured page count says which
+device it was measured on — and what it says is `865F46C0C0F4401D9A05768B6B0BF3AC`. That is the
+`device_id` KOReader sends, and it tells nobody anything.
+
+There are two separate problems behind that, and only the first is a bug:
+
+**The name is already there and is not being used.** A push carries both fields, and `documents` stores
+both: `last_device` is `go7`, `last_device_id` is the UUID. `books.measured_device` records the id
+because the estimator groups by id — correctly, since the id is what identifies a device across a
+rename. Displaying the id is simply the wrong end of the pair. Resolving it to the most recent
+`last_device` for that id fixes the current display outright.
+
+**`go7` is still not what the device is called.** It is a Boox Go 7. KOReader's own name is a short
+identifier the reader chose once, or a model string a vendor chose for them, and neither is
+necessarily what the owner would call the thing sitting on their desk. So the fix above is a floor,
+not the feature.
+
+The feature is a small owner-scoped registry keyed by `(owner, device_id)`, holding the last name the
+device reported and a display name the owner can edit, with the reported name as the default. Written
+by the same hook that already updates `last_device`, so a device appears the first time it pushes and
+never needs adding by hand.
+
+Note this is **not** `koreader_accounts.label`, which already exists. A credential and a device are not
+the same thing: one credential can be used from several devices, and the analytics group by device id,
+not by credential. Reusing the label would name the wrong thing and would be wrong most visibly for
+exactly the person who set up one shared credential.
+
+Where a device name appears once this exists: the measured page count on a book, the documents table's
+"last read on", and — if phase 13 happens — anything that counts reading per device.
