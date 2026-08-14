@@ -10,11 +10,13 @@ import { useAuthStore } from '@/stores/auth'
 import { useDocumentsStore } from '@/stores/documents'
 import { useStatsStore } from '@/stores/stats'
 import { useKoreaderStore } from '@/stores/koreader'
+import { useBooksStore } from '@/stores/books'
 
 const auth = useAuthStore()
 const documents = useDocumentsStore()
 const stats = useStatsStore()
 const koreader = useKoreaderStore()
+const books = useBooksStore()
 const router = useRouter()
 
 const isDarkMode = ref(false)
@@ -53,6 +55,7 @@ const doLogout = async () => {
   documents.clear()
   stats.clear()
   koreader.clear()
+  books.clear()
   await router.push({ name: 'home' })
 }
 </script>
@@ -76,6 +79,9 @@ const doLogout = async () => {
         @click="toggleTheme"
       />
       <template v-if="auth.isValid">
+        <RouterLink :to="{ name: 'library' }">
+          <Button icon="pi pi-book" variant="text" rounded title="Library" aria-label="Library" />
+        </RouterLink>
         <RouterLink :to="{ name: 'account' }">
           <Button icon="pi pi-user" variant="text" rounded title="Account" aria-label="Account" />
         </RouterLink>

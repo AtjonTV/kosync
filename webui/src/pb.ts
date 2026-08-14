@@ -25,6 +25,7 @@ export const Collections = {
   documentHistory: 'document_history',
   readingDays: 'reading_days',
   readingMonths: 'reading_months',
+  books: 'books',
 } as const
 
 /**
@@ -36,6 +37,22 @@ export const KosyncApi = {
   restoreHistory: (documentId: string, historyId: string) =>
     `/api/kosync/documents/${documentId}/restore/${historyId}`,
 } as const
+
+/**
+ * The URL of a file stored on a record, optionally as a generated thumbnail.
+ *
+ * Returns an empty string when the field is unset, so a book without a cover
+ * simply renders no image instead of a broken one.
+ */
+export function fileUrl(
+  record: { id: string; collectionId: string; collectionName: string },
+  filename: string,
+  thumb?: string,
+): string {
+  if (!filename) return ''
+
+  return pb.files.getURL(record, filename, thumb ? { thumb } : undefined)
+}
 
 /**
  * Turns a failed request into a message that can be shown to a person.

@@ -59,6 +59,22 @@ export interface KoreaderAccount extends BaseRecord {
   last_used: string
 }
 
+/** An uploaded EPUB and the metadata read out of it. */
+export interface Book extends BaseRecord {
+  owner: string
+  file: string
+  cover: string
+  title: string
+  authors: string[]
+  language: string
+  identifiers: Record<string, string>
+  page_count: number
+  word_count: number
+  content_hash: string
+  hash_binary: string
+  hash_filename: string
+}
+
 /** A document together with the states it went through. */
 export interface DocumentWithHistory extends DocumentRecord {
   history: HistoryRecord[]

@@ -786,7 +786,30 @@ Three things were found only by running this, and all are fixed and covered by t
 3. **A file that is not a zip reported a zip error** rather than "not an EPUB". `epub.Open` now returns
    `ErrNotEPUB` for that case too, since something that is not a zip is not an EPUB.
 
-Still to build for phase 8: the library view in the WebUI.
+The WebUI side is built too: a `books` store, a `BookLibrary` cover grid with multi-file upload,
+rename and delete, and a `/library` route reachable from the top bar. Uploads go one file at a time,
+so a failure names the book that failed rather than one of several parallel requests, and the store
+sends nothing but the file and the owner — everything else would be untrustworthy coming from a
+browser, and there is a test asserting the upload carries none of it.
+
+**Phase 8 is complete.** All five reference books were uploaded through the running binary, and every
+one produced the document hash the production database already had:
+
+| Book | `hash_binary` | fallback pages | device pages |
+| --- | --- | --- | --- |
+| Zeit des Sturms | `043f1177…` ✓ | 705 | 700 |
+| Das Schwert der Vorsehung | `06317bff…` ✓ | 754 | 563 |
+| Der letzte Wunsch | `4d4ecfc4…` ✓ | 625 | 619 |
+| Kreuzweg der Raben | `d3d6abff…` ✓ | 444 | 446 |
+| Die Witcher-Saga | `00e7a0b5…` ✓ | 4122 | — |
+
+Uploading the same files a second time was refused on the unique content hash, as intended.
+
+That page-count column is the §16.5 argument made concrete. Three of the four land within 1% of what
+the device reports, and *Das Schwert der Vorsehung* — the book that reads at 207 words per page rather
+than 155 — comes out 34% too long. The fallback is genuinely good most of the time and occasionally
+badly wrong, with nothing in the data to say which case you are in. That is why it stays the last
+resort behind a measured count.
 
 Measured values move as data accumulates, which would otherwise rewrite history. It does not, because
 `user_achievements` rows are awarded records rather than a derived view (§3.8) — once granted, a tier

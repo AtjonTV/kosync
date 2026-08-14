@@ -62,6 +62,27 @@ pb.collection('documents').subscribe('*', handler)
 pb.collection('reading_days').subscribe('*', handler)
 ```
 
+### Uploading a book
+
+Books are created the same way, as a multipart record create. Only the file and the owner are sent:
+the server reads the EPUB as it arrives and fills in the title, authors, language, identifiers, cover,
+word count and both KOReader document hashes. Sending any of those is refused on update, and ignored
+in favour of the file on create.
+
+```js
+const form = new FormData()
+form.append('owner', pb.authStore.record.id)
+form.append('file', epubFile)
+
+await pb.collection('books').create(form)
+```
+
+Covers are served as PocketBase files, with thumbnails generated on request:
+
+```
+/api/files/books/{id}/{cover}?thumb=200x300
+```
+
 ## 3. The KOsync API, under `/api/kosync`
 
 The few operations the generated collection API cannot express. All of them require an account
