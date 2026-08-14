@@ -56,6 +56,12 @@ const downloadUrl = (book: Book) => fileUrl(book, book.file)
 
 const authorsOf = (book: Book) => (book.authors ?? []).join(', ')
 
+/**
+ * The page count worth showing: the one measured from the reading if there is
+ * one, otherwise what the word count implies.
+ */
+const pagesOf = (book: Book) => (book.measured_pages > 0 ? book.measured_pages : book.page_count)
+
 const numberFormat = new Intl.NumberFormat()
 const formatCount = (value: number) => numberFormat.format(value ?? 0)
 
@@ -191,8 +197,10 @@ onMounted(() => {
         class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-6"
       >
         <div v-for="book in sorted" :key="book.id" class="flex flex-col gap-2">
-          <div
-            class="relative aspect-[2/3] rounded-lg overflow-hidden bg-surface-100 dark:bg-surface-800 border border-surface-200 dark:border-surface-700"
+          <RouterLink
+            :to="{ name: 'book', params: { id: book.id } }"
+            class="relative aspect-[2/3] rounded-lg overflow-hidden bg-surface-100 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 block hover:border-primary-400 transition-colors"
+            :title="`Statistics for ${book.title}`"
           >
             <img
               v-if="book.cover"
@@ -220,15 +228,20 @@ onMounted(() => {
                 <div class="h-full bg-white" :style="{ width: `${percentOf(book)}%` }"></div>
               </div>
             </div>
-          </div>
+          </RouterLink>
 
           <div class="flex flex-col gap-1">
-            <span class="font-semibold leading-tight" :title="book.title">{{ book.title }}</span>
+            <RouterLink
+              :to="{ name: 'book', params: { id: book.id } }"
+              class="font-semibold leading-tight hover:underline"
+              :title="book.title"
+              >{{ book.title }}</RouterLink
+            >
             <span v-if="authorsOf(book)" class="text-sm text-surface-600 dark:text-surface-400">
               {{ authorsOf(book) }}
             </span>
             <span class="text-xs text-surface-500 dark:text-surface-400">
-              {{ formatCount(book.page_count) }} pages · {{ formatCount(book.word_count) }} words
+              {{ formatCount(pagesOf(book)) }} pages · {{ formatCount(book.word_count) }} words
             </span>
           </div>
 

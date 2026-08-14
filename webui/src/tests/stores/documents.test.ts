@@ -44,7 +44,11 @@ function document(id: string, overrides: Partial<DocumentRecord> = {}): Document
   }
 }
 
-function history(id: string, documentRef: string, overrides: Partial<HistoryRecord> = {}): HistoryRecord {
+function history(
+  id: string,
+  documentRef: string,
+  overrides: Partial<HistoryRecord> = {},
+): HistoryRecord {
   return {
     id,
     collectionId: 'c',
@@ -70,7 +74,9 @@ describe('documents store', () => {
   })
 
   it('joins the history onto its document', async () => {
-    pbMockModule.collection('documents').getFullList.mockResolvedValue([document('doc-1'), document('doc-2')])
+    pbMockModule
+      .collection('documents')
+      .getFullList.mockResolvedValue([document('doc-1'), document('doc-2')])
     pbMockModule
       .collection('document_history')
       .getFullList.mockResolvedValue([history('hist-1', 'doc-1'), history('hist-2', 'doc-1')])
@@ -85,16 +91,22 @@ describe('documents store', () => {
   })
 
   it('sorts the documents by the most recently read', async () => {
-    pbMockModule.collection('documents').getFullList.mockResolvedValue([
-      document('old', { last_read_at: '2026-02-01 10:00:00.000Z' }),
-      document('new', { last_read_at: '2026-03-01 10:00:00.000Z' }),
-    ])
+    pbMockModule
+      .collection('documents')
+      .getFullList.mockResolvedValue([
+        document('old', { last_read_at: '2026-02-01 10:00:00.000Z' }),
+        document('new', { last_read_at: '2026-03-01 10:00:00.000Z' }),
+      ])
 
     const store = useDocumentsStore()
     await store.load()
     await store.subscribe()
 
-    pbMockModule.emit('documents', 'update', document('old', { last_read_at: '2026-04-01 10:00:00.000Z' }))
+    pbMockModule.emit(
+      'documents',
+      'update',
+      document('old', { last_read_at: '2026-04-01 10:00:00.000Z' }),
+    )
 
     expect(store.documents[0]!.id).toBe('old')
   })
@@ -124,7 +136,9 @@ describe('documents store', () => {
 
   it('keeps the loaded history when the document itself changes', async () => {
     pbMockModule.collection('documents').getFullList.mockResolvedValue([document('doc-1')])
-    pbMockModule.collection('document_history').getFullList.mockResolvedValue([history('hist-1', 'doc-1')])
+    pbMockModule
+      .collection('document_history')
+      .getFullList.mockResolvedValue([history('hist-1', 'doc-1')])
 
     const store = useDocumentsStore()
     await store.load()
@@ -153,7 +167,9 @@ describe('documents store', () => {
     await store.load()
     await store.subscribe()
 
-    expect(() => pbMockModule.emit('document_history', 'create', history('hist-1', 'nope'))).not.toThrow()
+    expect(() =>
+      pbMockModule.emit('document_history', 'create', history('hist-1', 'nope')),
+    ).not.toThrow()
     expect(store.documents).toHaveLength(0)
   })
 

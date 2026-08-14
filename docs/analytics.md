@@ -43,8 +43,53 @@ to every two pages produces a good estimate; reading with sync switched off prod
 
 **`documents_touched`** — how many documents saw a progress update that day.
 
-**`pages_read`** — always zero for now. It becomes meaningful once a document can be linked to an
-uploaded book with a known page count.
+**`pages_read`** — the sum of the pages read in each book that day. Progress in a document with no
+uploaded book contributes nothing: an EPUB that is not on the server has no length, and a guess would
+be worse than a gap. See **Pages** below.
+
+## Per book
+
+The same measures are also computed per book, into `reading_book_days`, keyed by `(owner, date,
+book)`. That is what the book page in the web interface is made of: how long a book took, which days
+went into it, how many pages each of those days was.
+
+They are computed independently of the day rows rather than by grouping them, and the two do not
+agree — deliberately:
+
+- **Reading time does not add up.** A day's reading time is the sum of the gaps between consecutive
+  pushes. A gap that spans a switch from one book to another falls inside neither book's window, so
+  the book rows sum to *less* than the day. On the reference data the difference is around two
+  minutes on a day with three books. The day total is the authoritative one; the residual is
+  switching, and forcing the books to add up to it would mean inventing an owner for it.
+- **Pages do add up.** Every page is read in exactly one book, so the day's `pages_read` is the sum
+  of its book rows and nothing falls between them.
+
+Only documents matched to an uploaded book appear here at all.
+
+## Pages
+
+An EPUB is reflowable: it has no pages, and KOReader's own count changes with the font and the
+screen. KOsync does not ask for one. It measures it.
+
+KOReader syncs every N pages, so the progress values a device pushes move in near-exact multiples of
+one page. Recovering that unit gives the device's own page count directly — `1 / page_fraction`. On
+the reference books this reproduced the counts the device reports, 700 and 563, exactly.
+
+The measurement is taken per file and per device, from the recent end of the series first so that
+changing the font is followed rather than ignored, and the series with the most pushes behind it wins.
+It is stored on the book as `measured_pages`, along with the device it came from.
+
+It does not always succeed, and when it cannot it says so instead of guessing:
+
+- **It needs pushes.** A book read before the server existed has nothing to measure.
+- **It stops at roughly 1600 pages.** Progress is reported to four decimals, and a page in a very long
+  omnibus is narrower than that grid. Three of the five reference books fall outside for one of these
+  two reasons.
+
+Those books fall back to `page_count`, which is the word count divided by `BOOKS_WORDS_PER_PAGE`
+(155 by default). That is a real fallback and not a second opinion: on the reference books the density
+ranged from 154 to 207 words per page **on the same device**, so the fallback can be a third out. The
+web interface labels which of the two a number came from for exactly that reason.
 
 ## Retention
 
@@ -54,3 +99,8 @@ default) or simply deleted (`=delete`).
 
 Folding happens exactly once per daily row, because the row is deleted in the same pass, so running
 the job twice cannot double count.
+
+The per-book rows follow the mode rather than the window: `delete` removes them with everything else,
+`aggregate` keeps them. They are not the per-day detail retention exists to bound — they are the
+record of how long a book took, and a monthly total cannot hold that. There is one row per book per
+day, which for a reader is the same order of magnitude as the day rows themselves.

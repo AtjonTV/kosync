@@ -157,12 +157,7 @@ onMounted(() => {
             <strong>{{ lastCreated.username }}</strong> /
             <strong>{{ lastCreated.password }}</strong>
           </span>
-          <Button
-            label="I noted it down"
-            size="small"
-            variant="text"
-            @click="lastCreated = null"
-          />
+          <Button label="I noted it down" size="small" variant="text" @click="lastCreated = null" />
         </div>
       </Message>
 
@@ -251,12 +246,7 @@ onMounted(() => {
       </div>
       <Message v-if="error" severity="error" variant="simple">{{ error }}</Message>
       <div class="flex justify-end gap-2">
-        <Button
-          type="button"
-          label="Cancel"
-          severity="secondary"
-          @click="showCreate = false"
-        />
+        <Button type="button" label="Cancel" severity="secondary" @click="showCreate = false" />
         <Button type="submit" label="Create" :loading="busy" />
       </div>
     </form>
@@ -293,12 +283,7 @@ onMounted(() => {
       </div>
       <Message v-if="error" severity="error" variant="simple">{{ error }}</Message>
       <div class="flex justify-end gap-2">
-        <Button
-          type="button"
-          label="Cancel"
-          severity="secondary"
-          @click="showRotate = false"
-        />
+        <Button type="button" label="Cancel" severity="secondary" @click="showRotate = false" />
         <Button type="submit" label="Change" :loading="busy" />
       </div>
     </form>

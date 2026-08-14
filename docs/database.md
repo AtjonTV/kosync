@@ -81,7 +81,17 @@ than duplicated; two owners uploading the same book each keep their own copy.
 
 `page_count` is a fallback, derived from the word count at `BOOKS_WORDS_PER_PAGE`. An EPUB is
 reflowable and has no pages of its own, so a count measured from a reader's own progress is better
-wherever one can be had — see [analytics.md](analytics.md).
+wherever one can be had — see [analytics.md](analytics.md). `measured_pages` holds that measurement
+when there is one, with `measured_device` naming where it came from and `measured_through` recording
+how far into the reading it looked, so a book nobody has read since is not measured again.
+
+### `reading_book_days`
+
+The daily statistics of a single book, keyed by owner, day and book. Read only through the API, like
+the other analytics collections, and computed by the same worker in the same pass. Deleting a book
+takes its rows with it; the reading itself lives in `documents` and stays. See
+[analytics.md](analytics.md) for why the reading time here does not add up to the day totals and the
+pages do.
 
 A `documents` row carries a `book` relation, set by the server when the document's hash matches an
 uploaded book. It is empty until such a book exists, and it is cleared rather than cascaded when the

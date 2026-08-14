@@ -123,8 +123,23 @@ func ComputeDay(app core.App, ownerId, date string, sessionGap time.Duration) (D
 // A day without any reading is removed instead of being stored as a row of
 // zeroes, so that the statistics collection stays proportional to the days a
 // user actually read.
+//
+// The per-book rows are computed in the same pass, and the day's pages read is
+// their sum: a page belongs to exactly one book, so unlike the reading time
+// nothing falls between them. Progress in a document that has no uploaded book
+// therefore counts towards the day's reading but not towards its pages, which is
+// the honest answer — nothing knows how long that document is.
 func RecomputeDay(app core.App, ownerId, date string, sessionGap time.Duration) error {
 	stats, err := ComputeDay(app, ownerId, date, sessionGap)
+	if err != nil {
+		return err
+	}
+
+	// Before the books are counted, not after: a page count measured from this
+	// very day's pushes is the unit the day should be reckoned in.
+	MeasureBooksOfDay(app, ownerId, date)
+
+	pagesRead, err := RecomputeBookDays(app, ownerId, date, sessionGap)
 	if err != nil {
 		return err
 	}
@@ -156,6 +171,7 @@ func RecomputeDay(app core.App, ownerId, date string, sessionGap time.Duration) 
 	record.Set(schema.FieldProgressIncrease, stats.ProgressIncrease)
 	record.Set(schema.FieldReadingTime, stats.ReadingTime)
 	record.Set(schema.FieldDocumentsTouched, stats.DocumentsTouched)
+	record.Set(schema.FieldPagesRead, pagesRead)
 	record.Set(schema.FieldComputedAt, time.Now().UTC())
 
 	return app.Save(record)

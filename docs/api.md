@@ -83,6 +83,26 @@ Covers are served as PocketBase files, with thumbnails generated on request:
 /api/files/books/{id}/{cover}?thumb=200x300
 ```
 
+The page count is derived too, and in two ways: `measured_pages` is what the device's own progress
+reports imply, and `page_count` is the fallback from the word count. Both are read only — the
+measurement in particular refuses to be set by hand, because a number nobody measured would then sit
+in front of every statistic reckoned in pages. See [analytics.md](analytics.md).
+
+### Book statistics
+
+`reading_book_days` is `reading_days` keyed by book as well as by day, and is read and subscribed to
+the same way:
+
+```js
+const days = await pb.collection('reading_book_days').getFullList({
+  filter: pb.filter('book = {:book}', { book: bookId }),
+  sort: 'date',
+})
+```
+
+A realtime subscription is filtered by the collection's list rule, which is per owner rather than per
+book, so a client watching one book has to discard rows for the others itself.
+
 ## 3. The KOsync API, under `/api/kosync`
 
 The few operations the generated collection API cannot express. All of them require an account

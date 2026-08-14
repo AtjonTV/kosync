@@ -237,3 +237,84 @@ func TestReconcileQueuesRecentDays(t *testing.T) {
 		t.Errorf("expected the recent day %q to be queued, got %q", recent.Format(analytics.DateLayout), got)
 	}
 }
+
+// storeBookDay writes a per-book statistics row directly.
+func storeBookDay(t testing.TB, app core.App, owner, book *core.Record, date string, pages int) *core.Record {
+	t.Helper()
+
+	collection, err := app.FindCollectionByNameOrId(schema.CollectionReadingBookDays)
+	if err != nil {
+		t.Fatalf("failed to find the reading_book_days collection: %v", err)
+	}
+
+	record := core.NewRecord(collection)
+	record.Set(schema.FieldOwner, owner.Id)
+	record.Set(schema.FieldBook, book.Id)
+	record.Set(schema.FieldDate, date)
+	record.Set(schema.FieldPagesRead, pages)
+
+	if err := app.Save(record); err != nil {
+		t.Fatalf("failed to store the per-book day %q: %v", date, err)
+	}
+
+	return record
+}
+
+// The per-book rows are not the per-day detail that retention exists to bound.
+// They are the record of how long a book took, and a monthly total cannot hold
+// that, so aggregating deliberately leaves them alone.
+func TestRetentionKeepsThePerBookRowsWhenAggregating(t *testing.T) {
+	app, user := newApp(t)
+
+	conf := testConfig()
+	conf.AnalyticsRetentionDays = 30
+	conf.AnalyticsRetentionMode = config.RetentionModeAggregate
+
+	book := testutil.CreateBook(t, app, user, "", "Zeit des Sturms", "hash-a", "")
+	storeDay(t, app, user, "2026-01-05", 10, 600, 5)
+	storeBookDay(t, app, user, book, "2026-01-05", 42)
+
+	if _, err := analytics.ApplyRetention(app, conf, now); err != nil {
+		t.Fatalf("failed to apply the retention: %v", err)
+	}
+
+	rows, err := app.FindAllRecords(schema.CollectionReadingBookDays)
+	if err != nil {
+		t.Fatalf("failed to list the per-book rows: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Errorf("expected the per-book row to survive aggregation, got %d rows", len(rows))
+	}
+}
+
+// "delete" means delete. Someone who chose it wants the old reading gone, not
+// folded into a place the retention setting does not reach.
+func TestRetentionDropsThePerBookRowsWhenDeleting(t *testing.T) {
+	app, user := newApp(t)
+
+	conf := testConfig()
+	conf.AnalyticsRetentionDays = 30
+	conf.AnalyticsRetentionMode = config.RetentionModeDelete
+
+	book := testutil.CreateBook(t, app, user, "", "Zeit des Sturms", "hash-a", "")
+	storeDay(t, app, user, "2026-01-05", 10, 600, 5)
+	storeBookDay(t, app, user, book, "2026-01-05", 42)
+	// Inside the window, and must stay.
+	storeDay(t, app, user, "2026-05-30", 4, 300, 2)
+	storeBookDay(t, app, user, book, "2026-05-30", 17)
+
+	if _, err := analytics.ApplyRetention(app, conf, now); err != nil {
+		t.Fatalf("failed to apply the retention: %v", err)
+	}
+
+	rows, err := app.FindAllRecords(schema.CollectionReadingBookDays)
+	if err != nil {
+		t.Fatalf("failed to list the per-book rows: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("expected only the recent per-book row to survive, got %d rows", len(rows))
+	}
+	if got := rows[0].GetString(schema.FieldDate); got != "2026-05-30" {
+		t.Errorf("expected the row inside the window to be the survivor, got %q", got)
+	}
+}

@@ -18,7 +18,9 @@ const syncServer = computed(() => `${window.location.origin}/koreader`)
     </template>
     <template #content>
       <ol class="list-decimal list-inside space-y-4 text-surface-700 dark:text-surface-300">
-        <li><strong>Register</strong> an account above. Registration happens here, not on the device.</li>
+        <li>
+          <strong>Register</strong> an account above. Registration happens here, not on the device.
+        </li>
         <li>
           Open <strong>Account &rarr; KOReader credentials</strong> and add a credential. Note the
           username and password, they are shown once.

@@ -25,6 +25,7 @@ import (
 	"git.obth.eu/atjontv/kosync/internal/schema"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tests"
+	"github.com/pocketbase/pocketbase/tools/filesystem"
 
 	// Registers the KOsync collections in core.AppMigrations.
 	_ "git.obth.eu/atjontv/kosync/internal/migrations"
@@ -182,6 +183,42 @@ func CreateHistoryEntry(t testing.TB, app core.App, document *core.Record, id st
 
 	if err := app.Save(record); err != nil {
 		t.Fatalf("failed to create history entry for %q: %v", document.Id, err)
+	}
+
+	return record
+}
+
+// CreateBook stores a book with the two KOReader hashes set.
+//
+// The file is a stand-in rather than a real EPUB: the upload hook that would
+// read one is a request hook, so a record saved from Go never goes near it, and
+// the tests that need real books are the opt-in ones in internal/epub.
+func CreateBook(t testing.TB, app core.App, owner *core.Record, id, title, hashBinary, hashFilename string) *core.Record {
+	t.Helper()
+
+	collection, err := app.FindCollectionByNameOrId(schema.CollectionBooks)
+	if err != nil {
+		t.Fatalf("failed to find the %q collection: %v", schema.CollectionBooks, err)
+	}
+
+	file, err := filesystem.NewFileFromBytes([]byte("PK\x03\x04 stand-in"), "book.epub")
+	if err != nil {
+		t.Fatalf("failed to build a stand-in file: %v", err)
+	}
+
+	record := core.NewRecord(collection)
+	if id != "" {
+		record.Id = id
+	}
+	record.Set(schema.FieldOwner, owner.Id)
+	record.Set(schema.FieldFile, file)
+	record.Set(schema.FieldTitle, title)
+	record.Set(schema.FieldContentHash, hashBinary+hashFilename)
+	record.Set(schema.FieldHashBinary, hashBinary)
+	record.Set(schema.FieldHashFilename, hashFilename)
+
+	if err := app.Save(record); err != nil {
+		t.Fatalf("failed to create book %q: %v", title, err)
 	}
 
 	return record

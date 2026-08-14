@@ -57,6 +57,8 @@ func ApplyRetention(app core.App, conf *config.Config, now time.Time) (int, erro
 		if err := rollup(app, aged); err != nil {
 			return 0, err
 		}
+	} else if err := dropBookDays(app, cutoff); err != nil {
+		return 0, err
 	}
 
 	for _, record := range aged {
@@ -66,6 +68,21 @@ func ApplyRetention(app core.App, conf *config.Config, now time.Time) (int, erro
 	}
 
 	return len(aged), nil
+}
+
+// dropBookDays removes the per-book rows of aged out days.
+//
+// Only in "delete" mode. "aggregate" keeps them, and deliberately: they are not
+// the per-day detail that retention exists to bound, they are the record of how
+// long a book took, and folding them into a month would destroy the one thing a
+// book's page is made of. There is one row per book per day rather than per day,
+// which for a reader is the same order of magnitude.
+func dropBookDays(app core.App, cutoff string) error {
+	_, err := app.DB().
+		Delete(schema.CollectionReadingBookDays, dbx.NewExp("[[date]] < {:cutoff}", dbx.Params{"cutoff": cutoff})).
+		Execute()
+
+	return err
 }
 
 // rollup adds the given days to their monthly totals.

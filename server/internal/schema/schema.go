@@ -35,6 +35,12 @@ const (
 
 	// CollectionBooks holds uploaded EPUBs with the metadata read out of them.
 	CollectionBooks = "books"
+
+	// CollectionReadingBookDays holds the daily reading statistics of a single
+	// book. It is a separate collection rather than a grouping of reading_days
+	// because a day's reading time cannot be split across books without losing
+	// the time spent switching between them.
+	CollectionReadingBookDays = "reading_book_days"
 )
 
 // Shared field names.
@@ -98,6 +104,18 @@ const (
 	// up by either of them.
 	FieldHashBinary   = "hash_binary"
 	FieldHashFilename = "hash_filename"
+
+	// FieldMeasuredPages and FieldMeasuredDevice hold the page count recovered
+	// from the progress a device pushed, and which device it came from. Zero
+	// pages means no measurement was possible and FieldPageCount is all there is.
+	//
+	// FieldMeasuredThrough is how far into the reading that measurement looked —
+	// the newest push it saw, not the moment it ran. Reading timestamps come from
+	// the device and are always in the past, so a wall clock there would mean no
+	// book is ever measured a second time.
+	FieldMeasuredPages   = "measured_pages"
+	FieldMeasuredDevice  = "measured_device"
+	FieldMeasuredThrough = "measured_through"
 )
 
 // OwnerRule restricts a collection to the records owned by the authenticated

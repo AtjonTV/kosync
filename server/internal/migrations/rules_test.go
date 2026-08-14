@@ -206,6 +206,25 @@ func TestAnalyticsCollectionsAreReadOnlyAndScoped(t *testing.T) {
 		ExpectedContent: []string{`"totalItems":0`},
 	})
 
+	// The per-book rows are derived exactly like the day rows, so they are read
+	// only for the same reason: a page count nobody measured is worse than none.
+	asUser(t, testutil.IdUserA, tests.ApiScenario{
+		Name:            "per-book days cannot be written by a user",
+		Method:          http.MethodPost,
+		URL:             "/api/collections/reading_book_days/records",
+		Body:            strings.NewReader(`{"owner":"` + testutil.IdUserA + `","date":"2026-03-01","pages_read":9000}`),
+		ExpectedStatus:  http.StatusForbidden,
+		ExpectedContent: []string{`"data":{}`},
+	})
+
+	asUser(t, "", tests.ApiScenario{
+		Name:            "per-book days are invisible to guests",
+		Method:          http.MethodGet,
+		URL:             "/api/collections/reading_book_days/records",
+		ExpectedStatus:  http.StatusOK,
+		ExpectedContent: []string{`"totalItems":0`},
+	})
+
 	asUser(t, testutil.IdUserA, tests.ApiScenario{
 		Name:            "the analytics queue is invisible to users",
 		Method:          http.MethodGet,

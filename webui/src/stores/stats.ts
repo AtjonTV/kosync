@@ -49,21 +49,23 @@ export const useStatsStore = defineStore('stats', () => {
   async function subscribe(): Promise<void> {
     if (unsubscribe) return
 
-    unsubscribe = await pb.collection(Collections.readingDays).subscribe<ReadingDay>('*', (event) => {
-      const index = days.value.findIndex((day) => day.id === event.record.id)
+    unsubscribe = await pb
+      .collection(Collections.readingDays)
+      .subscribe<ReadingDay>('*', (event) => {
+        const index = days.value.findIndex((day) => day.id === event.record.id)
 
-      if (event.action === 'delete') {
-        if (index !== -1) days.value.splice(index, 1)
-        return
-      }
+        if (event.action === 'delete') {
+          if (index !== -1) days.value.splice(index, 1)
+          return
+        }
 
-      if (index === -1) {
-        days.value.push(event.record)
-        days.value.sort((a, b) => a.date.localeCompare(b.date))
-      } else {
-        days.value[index] = event.record
-      }
-    })
+        if (index === -1) {
+          days.value.push(event.record)
+          days.value.sort((a, b) => a.date.localeCompare(b.date))
+        } else {
+          days.value[index] = event.record
+        }
+      })
   }
 
   function stop(): void {

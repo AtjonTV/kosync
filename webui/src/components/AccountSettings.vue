@@ -97,8 +97,8 @@ const changePassword = async () => {
       </p>
 
       <Message v-if="isPlaceholderEmail" severity="warn" class="mb-4">
-        Your address was generated during the import from KOsync 1 and cannot receive mail. Change it
-        to a real one so you can recover your account if you forget the password.
+        Your address was generated during the import from KOsync 1 and cannot receive mail. Change
+        it to a real one so you can recover your account if you forget the password.
       </Message>
       <Message v-else-if="!isVerified" severity="info" class="mb-4">
         Your address is not confirmed yet.
@@ -126,7 +126,9 @@ const changePassword = async () => {
           </div>
 
           <Message v-if="emailError" severity="error" variant="simple">{{ emailError }}</Message>
-          <Message v-if="emailNotice" severity="success" variant="simple">{{ emailNotice }}</Message>
+          <Message v-if="emailNotice" severity="success" variant="simple">{{
+            emailNotice
+          }}</Message>
 
           <p class="text-sm text-surface-500 dark:text-surface-400">
             A confirmation link goes to the new address, and nothing changes until you open it. This

@@ -147,3 +147,75 @@ func TestBackfillIgnoresEmptyHashes(t *testing.T) {
 		t.Errorf("a book with no hashes matched: %q", got)
 	}
 }
+
+// An instance upgrading into book statistics has days on record that nothing
+// will ever recompute, so every one of them would report zero pages read.
+func TestQueueStoredDaysEnqueuesEveryDayOnRecord(t *testing.T) {
+	app := testutil.NewApp(t)
+	alice := testutil.CreateUser(t, app, testutil.IdUserA, testutil.EmailUserA, testutil.PasswordUsers)
+	bob := testutil.CreateUser(t, app, testutil.IdUserB, testutil.EmailUserB, testutil.PasswordUsers)
+
+	storeReadingDay(t, app, alice.Id, "2026-01-05")
+	storeReadingDay(t, app, alice.Id, "2026-02-11")
+	storeReadingDay(t, app, bob.Id, "2026-01-05")
+
+	if err := migrations.QueueStoredDays(app); err != nil {
+		t.Fatalf("queue the stored days: %v", err)
+	}
+
+	queued, err := app.FindAllRecords(schema.CollectionAnalyticsQueue)
+	if err != nil {
+		t.Fatalf("list the queue: %v", err)
+	}
+	if len(queued) != 3 {
+		t.Fatalf("expected one queue item per stored day, got %d", len(queued))
+	}
+
+	for _, item := range queued {
+		if len(item.Id) != 15 {
+			t.Errorf("generated id %q is not a valid record id", item.Id)
+		}
+	}
+}
+
+// It runs on every deployment that has not run it yet, and the unique index on
+// the queue is what makes that harmless.
+func TestQueueStoredDaysIsIdempotent(t *testing.T) {
+	app := testutil.NewApp(t)
+	user := testutil.CreateUser(t, app, testutil.IdUserA, testutil.EmailUserA, testutil.PasswordUsers)
+
+	storeReadingDay(t, app, user.Id, "2026-01-05")
+
+	for range 2 {
+		if err := migrations.QueueStoredDays(app); err != nil {
+			t.Fatalf("queue the stored days: %v", err)
+		}
+	}
+
+	queued, err := app.FindAllRecords(schema.CollectionAnalyticsQueue)
+	if err != nil {
+		t.Fatalf("list the queue: %v", err)
+	}
+	if len(queued) != 1 {
+		t.Errorf("expected the day to be queued once, got %d items", len(queued))
+	}
+}
+
+// storeReadingDay writes a statistics day the way the worker would have.
+func storeReadingDay(t testing.TB, app core.App, owner, date string) {
+	t.Helper()
+
+	collection, err := app.FindCollectionByNameOrId(schema.CollectionReadingDays)
+	if err != nil {
+		t.Fatalf("find the reading_days collection: %v", err)
+	}
+
+	record := core.NewRecord(collection)
+	record.Set(schema.FieldOwner, owner)
+	record.Set(schema.FieldDate, date)
+	record.Set(schema.FieldUpdateCount, 3)
+
+	if err := app.Save(record); err != nil {
+		t.Fatalf("store the day %q: %v", date, err)
+	}
+}

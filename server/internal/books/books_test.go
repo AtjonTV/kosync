@@ -404,6 +404,30 @@ func TestDerivedFieldsCannotBeEdited(t *testing.T) {
 	}
 }
 
+// The page count everything is reckoned in comes out of the reading itself.
+// A number typed in here would sit in front of every statistic without anything
+// having produced it.
+func TestTheMeasurementCannotBeSetByHand(t *testing.T) {
+	for _, field := range []string{
+		schema.FieldMeasuredPages,
+		schema.FieldMeasuredDevice,
+		schema.FieldMeasuredThrough,
+	} {
+		asUser(t, testutil.IdUserA, tests.ApiScenario{
+			Name:   "editing " + field + " is refused",
+			Method: http.MethodPatch,
+			URL:    booksURL + "/" + testutil.PadId("booka"),
+			Body:   strings.NewReader(`{"` + field + `":"1"}`),
+			Headers: map[string]string{
+				"Content-Type": "application/json",
+			},
+			BeforeTestFunc:  seedBook,
+			ExpectedStatus:  http.StatusBadRequest,
+			ExpectedContent: []string{"measured from your reading"},
+		})
+	}
+}
+
 // Correcting the publisher's metadata is the owner's business, so the fields
 // that are not derived from the file stay editable.
 func TestTitleRemainsEditable(t *testing.T) {

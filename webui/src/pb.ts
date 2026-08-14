@@ -26,6 +26,7 @@ export const Collections = {
   readingDays: 'reading_days',
   readingMonths: 'reading_months',
   books: 'books',
+  readingBookDays: 'reading_book_days',
 } as const
 
 /**

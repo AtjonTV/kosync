@@ -75,6 +75,25 @@ export interface Book extends BaseRecord {
   content_hash: string
   hash_binary: string
   hash_filename: string
+  /** The page count recovered from the progress a device pushed, 0 if none. */
+  measured_pages: number
+  /** Which device that measurement came from. */
+  measured_device: string
+  /** How far into the reading the measurement looked. */
+  measured_through: string
+}
+
+/** One precomputed day of reading in one book. */
+export interface ReadingBookDay extends BaseRecord {
+  owner: string
+  book: string
+  date: string
+  update_count: number
+  progress_increase: number
+  reading_time: number
+  documents_touched: number
+  pages_read: number
+  computed_at: string
 }
 
 /** A document together with the states it went through. */

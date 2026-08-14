@@ -157,7 +157,7 @@ Written by the server whenever a document row is superseded. Rules: `list`/`view
 | `progress_increase` | number (percentage points) |
 | `reading_time` | number (seconds) |
 | `documents_touched` | number |
-| `pages_read` | number (0 until books provide page counts — phase 12, see §16.5) |
+| `pages_read` | number (the sum of the day's book rows — §16.5, built in phase 12) |
 | `computed_at` | date |
 
 Unique index `(owner, date)`. `list`/`view` owner-scoped, writes superuser only. The WebUI reads and
@@ -503,7 +503,7 @@ Then the later ideas, in dependency order:
 | **9. Matching** | link pushes to books on arrival; unlinked pushes listed separately | 8 |
 | **10. OPDS** | OPDS 2.0 catalog, Basic auth, authenticated acquisition | 8 |
 | **11. Merge** | user-selected merge of several pushes into one document | 9 |
-| **12. Book statistics** | per-book/day rows, book detail view, notional page counts | 9 + 3 |
+| **12. Book statistics** | per-book/day rows, book detail view, measured page counts | 9 + 3 |
 | **13. Achievements** | pages/books/streak rules, SVG icons, repeatable tiers | 12 (page counts) + 3 (daily rows) |
 | **14. Mail** | recovery + achievement notifications via PocketBase SMTP | 13 |
 | **15. Library-first dashboard** | the library becomes the main component on `/`, below the statistics; the documents table moves to a page of its own | 8 |
@@ -511,6 +511,8 @@ Then the later ideas, in dependency order:
 
 Phases 9 and 10 are independent of each other and can be built in either order; §16 explains why doing
 10 first makes 9 exact rather than heuristic for anything downloaded from the catalog.
+
+Phases 8, 9 and 12 are built; §16.6, §18 and §19 record what each of them turned into.
 
 Phases 15 and 16 are interface work rather than new capability, and are described in §17. They are
 listed last because nothing depends on them, but 15 is worth doing before the documents table grows
@@ -917,3 +919,79 @@ views gets settled anyway.
 What did land in the interface is the more interesting half: the library shows reading progress on
 each cover, so a matched book reads as "Reading 63%" or "Finished" at a glance. That is in the new
 component, which is not going anywhere.
+
+---
+
+## 19. Book statistics (phase 12)
+
+Built. It is the phase that made `internal/pages` real: the estimator had been written, tested and
+validated in phase 8 and then had no callers at all, and `reading_days.pages_read` had been a
+placeholder zero since phase 3. Both are now fed by the same worker pass.
+
+### 19.1 What was added
+
+- **`reading_book_days`** — the §3.5 measures keyed by `(owner, date, book)`, computed by a second
+  query beside the day query rather than by grouping it, for the reason §16.5 gave.
+- **`books.measured_pages` / `measured_device` / `measured_through`** — the page count recovered from
+  the progress a device pushed, which device it came from, and how far into the reading the
+  measurement looked.
+- **A book page** at `/library/:id` — cover and metadata, time spent, pages read, days read, best day,
+  and a per-day chart of pages and reading time. Reachable by clicking a cover.
+
+### 19.2 The measurement, in production
+
+Running the new migrations against a copy of the real database and letting the worker drain:
+
+| Book | fallback pages | measured | device pages |
+| --- | --- | --- | --- |
+| Zeit des Sturms | 705 | **700** | 700 ✓ |
+| Das Schwert der Vorsehung | 754 | **563** | 563 ✓ |
+| Der letzte Wunsch | 625 | *declined* | 619 |
+| Kreuzweg der Raben | 444 | *declined* | 446 |
+| Die Witcher-Saga | 4122 | *declined* | — |
+
+Both books that could be measured came out exactly right, end to end through the running binary rather
+than in a unit test. The three that declined are the three §16.5 predicted would: two were read before
+the server existed and have a handful of history rows, and the omnibus is past the ~1600 page ceiling
+the four-decimal reporting grid imposes. They fall back to the word count, and the interface says which
+of the two a number is.
+
+### 19.3 The residual is real
+
+§16.5 predicted that the book rows would sum to *less* than the day row, because a gap spanning a
+switch between books belongs to neither. On the production data, on the days with more than one book:
+
+| Day | books | day total | sum of books | residual |
+| --- | --- | --- | --- | --- |
+| 2026-01-25 | 3 | 3863 s | 3731 s | 132 s |
+| 2026-02-21 | 2 | 4577 s | 4465 s | 112 s |
+| 2026-02-01 | 2 | 7627 s | 7527 s | 100 s |
+
+Around two minutes a day, which is what putting one book down and picking another up costs. The day
+total stays authoritative and the residual is not displayed as a discrepancy. Pages, by contrast, add
+up exactly: every page is read in one book.
+
+### 19.4 Three things worth knowing
+
+**The measurement is per file and per device, not per book.** Two devices paginate the same file
+differently and both are right; the series with the most pushes behind it wins. Grouping by file as
+well as device matters more than it looks: the same book stored twice under different names is two
+files, and merging their series destroys the quantisation the estimate depends on.
+
+**It looks at the recent end first.** A series spanning a font change fits neither pagination, so an
+estimator that only ever saw the whole history would keep the old number for good. Trying the last 40
+pushes before the whole series is what makes it self-healing, and widening when the window has nothing
+to say is what keeps a rarely-read book measurable.
+
+**`measured_through` is a reading timestamp, not a wall clock.** It records the newest push the last
+measurement saw, so "has anything new been read" is answerable. The first version stored the moment the
+measurement ran, which is always *after* every reading timestamp, so no book would ever have been
+measured twice. It passed every test that did not specifically read the book again.
+
+### 19.5 Upgrading an existing instance
+
+Nothing recomputes a day that is not read on again, so an instance upgrading into this would have shown
+zero pages for everything it had already recorded — the same shape of gap as §18.1, found by looking
+for it this time rather than by a bug report. `1787011200_queue_book_statistics.go` enqueues every
+stored day once, and the existing worker drains it in the background. On the production copy, 86 days
+went through the queue and produced 88 per-book rows in a few seconds.

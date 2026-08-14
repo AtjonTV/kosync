@@ -30,6 +30,7 @@ const (
 // Register wires the statistics pipeline into the application lifecycle.
 func Register(app core.App, conf *config.Config) *Worker {
 	registerEnqueueHooks(app)
+	registerBookHooks(app)
 
 	worker := NewWorker(app, conf)
 
