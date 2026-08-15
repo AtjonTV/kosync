@@ -513,7 +513,7 @@ Then the later ideas, in dependency order:
 Phases 9 and 10 are independent of each other and can be built in either order; §16 explains why doing
 10 first makes 9 exact rather than heuristic for anything downloaded from the catalog.
 
-Phases 8, 9, 10, 11, 12, 13, 15, 16 and 17 are built; §16.6, §18, §19, §21, §22, §23 and §25 record what
+Phases 8 to 17 are all built; §16.6, §18, §19, §21, §22, §23, §25 and §26 record what
 each of them turned into, and §17 is now a description of what the interface does rather than what it should
 do. Phase 10 landed after 9 rather than before it, so the exactness §16 wanted from that ordering
 arrived as a third stored hash instead — see §22.1.
@@ -943,6 +943,10 @@ The plan's phase 9 also said "unlinked pushes listed separately". That is interf
 documents table, which phase 15 moves to its own page — building it now means building it twice. It
 belongs with that restructure, where the question of whether documents and the library remain separate
 views gets settled anyway.
+
+**Settled, after phase 15: the documents page marks an unmatched document "Not in library" and that is
+enough.** A separate list would be a second place to look for the same rows, and the label already
+answers the only question anybody was going to ask of it. Closed rather than deferred.
 
 What did land in the interface is the more interesting half: the library shows reading progress on
 each cover, so a matched book reads as "Reading 63%" or "Finished" at a glance. That is in the new
@@ -1445,3 +1449,62 @@ first, or "Sapkowski, Andrzej" and "Andrzej Sapkowski" are two people.
 
 A rule built on `reading_days` shrinks as the retention window moves. Where a future measure can be
 asked of `reading_months`, `documents` or `document_history` instead, it should be.
+
+---
+
+## 26. Mail (phase 14)
+
+Built, and mostly by deciding what not to write. §14 asked for "recovery + achievement notifications
+via PocketBase SMTP", and the first half was already there: verification, password reset and the
+confirmation of an address change are PocketBase's, sent from its own templates and configured in the
+superuser interface. There is nothing to reimplement and no reason to hold a second opinion about it.
+
+What was left is the one message this server had to write itself, because nothing else knows what an
+achievement is.
+
+### 26.1 Off until asked, and asked twice
+
+A boolean is false when nobody has ever set it, and for mail nobody asked for that is the safe end to
+land on. So `users.achievement_mail` is positive — true means send — and an account created by a
+script or in the superuser interface stays quiet until somebody ticks the box. Registration in the
+browser sets it, because a person registering in a browser is a person who wants to hear about their
+own reading; the accounts that predate the field are backfilled to on, for the same reason.
+
+The operator has a separate switch, `ENABLE_ACHIEVEMENT_MAIL`, for a server that should send nothing
+of its own at all. Both have to agree.
+
+Nothing goes to an unconfirmed address. That is partly ordinary hygiene and partly this codebase's own
+history: the legacy import parks every account it creates on `@invalid.local`, and mail to those
+bounces forever without anybody being told.
+
+### 26.2 One message per batch
+
+Never one per badge. A first evaluation of an account that has been reading for years awards a dozen
+tiers at once — §25.4 insists on that, because dribbling them out one a day would be a lie about when
+they happened — and a dozen mails about it would be a bug rather than a celebration. The subject names
+the badge when there is one and counts them when there are more.
+
+The message says what was earned in words. The badges are cats and the cats are SVG, which mail
+clients either strip or refuse to draw, so it links to the page they live on instead.
+
+### 26.3 Off the drain loop
+
+Sending is a network call to somebody else's server, and `net/smtp` has no dial timeout of its own: a
+mail host that accepts the connection and then says nothing would stall the statistics queue for as
+long as it felt like. So the notice goes out in its own goroutine, and nothing waits on the result —
+the badge is stored and on the dashboard before this is reached.
+
+`Worker.Stop` does wait for it, which is new: until now the worker had nothing outstanding when its
+loop ended. A shutdown that closed the database underneath a message halfway out would produce an
+error nobody could act on, about mail nobody would receive.
+
+Nothing is retried. The mail is a courtesy about something already recorded, and a second attempt
+risks sending it twice rather than not at all.
+
+### 26.4 What the tests had to be told
+
+The configuration in the analytics tests is a zero `Config` put through `Normalize`, which fixes
+numbers that are out of range but cannot know that a boolean's documented default is `true` — those
+come from the `env` struct tags, and only `config.New` reads those. The first version of the worker
+test therefore watched for a mail that the worker had been told not to send. Both mail tests now set
+the flag they are testing, in both directions, so neither can pass by accident.

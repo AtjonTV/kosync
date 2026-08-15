@@ -29,6 +29,7 @@ file. See [`server/kosync.env.example`](../server/kosync.env.example) for a copy
 | `BOOKS_WORDS_PER_PAGE` | `155` | fallback reading density for books whose page count cannot be measured |
 | `ENABLE_OPDS` | `true` | serve the library as an OPDS catalog at `/opds` |
 | `OPDS_PAGE_SIZE` | `50` | how many books one page of a catalog feed holds |
+| `ENABLE_ACHIEVEMENT_MAIL` | `true` | let the server tell an account what it has earned |
 
 An invalid value falls back to its default instead of stopping the server.
 
@@ -52,6 +53,27 @@ The links inside a feed are absolute, and they are built from the address the re
 that a reader gets back the name it reached the server by. Behind a reverse proxy that means
 `X-Forwarded-Proto` and `X-Forwarded-Host` have to be set, or the acquisition links will point at
 whatever the proxy dialled — usually an address the device cannot reach.
+
+## About the mail
+
+There is only one message KOsync writes itself: the note that an account has earned an achievement.
+Everything else that arrives from this server — verification, password reset, the confirmation of an
+address change — is PocketBase's, from its own templates.
+
+All of it needs the SMTP settings in the superuser interface at `/_/` under **Settings → Mail**.
+Without them PocketBase falls back to the local `sendmail`, which a container does not have, and
+sending fails with a line in the log.
+
+The achievement notice asks twice before it goes out. `ENABLE_ACHIEVEMENT_MAIL` is the operator's
+switch, for a server that should send nothing of its own; the account's own switch is under
+**Account** in the web interface, and it is off until somebody turns it on. An account created by a
+script or in the superuser interface therefore stays quiet, while one registered in the browser has
+already asked. Nothing is sent to an unconfirmed address, which also keeps the placeholder addresses
+the legacy import creates from being written to forever.
+
+One message goes out per statistics batch rather than one per badge. A first evaluation of an
+account that has been reading for years earns a dozen tiers at once, and a dozen mails about it would
+be a bug rather than a celebration.
 
 ## Settings that are gone
 

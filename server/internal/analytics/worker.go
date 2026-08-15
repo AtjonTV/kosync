@@ -12,6 +12,7 @@ import (
 
 	"git.obth.eu/atjontv/kosync/internal/achievements"
 	"git.obth.eu/atjontv/kosync/internal/config"
+	"git.obth.eu/atjontv/kosync/internal/mail"
 	"github.com/pocketbase/pocketbase/core"
 )
 
@@ -28,6 +29,10 @@ type Worker struct {
 	stop    chan struct{}
 	stopped chan struct{}
 	running bool
+
+	// mails counts the notices still being sent, so a shutdown can wait for them
+	// rather than pulling the database out from under one.
+	mails sync.WaitGroup
 }
 
 // NewWorker creates the queue worker.
@@ -51,11 +56,14 @@ func (w *Worker) Start() {
 	go w.loop(w.stop, w.stopped)
 }
 
-// Stop ends the drain loop and waits for the current pass to finish.
+// Stop ends the drain loop and waits for the current pass, and for any notice
+// still going out, to finish.
 func (w *Worker) Stop() {
 	w.mu.Lock()
 	if !w.running {
 		w.mu.Unlock()
+		w.mails.Wait()
+
 		return
 	}
 	w.running = false
@@ -64,6 +72,7 @@ func (w *Worker) Stop() {
 
 	close(stop)
 	<-stopped
+	w.mails.Wait()
 }
 
 // loop drains the queue on every tick.
@@ -150,7 +159,45 @@ func (w *Worker) recognise(items []queueItem) {
 			w.app.Logger().Info("achievement earned",
 				"owner", item.Owner, "rule", award.Rule.Slug, "tier", award.Tier, "value", award.Value)
 		}
+
+		w.announce(item.Owner, earned)
 	}
+}
+
+// announce mails an account what it has just earned, off the drain loop.
+//
+// In its own goroutine because sending is a network call to somebody else's
+// server: net/smtp has no dial timeout of its own, so a mail host that accepts
+// the connection and then says nothing would stall the statistics queue for as
+// long as it felt like. Nothing waits on the result, and a badge is already
+// stored and already on the dashboard before this is reached.
+//
+// Stop does wait for it, though, so a shutdown does not close the database
+// underneath a message that is halfway out.
+func (w *Worker) announce(ownerId string, earned []achievements.Awarded) {
+	if !w.conf.EnableAchievementMail || len(earned) == 0 {
+		return
+	}
+
+	w.mails.Add(1)
+
+	go func() {
+		defer w.mails.Done()
+
+		sent, err := mail.Achievements(w.app, ownerId, earned)
+		if err != nil {
+			// Nothing is retried: the mail is a courtesy about something that is
+			// already recorded, and a second attempt would risk sending it twice
+			// rather than not at all.
+			w.app.Logger().Warn("failed to mail an achievement",
+				"owner", ownerId, "error", err)
+
+			return
+		}
+		if sent {
+			w.app.Logger().Info("achievement mail sent", "owner", ownerId, "count", len(earned))
+		}
+	}()
 }
 
 // DrainAll processes the queue until it is empty.

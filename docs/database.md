@@ -16,6 +16,11 @@ The PocketBase auth collection, used for the web interface. Email is required, b
 recovery goes through it. Rules: everybody may register (unless `DISABLE_REGISTRATION` is set),
 everybody may only see and change themselves.
 
+`achievement_mail` is whether the account wants to be told by mail about what it earns. It is
+positive rather than a mute switch, because a boolean is false when it has never been set and for
+unsolicited mail the safe end of that is silence — so an account created outside the browser is quiet
+until somebody ticks the box. See [config.md](config.md).
+
 `timezone` holds an IANA name such as `Europe/Vienna`, and is what the statistics days are reckoned
 in. The browser supplies it at registration, because nothing else can: the KOReader protocol carries
 no clock. It defaults to `UTC`, and changing it requeues every day the account has ever read — see

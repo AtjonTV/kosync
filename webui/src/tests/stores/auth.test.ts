@@ -53,6 +53,10 @@ describe('auth store', () => {
       // Registration is the one moment the zone can be learned without asking:
       // no device ever tells the server what time it thinks it is.
       timezone: browserTimezone(),
+      // Somebody registering in a browser is asking to hear about their reading;
+      // an account created by a script is not, which is why the field is off
+      // until something says otherwise.
+      achievement_mail: true,
     })
     expect(pbMockModule.collection('users').authWithPassword).toHaveBeenCalled()
     expect(pbMockModule.collection('users').requestVerification).toHaveBeenCalledWith(
@@ -164,5 +168,15 @@ describe('auth store', () => {
     store.record = { id: 'user-a', collectionId: 'c', collectionName: 'users' }
 
     expect(store.timezone).toBe('UTC')
+  })
+
+  it('turns the achievement notices off and on', async () => {
+    const store = useAuthStore()
+    store.record = { id: 'user-a', collectionId: 'c', collectionName: 'users' }
+    await store.setAchievementMail(false)
+
+    expect(pbMockModule.collection('users').update).toHaveBeenCalledWith('user-a', {
+      achievement_mail: false,
+    })
   })
 })

@@ -57,6 +57,12 @@ type Config struct {
 	// parse the whole page before drawing any of it, so this trades a moment on
 	// a large library against a page turn on a small one.
 	OpdsPageSize int `env:"OPDS_PAGE_SIZE" default:"50"`
+
+	// EnableAchievementMail lets the server tell an account what it has earned.
+	// It is on by default and still asks twice: the account has to have opted in
+	// as well, so this is the switch for an operator who would rather the server
+	// sent no mail of its own at all.
+	EnableAchievementMail bool `env:"ENABLE_ACHIEVEMENT_MAIL" default:"true"`
 }
 
 // New loads the configuration from "./kosync.env" (if present) and the environment.

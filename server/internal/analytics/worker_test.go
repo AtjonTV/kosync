@@ -7,6 +7,7 @@
 package analytics_test
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -193,4 +194,73 @@ func TestWorkerDrainsWhileRunning(t *testing.T) {
 	}
 
 	t.Errorf("expected the running worker to compute the queued day within 10s")
+}
+
+// wantsMail is an account that has asked to hear about its achievements.
+func wantsMail(t testing.TB, app core.App, user *core.Record) {
+	t.Helper()
+
+	user.Set(schema.FieldAchievementMail, true)
+	if err := app.Save(user); err != nil {
+		t.Fatalf("failed to ask for the mail: %v", err)
+	}
+}
+
+// The mail goes out off the drain loop, so this stops the worker to wait for it
+// rather than sleeping and hoping.
+func TestEarningSomethingIsMailedOnce(t *testing.T) {
+	app, user := newApp(t)
+	wantsMail(t, app, user)
+
+	conf := testConfig()
+	conf.EnableAchievementMail = true
+	worker := analytics.Register(app, conf)
+
+	// Finishing a book earns the first tier of first-pounce.
+	testutil.CreateDocument(t, app, user, "", "hash-done", 1, at(10, 0))
+
+	if _, err := worker.DrainAll(); err != nil {
+		t.Fatalf("failed to drain the queue: %v", err)
+	}
+	worker.Stop()
+
+	if got := app.TestMailer.TotalSend(); got != 1 {
+		t.Fatalf("expected one mail for the batch, got %d", got)
+	}
+	if subject := app.TestMailer.FirstMessage().Subject; !strings.Contains(subject, "First Pounce") {
+		t.Errorf("expected the badge in the subject, got %q", subject)
+	}
+
+	// A second batch that earns nothing new must say nothing, which is what
+	// makes it safe to run this after every batch.
+	testutil.CreateDocument(t, app, user, "", "hash-more", 0.3, at(11, 0))
+	if _, err := worker.DrainAll(); err != nil {
+		t.Fatalf("failed to drain the queue again: %v", err)
+	}
+	worker.Stop()
+
+	if got := app.TestMailer.TotalSend(); got != 1 {
+		t.Errorf("expected no second mail, got %d", got)
+	}
+}
+
+func TestTheOperatorCanTurnAchievementMailOff(t *testing.T) {
+	app, user := newApp(t)
+	wantsMail(t, app, user)
+
+	// The account has asked for the mail; the operator has said no server of
+	// theirs sends any.
+	conf := testConfig()
+	conf.EnableAchievementMail = false
+	worker := analytics.Register(app, conf)
+
+	testutil.CreateDocument(t, app, user, "", "hash-done", 1, at(10, 0))
+	if _, err := worker.DrainAll(); err != nil {
+		t.Fatalf("failed to drain the queue: %v", err)
+	}
+	worker.Stop()
+
+	if got := app.TestMailer.TotalSend(); got != 0 {
+		t.Errorf("expected nothing to be sent, got %d", got)
+	}
 }

@@ -55,6 +55,29 @@ const changeTimezone = async () => {
   }
 }
 
+const mailBusy = ref(false)
+const mailError = ref('')
+
+const wantsMail = computed({
+  get: () => auth.achievementMail,
+  set: (on: boolean) => {
+    void changeAchievementMail(on)
+  },
+})
+
+const changeAchievementMail = async (on: boolean) => {
+  mailError.value = ''
+  mailBusy.value = true
+
+  try {
+    await auth.setAchievementMail(on)
+  } catch (e) {
+    mailError.value = errorMessage(e, 'The setting could not be changed.')
+  } finally {
+    mailBusy.value = false
+  }
+}
+
 const isVerified = computed(() => auth.record?.verified === true)
 
 // The legacy import parks every account it creates on this domain, so it is
@@ -258,6 +281,30 @@ const changePassword = async () => {
             </button>
           </div>
         </form>
+
+        <div class="flex flex-col gap-4">
+          <h3 class="text-lg font-semibold">Mail</h3>
+
+          <div class="flex items-start gap-3">
+            <ToggleSwitch
+              v-model="wantsMail"
+              input-id="achievement-mail"
+              :disabled="mailBusy"
+              aria-labelledby="achievement-mail-label"
+            />
+            <label id="achievement-mail-label" for="achievement-mail" class="cursor-pointer">
+              Email me when I earn an achievement
+            </label>
+          </div>
+
+          <p class="text-sm text-surface-500 dark:text-surface-400">
+            One message per batch, never one per badge: earning five at once is one email. Nothing
+            is sent while your address is unconfirmed, and a server without mail set up sends
+            nothing at all.
+          </p>
+
+          <Message v-if="mailError" severity="error" variant="simple">{{ mailError }}</Message>
+        </div>
       </div>
     </template>
   </Card>

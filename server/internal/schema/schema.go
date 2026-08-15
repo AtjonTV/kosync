@@ -78,6 +78,12 @@ const (
 // began.
 const FieldTimezone = "timezone"
 
+// FieldAchievementMail is whether the account wants to be told by mail when it
+// earns something. It is positive rather than a mute switch so that an account
+// created outside the browser is quiet until it asks not to be: mail nobody
+// asked for is the kind of default worth getting the wrong way round.
+const FieldAchievementMail = "achievement_mail"
+
 // koreader_accounts field names.
 const (
 	FieldUsername = "username"

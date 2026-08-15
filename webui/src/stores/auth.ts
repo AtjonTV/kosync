@@ -26,6 +26,7 @@ export const useAuthStore = defineStore('auth', () => {
   const email = computed(() => (record.value?.email as string | undefined) ?? '')
   const displayName = computed(() => (record.value?.name as string) || email.value)
   const timezone = computed(() => (record.value?.timezone as string) || 'UTC')
+  const achievementMail = computed(() => record.value?.achievement_mail === true)
 
   async function login(identity: string, password: string): Promise<void> {
     await pb.collection(Collections.users).authWithPassword(identity, password)
@@ -42,6 +43,10 @@ export const useAuthStore = defineStore('auth', () => {
       // begin at UTC midnight — which for most of the world is the middle of an
       // evening's reading.
       timezone: browserTimezone(),
+      // Somebody registering in a browser is somebody who wants to hear about
+      // their own reading. The field is off until asked precisely so that an
+      // account created by a script is quiet, and this is the asking.
+      achievement_mail: true,
     })
     await login(email, password)
 
@@ -104,6 +109,14 @@ export const useAuthStore = defineStore('auth', () => {
     record.value = await pb.collection(Collections.users).update(id, { timezone: zone })
   }
 
+  /** Turns the achievement notices on or off. */
+  async function setAchievementMail(on: boolean): Promise<void> {
+    const id = record.value?.id
+    if (!id) throw new Error('You are not signed in.')
+
+    record.value = await pb.collection(Collections.users).update(id, { achievement_mail: on })
+  }
+
   function logout(): void {
     pb.authStore.clear()
   }
@@ -133,6 +146,8 @@ export const useAuthStore = defineStore('auth', () => {
     requestEmailChange,
     timezone,
     changeTimezone,
+    achievementMail,
+    setAchievementMail,
     logout,
     refresh,
     errorMessage,

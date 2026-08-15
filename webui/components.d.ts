@@ -45,6 +45,7 @@ declare module 'vue' {
     SetupGuide: typeof import('./src/components/SetupGuide.vue')['default']
     Tag: typeof import('primevue/tag')['default']
     Toast: typeof import('primevue/toast')['default']
+    ToggleSwitch: typeof import('primevue/toggleswitch')['default']
     TopBar: typeof import('./src/components/TopBar.vue')['default']
   }
 }
