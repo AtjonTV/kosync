@@ -104,8 +104,8 @@ func RequeueEverything(app core.App, ownerId string) error {
 	// Both zones, because a day only stops existing once something recomputes
 	// it: a row written under the old boundaries would otherwise sit there
 	// forever with numbers nothing produces any more.
-	location := OwnerLocation(app, ownerId)
-	days := append(LocalDays(location, moments), storedDays(app, ownerId)...)
+	location := timezone.Of(app, ownerId)
+	days := append(timezone.LocalDays(location, moments), storedDays(app, ownerId)...)
 
 	seen := map[string]bool{}
 	for _, day := range days {

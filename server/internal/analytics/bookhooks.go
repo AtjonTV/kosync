@@ -8,6 +8,7 @@ package analytics
 
 import (
 	"git.obth.eu/atjontv/kosync/internal/schema"
+	"git.obth.eu/atjontv/kosync/internal/timezone"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/types"
@@ -93,7 +94,7 @@ func enqueueDocumentDays(app core.App, document *core.Record) {
 		read[index] = row.LastReadAt
 	}
 
-	for _, date := range LocalDays(OwnerLocation(app, owner), read) {
+	for _, date := range timezone.LocalDays(timezone.Of(app, owner), read) {
 		enqueueQuietly(app, owner, date)
 	}
 }

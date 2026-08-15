@@ -29,6 +29,7 @@ export const Collections = {
   books: 'books',
   readingBookDays: 'reading_book_days',
   devices: 'devices',
+  achievements: 'achievements',
 } as const
 
 /**
@@ -40,6 +41,7 @@ export const KosyncApi = {
   restoreHistory: (documentId: string, historyId: string) =>
     `/api/kosync/documents/${documentId}/restore/${historyId}`,
   mergeDocuments: '/api/kosync/documents/merge',
+  achievements: '/api/kosync/achievements',
 } as const
 
 /**

@@ -6,10 +6,13 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
 import TopBar from '@/components/TopBar.vue'
+import AchievementSprite from '@/components/AchievementSprite.vue'
 </script>
 
 <template>
   <div class="min-h-screen bg-surface-50 dark:bg-surface-950">
+    <!-- Mounted once, so every badge on every page is a <use> of one drawing. -->
+    <AchievementSprite />
     <ConfirmDialog />
     <Toast />
     <TopBar />

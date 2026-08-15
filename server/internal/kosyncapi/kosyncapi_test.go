@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"git.obth.eu/atjontv/kosync/internal/config"
 	"git.obth.eu/atjontv/kosync/internal/koreader"
@@ -301,4 +302,70 @@ func TestRegistrationCanBeDisabled(t *testing.T) {
 		},
 	}
 	allowed.Test(t)
+}
+
+func TestListAchievements(t *testing.T) {
+	asUser(t, testutil.IdUserA, tests.ApiScenario{
+		Name:           "the rules and the account's standing in them",
+		Method:         http.MethodGet,
+		URL:            "/api/kosync/achievements",
+		ExpectedStatus: http.StatusOK,
+		ExpectedContent: []string{
+			// The rules are served rather than duplicated in the browser, so the
+			// name, the thresholds and which cat to draw all come from here.
+			`"rule":"first-pounce"`,
+			`"name":"First Pounce"`,
+			`"icon":"ach-first"`,
+			`"fur":"ginger"`,
+			`"tiers":[1,10,50]`,
+			// Unearned rules are included: a badge nobody has is the only thing
+			// that says what there is to aim at.
+			`"rule":"night-prowler"`,
+		},
+	})
+}
+
+func TestAchievementsRequireAuthentication(t *testing.T) {
+	asUser(t, "", tests.ApiScenario{
+		Name:            "guests have no achievements",
+		Method:          http.MethodGet,
+		URL:             "/api/kosync/achievements",
+		ExpectedStatus:  http.StatusUnauthorized,
+		ExpectedContent: []string{`"data":{}`},
+	})
+}
+
+// A badge that has been awarded must not disappear when the reading behind it
+// does. The stored award is the durable answer; the live measure is not.
+func TestAnAwardedAchievementSurvivesTheReadingBehindIt(t *testing.T) {
+	asUser(t, testutil.IdUserA, tests.ApiScenario{
+		Name:   "the stored tier wins over a measure that has fallen back",
+		Method: http.MethodGet,
+		URL:    "/api/kosync/achievements",
+		BeforeTestFunc: func(t testing.TB, app *tests.TestApp, _ *core.ServeEvent) {
+			collection, err := app.FindCollectionByNameOrId(schema.CollectionAchievements)
+			if err != nil {
+				t.Fatalf("failed to find the achievements collection: %v", err)
+			}
+
+			// Awarded once, when there really were fifty finished books. There
+			// are none now.
+			record := core.NewRecord(collection)
+			record.Set(schema.FieldOwner, testutil.IdUserA)
+			record.Set(schema.FieldRule, "first-pounce")
+			record.Set(schema.FieldTier, 3)
+			record.Set(schema.FieldValue, 50)
+			record.Set(schema.FieldEarnedAt, time.Now().UTC())
+			if err := app.Save(record); err != nil {
+				t.Fatalf("failed to store the award: %v", err)
+			}
+		},
+		ExpectedStatus: http.StatusOK,
+		ExpectedContent: []string{
+			`"rule":"first-pounce"`,
+			// The measure says zero books; the badge stays gold.
+			`"value":0`,
+			`"tier":3`,
+		},
+	})
 }

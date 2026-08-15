@@ -140,6 +140,31 @@ because it synced, so `create` and `delete` are superuser only and only `name` m
 This is deliberately not `koreader_accounts.label`. A credential and a device are not the same thing:
 one credential can be used from several devices, and the statistics group by device.
 
+### `achievements`
+
+What an account has been recognised for.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `owner` | relation → `users` | |
+| `rule` | text | the rule's slug, such as `lap-warmer` |
+| `tier` | number | 1, 2 or 3 |
+| `value` | number | what the measure stood at when the tier was crossed |
+| `earned_at` | date | when it was noticed, which is not quite when it was reached |
+
+Unique on `(owner, rule, tier)`. Read only through the API: an achievement that could be granted from
+the browser would not be worth having, and one that could be deleted would make the rule below a lie.
+
+**Nothing is ever revoked.** Every measure is recomputed from live data, and live data moves
+backwards — history gets deleted, a re-read puts progress back to the start, and the retention window
+eventually removes the daily rows a streak was counted from. An achievement records that something
+happened, and it having happened does not stop being true.
+
+The rules themselves are not stored. They are code, in
+[`server/internal/achievements`](../server/internal/achievements), because each one is a question
+only code can ask, and the web interface reads them from `/api/kosync/achievements` rather than
+keeping a copy.
+
 ### `reading_book_days`
 
 The daily statistics of a single book, keyed by owner, day and book. Read only through the API, like

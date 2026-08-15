@@ -55,7 +55,7 @@ func Enqueue(app core.App, ownerId string, date string) error {
 // day the reader has not lived yet while leaving the one they just read on
 // stale.
 func EnqueueTime(app core.App, ownerId string, moment time.Time) error {
-	return Enqueue(app, ownerId, timezone.DayOf(OwnerLocation(app, ownerId), moment))
+	return Enqueue(app, ownerId, timezone.DayOf(timezone.Of(app, ownerId), moment))
 }
 
 // queueItem is one pending recomputation.

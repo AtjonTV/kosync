@@ -13,6 +13,7 @@ import (
 
 	"git.obth.eu/atjontv/kosync/internal/config"
 	"git.obth.eu/atjontv/kosync/internal/schema"
+	"git.obth.eu/atjontv/kosync/internal/timezone"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/types"
@@ -194,7 +195,7 @@ func Reconcile(app core.App, conf *config.Config, now time.Time) (int, error) {
 
 	queued := 0
 	for owner, moments := range byOwner {
-		for _, date := range LocalDays(OwnerLocation(app, owner), moments) {
+		for _, date := range timezone.LocalDays(timezone.Of(app, owner), moments) {
 			if err := Enqueue(app, owner, date); err != nil {
 				return 0, err
 			}

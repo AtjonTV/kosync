@@ -115,3 +115,33 @@ export interface ReadingBookDay extends BaseRecord {
 export interface DocumentWithHistory extends DocumentRecord {
   history: HistoryRecord[]
 }
+
+/** One tier of an achievement, as it was awarded. */
+export interface EarnedTier {
+  tier: number
+  value: number
+  at: string
+}
+
+/**
+ * One achievement rule with the account's standing in it.
+ *
+ * The rule half — name, summary, tiers, which cat — comes from the server
+ * rather than being defined here, so there is one place for it.
+ */
+export interface Achievement {
+  rule: string
+  name: string
+  summary: string
+  unit: string
+  icon: string
+  fur: string
+  tiers: number[]
+  /** The measure right now. */
+  value: number
+  /** The highest tier reached, zero for none. */
+  tier: number
+  /** The next threshold, zero when every tier is done. */
+  next: number
+  earned: EarnedTier[]
+}

@@ -12,6 +12,9 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     AccountSettings: typeof import('./src/components/AccountSettings.vue')['default']
+    AchievementBadge: typeof import('./src/components/AchievementBadge.vue')['default']
+    AchievementList: typeof import('./src/components/AchievementList.vue')['default']
+    AchievementSprite: typeof import('./src/components/AchievementSprite.vue')['default']
     AuthPanel: typeof import('./src/components/AuthPanel.vue')['default']
     BookLibrary: typeof import('./src/components/BookLibrary.vue')['default']
     Button: typeof import('primevue/button')['default']

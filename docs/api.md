@@ -40,6 +40,13 @@ Content-Type: application/json
 
 and is answered with `{"document": "...", "timestamp": 1772366400}`.
 
+A pull answers with the same fields plus `timestamp`, in **Unix seconds**. KOsync 1 returned its
+internal 1/10000 second unit here, which no KOReader build expects; a client written against that
+quirk needs adjusting.
+
+A percentage outside 0..1 is clamped rather than refused, so a rounding artefact on the device does
+not cost the reader their push.
+
 ### Document metadata
 
 KOReader has a setting called **"Send document metadata"**, off by default, which adds a `metadata`
@@ -84,13 +91,6 @@ is `time.Now().UTC()` at the moment the push lands.
 
 That is why the reader's timezone is a property of the *account*, taken from the browser at
 registration. See [analytics.md](analytics.md) for what it changes.
-
-A pull answers with the same fields plus `timestamp`, in **Unix seconds**. KOsync 1 returned its
-internal 1/10000 second unit here, which no KOReader build expects; a client written against that
-quirk needs adjusting.
-
-A percentage outside 0..1 is clamped rather than refused, so a rounding artefact on the device does
-not cost the reader their push.
 
 ## 2. The PocketBase collection API, under `/api/collections`
 
@@ -252,8 +252,42 @@ session (`Authorization: <token>`).
 | POST | `/api/kosync/koreader-accounts/{id}/password` | Replace the password of one of your credentials. Body: `{"password":…}`. |
 | POST | `/api/kosync/documents/{id}/restore/{historyId}` | Put a document back into an earlier state. The state being replaced is archived first, so the restore itself can be undone. |
 | POST | `/api/kosync/documents/merge` | Fold several documents into one. Body: `{"into":…,"from":[…]}`. |
+| GET | `/api/kosync/achievements` | Every achievement rule with your standing in it. |
 
 Anything that belongs to somebody else answers `404`, the same as something that does not exist.
+
+### Achievements
+
+```json
+{
+  "achievements": [
+    {
+      "rule": "lap-warmer",
+      "name": "Lap Warmer",
+      "summary": "Your longest run of days without missing one.",
+      "unit": "days",
+      "icon": "ach-streak",
+      "fur": "cream",
+      "tiers": [7, 30, 100],
+      "value": 12,
+      "tier": 1,
+      "next": 30,
+      "earned": [{ "tier": 1, "value": 7, "at": "2026-08-01 10:00:00.000Z" }]
+    }
+  ]
+}
+```
+
+The rules are served rather than duplicated in the browser. They are code — "how many nights did you
+read past midnight" is a timezone conversion, not a column — and a copy of their names and thresholds
+in the interface would be a second place for the two to disagree from. `icon` and `fur` name a drawing
+in the web interface's sprite, so a new achievement needs no change there beyond a cat.
+
+Unearned rules are included, with `tier: 0`. A badge nobody has yet is the one worth showing: it is
+the only thing that says what there is to aim at.
+
+Subscribe to the `achievements` collection for the moment one is awarded, then read this again — the
+record says which tier was earned, while the card also shows how far the next one is.
 
 ### Merging documents
 

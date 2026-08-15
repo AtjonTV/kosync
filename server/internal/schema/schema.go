@@ -46,6 +46,11 @@ const (
 	// so the thing can be given a name a person recognises.
 	CollectionDevices = "devices"
 
+	// CollectionAchievements holds what an account has earned. A row appears
+	// when a threshold is first crossed and is never removed: an achievement
+	// records that something happened, not that it is still true.
+	CollectionAchievements = "achievements"
+
 	// CollectionReadingBookDays holds the daily reading statistics of a single
 	// book. It is a separate collection rather than a grouping of reading_days
 	// because a day's reading time cannot be split across books without losing
@@ -124,6 +129,18 @@ const (
 	FieldReportedName = "reported_name"
 	FieldName         = "name"
 	FieldLastSeen     = "last_seen"
+)
+
+// achievements field names.
+//
+// FieldValue is what the measure stood at when the tier was crossed, kept
+// because it is the only record of it: the measure is recomputed from live data
+// and will have moved on by the time anybody looks.
+const (
+	FieldRule     = "rule"
+	FieldTier     = "tier"
+	FieldValue    = "value"
+	FieldEarnedAt = "earned_at"
 )
 
 // reading_days and reading_months field names.

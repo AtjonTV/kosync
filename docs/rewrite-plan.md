@@ -513,8 +513,8 @@ Then the later ideas, in dependency order:
 Phases 9 and 10 are independent of each other and can be built in either order; §16 explains why doing
 10 first makes 9 exact rather than heuristic for anything downloaded from the catalog.
 
-Phases 8, 9, 10, 11, 12, 15, 16 and 17 are built; §16.6, §18, §19, §21, §22 and §23 record what each of
-them turned into, and §17 is now a description of what the interface does rather than what it should
+Phases 8, 9, 10, 11, 12, 13, 15, 16 and 17 are built; §16.6, §18, §19, §21, §22, §23 and §25 record what
+each of them turned into, and §17 is now a description of what the interface does rather than what it should
 do. Phase 10 landed after 9 rather than before it, so the exactness §16 wanted from that ordering
 arrived as a third stored hash instead — see §22.1.
 
@@ -1346,3 +1346,75 @@ a book may be stored under that name. Exact comparison against an indexed column
 title — the project's stance on matching has not moved. The match also runs when a name first arrives
 rather than only when a document is created, so turning the setting on links the documents that are
 already there instead of only the next one.
+
+---
+
+## 25. Achievements (phase 13)
+
+Built. §13 asked for "pages/books/streak rules, SVG icons, repeatable tiers", and every part of that
+survived except the word *repeatable*, which turned out to mean something worth being precise about.
+
+### 25.1 The tier is the ring, not a second cat
+
+Five rules, three tiers each, and the tier is a colour on the badge's ring rather than a new drawing.
+That is what keeps the art budget finite: five rules is five cats, not fifteen. The name does not
+change with the tier either — the name is the badge's identity and the tier is how far it has been
+taken, which is how a person reads a badge anyway.
+
+The drawings are inline SVG in the web interface, mounted once as a hidden sprite and referenced with
+`<use>`. They ship with the code rather than being uploaded, which means they are versioned with it,
+recoloured by CSS, work in both themes and cost no request. The whole set is under 9 KB. The fur is
+two custom properties, so a new coat costs two hex values and no new drawing.
+
+### 25.2 Nothing is ever revoked, and that is a design
+
+Every measure is recomputed from live data, and live data moves backwards. History can be deleted. A
+re-read puts progress back to the start. The retention window eventually removes the very daily rows a
+streak was counted from, so a hundred-day streak becomes unmeasurable a year later.
+
+If achievements were derived on read, all three would take a badge away. So they are not derived: a
+row is written the first time a threshold is crossed and never removed. An achievement records that
+something happened, and it having happened does not stop being true.
+
+This also disposes of the retention problem entirely rather than working around it, and it is why the
+collection has no delete rule — one that could be deleted would make the claim a lie.
+
+### 25.3 The rules are code, and the browser asks for them
+
+Each rule is a question only code can ask. "How many nights did you read past midnight" is a timezone
+conversion. "How many books have you finished" is a query over the current state *and* its history,
+because progress goes backwards when a book is started again and having finished it once is the thing
+being counted.
+
+So the rules live in `internal/achievements` and the interface reads them from
+`/api/kosync/achievements` with the progress in the same response. A copy of their names and
+thresholds in TypeScript would have been a second place for the two to disagree from, and the one
+thing worse than an achievement nobody can earn is one that says different things in two places.
+
+Unearned rules are served too, drawn drained of colour. A badge nobody has yet is the only thing on
+the card that says what there is to aim at.
+
+### 25.4 Where it runs
+
+After the statistics batch, once per account rather than once per day. The measures are whole-account
+totals, so running them per day would ask the same question eighty times during a bulk requeue and get
+the same answer eighty times. A batch is also exactly the moment the numbers an achievement is
+measured from have finished moving.
+
+Awarding is idempotent, which is what makes that safe: evaluating an account that has earned nothing
+new writes nothing. And a first evaluation awards every tier the account already qualifies for at
+once, because dribbling a year of history out one badge per day would be a lie about when it happened.
+
+### 25.5 What phase 12 and the timezone made possible
+
+*Night Prowler* could not have been built before §24. In UTC the midnight boundary falls somewhere in
+the middle of a European evening, so "read past midnight" would have counted the wrong sessions for
+everyone outside Greenwich. It is the first feature that actually needed the account timezone rather
+than merely being tidier for having it.
+
+A night is named after the day it began, so a session from 23:30 to 00:30 is one night and not two —
+which is what a person means by "I was up reading".
+
+*Page Turner* rests on phase 12's measured page counts, and sums `reading_days` and `reading_months`
+together, because retention folds aged out days into months and deletes them. Counting only the days
+would have quietly shrunk a lifetime total every time the retention job ran.

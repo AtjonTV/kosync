@@ -28,6 +28,7 @@ func TestAllCollectionsAreCreated(t *testing.T) {
 		schema.CollectionAnalyticsQueue,
 		schema.CollectionBooks,
 		schema.CollectionReadingBookDays,
+		schema.CollectionAchievements,
 	}
 
 	for _, name := range names {

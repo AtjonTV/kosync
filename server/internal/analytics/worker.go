@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"git.obth.eu/atjontv/kosync/internal/achievements"
 	"git.obth.eu/atjontv/kosync/internal/config"
 	"github.com/pocketbase/pocketbase/core"
 )
@@ -113,7 +114,43 @@ func (w *Worker) DrainOnce() (int, error) {
 		return len(done), err
 	}
 
+	w.recognise(items)
+
 	return len(done), nil
+}
+
+// recognise checks what the recomputed days have earned.
+//
+// Once per account per batch rather than once per day: the measures are whole
+// account totals, so running them per day would ask the same question eighty
+// times during a bulk requeue and get the same answer.
+//
+// This is where it belongs because a batch is exactly the moment the numbers an
+// achievement is measured from have finished moving.
+func (w *Worker) recognise(items []queueItem) {
+	seen := map[string]bool{}
+
+	for _, item := range items {
+		if seen[item.Owner] {
+			continue
+		}
+		seen[item.Owner] = true
+
+		earned, err := achievements.Evaluate(w.app, item.Owner)
+		if err != nil {
+			// The statistics are already stored and released. An achievement
+			// that is not noticed now is noticed on the next batch.
+			w.app.Logger().Warn("failed to evaluate achievements",
+				"owner", item.Owner, "error", err)
+
+			continue
+		}
+
+		for _, award := range earned {
+			w.app.Logger().Info("achievement earned",
+				"owner", item.Owner, "rule", award.Rule.Slug, "tier", award.Tier, "value", award.Value)
+		}
+	}
 }
 
 // DrainAll processes the queue until it is empty.

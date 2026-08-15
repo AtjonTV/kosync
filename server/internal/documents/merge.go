@@ -14,6 +14,7 @@ import (
 
 	"git.obth.eu/atjontv/kosync/internal/analytics"
 	"git.obth.eu/atjontv/kosync/internal/schema"
+	"git.obth.eu/atjontv/kosync/internal/timezone"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/types"
@@ -290,7 +291,7 @@ func affectedDays(app core.App, ownerId string, documentIds []string) ([]string,
 		}
 	}
 
-	return analytics.LocalDays(analytics.OwnerLocation(app, ownerId), moments), nil
+	return timezone.LocalDays(timezone.Of(app, ownerId), moments), nil
 }
 
 // ids returns the ids of the given records.

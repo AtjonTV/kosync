@@ -8,6 +8,7 @@ import { onMounted, onUnmounted, watch } from 'vue'
 import DashboardMetrics from '@/components/DashboardMetrics.vue'
 import BookLibrary from '@/components/BookLibrary.vue'
 import ReadStatisticsChart from '@/components/ReadStatisticsChart.vue'
+import AchievementList from '@/components/AchievementList.vue'
 import AuthPanel from '@/components/AuthPanel.vue'
 import SetupGuide from '@/components/SetupGuide.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -59,6 +60,7 @@ onUnmounted(stop)
   <template v-if="auth.isValid">
     <DashboardMetrics />
     <ReadStatisticsChart />
+    <AchievementList />
     <BookLibrary :limit="6" />
   </template>
 
