@@ -10,7 +10,7 @@ const props = withDefaults(
   defineProps<{
     /** The sprite symbol to draw, such as "ach-first". */
     icon: string
-    /** The coat: ginger, grey, cream, soot or calico. */
+    /** The coat: ginger, grey, cream, soot, calico, apricot, tabby or tortie. */
     fur: string
     /** 1, 2 or 3. Zero means not earned, which is drawn drained of colour. */
     tier?: number
@@ -80,6 +80,20 @@ const title = computed(() => {
 .fur-calico {
   --fur: #f6ece0;
   --fur-shade: #d8c3a8;
+}
+.fur-apricot {
+  --fur: #f6c98a;
+  --fur-shade: #d79a4f;
+}
+.fur-tabby {
+  --fur: #c08b4e;
+  --fur-shade: #8b5f2d;
+}
+/* Tortoiseshell: the shade is a patch rather than a shadow, which is what makes
+   the markings read as two colours instead of one lit from the side. */
+.fur-tortie {
+  --fur: #b4713f;
+  --fur-shade: #4a3326;
 }
 
 .tier-bronze {

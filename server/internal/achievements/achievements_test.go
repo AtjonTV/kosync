@@ -7,6 +7,8 @@
 package achievements_test
 
 import (
+	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -171,6 +173,77 @@ func TestLateNightsInUTCAreDifferent(t *testing.T) {
 	}
 }
 
+// The mirror of the late night, sharing its boundary: 05:00 belongs to the
+// morning and 04:59 to the night before, and neither counts twice.
+func TestEarlyMorningsAreCountedInTheAccountsZone(t *testing.T) {
+	app, user := newApp(t)
+	user.Set(schema.FieldTimezone, "Europe/Vienna")
+	if err := app.Save(user); err != nil {
+		t.Fatalf("failed to set the timezone: %v", err)
+	}
+
+	// 04:30 UTC is 06:30 in Vienna: an early morning. 05:10 UTC is 07:10, the
+	// same morning, and one morning is what that should be.
+	document := testutil.CreateDocument(t, app, user, "", "hash-morning", 0.5,
+		time.Date(2026, 8, 14, 5, 10, 0, 0, time.UTC))
+	testutil.CreateHistoryEntry(t, app, document, "", 0.4,
+		time.Date(2026, 8, 14, 4, 30, 0, 0, time.UTC))
+
+	// 07:30 in Vienna on another day: early enough.
+	testutil.CreateHistoryEntry(t, app, document, "", 0.3,
+		time.Date(2026, 8, 12, 5, 30, 0, 0, time.UTC))
+
+	// 09:00 in Vienna, which is nobody's early start.
+	testutil.CreateHistoryEntry(t, app, document, "", 0.2,
+		time.Date(2026, 8, 10, 7, 0, 0, 0, time.UTC))
+
+	// 02:00 in Vienna, which is the night before and the other rule's business.
+	testutil.CreateHistoryEntry(t, app, document, "", 0.1,
+		time.Date(2026, 8, 8, 0, 0, 0, 0, time.UTC))
+
+	if got := valueOf(t, app, user.Id, "sunbeam-sitter"); got != 2 {
+		t.Errorf("expected two early mornings, got %d", got)
+	}
+	if got := valueOf(t, app, user.Id, "night-prowler"); got != 1 {
+		t.Errorf("expected the 02:00 reading to be a late night, got %d", got)
+	}
+}
+
+func TestBestDayTakesTheDayAndNotTheTotal(t *testing.T) {
+	app, user := newApp(t)
+
+	readingDay(t, app, user, "2026-08-01", 40)
+	readingDay(t, app, user, "2026-08-02", 210)
+	readingDay(t, app, user, "2026-08-03", 90)
+
+	if got := valueOf(t, app, user.Id, "the-long-sit"); got != 210 {
+		t.Errorf("expected the best single day of 210 pages, got %d", got)
+	}
+}
+
+// A book counts as re-read when it was begun again after it was finished. A low
+// position before the finish is just where the first reading started.
+func TestBooksRereadNeedsTheRestartToComeAfterTheFinish(t *testing.T) {
+	app, user := newApp(t)
+	start := time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
+
+	// Started, finished, and started again: a re-read.
+	reread := testutil.CreateDocument(t, app, user, "", "hash-reread", 0.04, start.Add(72*time.Hour))
+	testutil.CreateHistoryEntry(t, app, reread, "", 0.02, start)
+	testutil.CreateHistoryEntry(t, app, reread, "", 1, start.Add(48*time.Hour))
+
+	// Finished and left alone at the last page.
+	finished := testutil.CreateDocument(t, app, user, "", "hash-finished", 1, start.Add(24*time.Hour))
+	testutil.CreateHistoryEntry(t, app, finished, "", 0.05, start)
+
+	// Only just begun, and never finished at all.
+	testutil.CreateDocument(t, app, user, "", "hash-begun", 0.03, start)
+
+	if got := valueOf(t, app, user.Id, "nine-lives"); got != 1 {
+		t.Errorf("expected one re-read book, got %d", got)
+	}
+}
+
 func TestEvaluateAwardsEveryTierReached(t *testing.T) {
 	app, user := newApp(t)
 
@@ -287,6 +360,35 @@ func TestMeasureReportsTheNextThreshold(t *testing.T) {
 	}
 
 	t.Fatal("first-pounce was not measured")
+}
+
+// The drawings live in the web interface and the names of them live here, so
+// nothing in either tree fails when they disagree: a <use> of a symbol that does
+// not exist renders as nothing at all, silently, exactly like a mistyped icon
+// class. This is the only place the two halves can be checked against each other.
+//
+// It skips rather than fails when the interface is not beside the server, so a
+// source tree with only the Go half still tests clean.
+func TestEveryRuleIsDrawnByTheInterface(t *testing.T) {
+	sprite, err := os.ReadFile("../../../webui/src/components/AchievementSprite.vue")
+	if err != nil {
+		t.Skipf("the web interface is not beside the server: %v", err)
+	}
+	badge, err := os.ReadFile("../../../webui/src/components/AchievementBadge.vue")
+	if err != nil {
+		t.Skipf("the web interface is not beside the server: %v", err)
+	}
+
+	for _, rule := range achievements.Rules {
+		if !strings.Contains(string(sprite), `id="`+rule.Icon+`"`) {
+			t.Errorf("rule %q names the drawing %q, which the sprite does not have",
+				rule.Slug, rule.Icon)
+		}
+		if !strings.Contains(string(badge), ".fur-"+rule.Fur+" {") {
+			t.Errorf("rule %q names the coat %q, which the badge does not have",
+				rule.Slug, rule.Fur)
+		}
+	}
 }
 
 // Every rule has to have somewhere to draw itself from, or a badge renders as

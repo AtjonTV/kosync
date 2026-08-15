@@ -95,6 +95,36 @@ var Rules = []Rule{
 		Tiers:   []int{7, 30, 100},
 		Measure: longestStreak,
 	},
+	{
+		Slug:    "sunbeam-sitter",
+		Name:    "Sunbeam Sitter",
+		Summary: "Mornings you were reading before eight.",
+		Unit:    "mornings",
+		Icon:    "ach-dawn",
+		Fur:     "apricot",
+		Tiers:   []int{1, 25, 100},
+		Measure: earlyMornings,
+	},
+	{
+		Slug:    "the-long-sit",
+		Name:    "The Long Sit",
+		Summary: "The most pages you have read in one day.",
+		Unit:    "pages",
+		Icon:    "ach-day",
+		Fur:     "tabby",
+		Tiers:   []int{100, 250, 500},
+		Measure: bestDay,
+	},
+	{
+		Slug:    "nine-lives",
+		Name:    "Nine Lives",
+		Summary: "Books you finished and then began again.",
+		Unit:    "books",
+		Icon:    "ach-again",
+		Fur:     "tortie",
+		Tiers:   []int{1, 5, 20},
+		Measure: booksReread,
+	},
 }
 
 // FindRule returns the rule with the given slug.

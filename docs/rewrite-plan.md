@@ -1356,14 +1356,14 @@ survived except the word *repeatable*, which turned out to mean something worth 
 
 ### 25.1 The tier is the ring, not a second cat
 
-Five rules, three tiers each, and the tier is a colour on the badge's ring rather than a new drawing.
-That is what keeps the art budget finite: five rules is five cats, not fifteen. The name does not
+Eight rules, three tiers each, and the tier is a colour on the badge's ring rather than a new drawing.
+That is what keeps the art budget finite: eight rules is eight cats, not twenty-four. The name does not
 change with the tier either — the name is the badge's identity and the tier is how far it has been
 taken, which is how a person reads a badge anyway.
 
 The drawings are inline SVG in the web interface, mounted once as a hidden sprite and referenced with
 `<use>`. They ship with the code rather than being uploaded, which means they are versioned with it,
-recoloured by CSS, work in both themes and cost no request. The whole set is under 9 KB. The fur is
+recoloured by CSS, work in both themes and cost no request. The whole set is under 18 KB. The fur is
 two custom properties, so a new coat costs two hex values and no new drawing.
 
 ### 25.2 Nothing is ever revoked, and that is a design
@@ -1418,3 +1418,30 @@ which is what a person means by "I was up reading".
 *Page Turner* rests on phase 12's measured page counts, and sums `reading_days` and `reading_months`
 together, because retention folds aged out days into months and deletes them. Counting only the days
 would have quietly shrunk a lifetime total every time the retention job ran.
+
+### 25.6 The second three
+
+*Sunbeam Sitter* is the mirror of *Night Prowler* and cost almost nothing for it: the same distinct
+moments, a different band of hours. The two share the boundary at 05:00 and do not overlap, so no
+single reading can be credited as both a late night and an early morning. It is why the hour has a
+name in the code rather than being written as a number in two places.
+
+*The Long Sit* is the most pages read on any one day, from `reading_days` alone: a month holds a sum,
+and the sum of a month is not a day anybody had. That means the record day eventually ages out of the
+retention window and stops being measurable, which is the clearest case yet for §25.2 — the award
+outlives the evidence on purpose.
+
+*Nine Lives* counts books finished and then begun again, and is the first rule to ask the history a
+question about *order*. A book being read for the second time looks exactly like one being read for
+the first, so the test is a finish with a fresh start after it: the earliest moment the document stood
+at the end, against the latest it stood near the beginning. A low position before the finish is just
+where the first reading started, and comparing the two extremes that way excludes it in one pass.
+
+Three of the four ideas that were turned down are recorded here because the reasons outlast them.
+Anything that rewards an action rather than reading — a badge for merging, a badge for uploading —
+turns a feature into a chore. Total reading time is not comparable across devices in the way pages
+are (see [analytics.md](analytics.md)). And distinct authors would need `books.authors` normalised
+first, or "Sapkowski, Andrzej" and "Andrzej Sapkowski" are two people.
+
+A rule built on `reading_days` shrinks as the retention window moves. Where a future measure can be
+asked of `reading_months`, `documents` or `document_history` instead, it should be.

@@ -69,7 +69,7 @@ onUnmounted(() => store.unsubscribe())
         <ProgressSpinner style="width: 2.5rem; height: 2.5rem" aria-label="Loading achievements" />
       </div>
 
-      <div v-else-if="ordered.length" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5">
+      <div v-else-if="ordered.length" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
         <div
           v-for="entry in ordered"
           :key="entry.rule"

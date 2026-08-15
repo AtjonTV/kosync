@@ -286,6 +286,19 @@ in the web interface's sprite, so a new achievement needs no change there beyond
 Unearned rules are included, with `tier: 0`. A badge nobody has yet is the one worth showing: it is
 the only thing that says what there is to aim at.
 
+There are eight of them:
+
+| Rule | Counts | Tiers |
+| --- | --- | --- |
+| `first-pounce` | books read to the end, ever — the history remembers a finish a re-read has undone | 1 / 10 / 50 |
+| `page-turner` | pages read, from `reading_days` and the months they were folded into | 1000 / 10000 / 100000 |
+| `shelf-inspector` | books uploaded to the library | 10 / 50 / 200 |
+| `night-prowler` | nights still reading after midnight, in your zone, named after the day they began | 1 / 25 / 100 |
+| `lap-warmer` | the longest run of days without missing one | 7 / 30 / 100 |
+| `sunbeam-sitter` | mornings reading between 05:00 and 08:00, in your zone | 1 / 25 / 100 |
+| `the-long-sit` | the most pages on any single day | 100 / 250 / 500 |
+| `nine-lives` | books finished and then begun again | 1 / 5 / 20 |
+
 Subscribe to the `achievements` collection for the moment one is awarded, then read this again — the
 record says which tier was earned, while the card also shows how far the next one is.
 

@@ -20,7 +20,7 @@ custom WebSocket protocol with what PocketBase already does well.
 - **Merges split reading.** Two devices reading two copies of the same book report two documents;
   fold them into one and they sync with each other from then on.
 - **Hands out achievements**, drawn as comic-book cats, for pages read, books finished, reading
-  streaks and the nights you stayed up too late.
+  streaks, the books you went back to, and the nights and mornings you read at either end of.
 - **Deploys as a single executable** with the web interface compiled in. No Redis, no Nginx, no Node.
 
 ## How the accounts fit together

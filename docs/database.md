@@ -163,7 +163,7 @@ happened, and it having happened does not stop being true.
 The rules themselves are not stored. They are code, in
 [`server/internal/achievements`](../server/internal/achievements), because each one is a question
 only code can ask, and the web interface reads them from `/api/kosync/achievements` rather than
-keeping a copy.
+keeping a copy. There are eight; [api.md](api.md) lists them with their thresholds.
 
 ### `reading_book_days`
 
