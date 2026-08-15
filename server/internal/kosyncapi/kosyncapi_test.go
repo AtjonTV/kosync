@@ -325,6 +325,21 @@ func TestListAchievements(t *testing.T) {
 	})
 }
 
+// A rule nobody has earned yet still has to carry a list of tiers, empty. A nil
+// slice encodes as null, and the interface counts what it is given.
+func TestAnUnearnedAchievementCarriesAnEmptyList(t *testing.T) {
+	asUser(t, testutil.IdUserA, tests.ApiScenario{
+		Name:            "no rows means [], never null",
+		Method:          http.MethodGet,
+		URL:             "/api/kosync/achievements",
+		ExpectedStatus:  http.StatusOK,
+		ExpectedContent: []string{`"earned":[]`},
+		NotExpectedContent: []string{
+			`"earned":null`,
+		},
+	})
+}
+
 func TestAchievementsRequireAuthentication(t *testing.T) {
 	asUser(t, "", tests.ApiScenario{
 		Name:            "guests have no achievements",

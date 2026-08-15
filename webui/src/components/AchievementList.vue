@@ -4,12 +4,14 @@
   Copyright:   © 2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
 -->
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useAchievementsStore } from '@/stores/achievements'
 import AchievementBadge from '@/components/AchievementBadge.vue'
+import { errorMessage } from '@/pb'
 import type { Achievement } from '@/models'
 
 const store = useAchievementsStore()
+const loadFailure = ref('')
 
 // Earned first, then what is still to come. Both are shown: a badge nobody has
 // yet is the only thing on the card that says what there is to aim at.
@@ -39,8 +41,12 @@ const progressLabel = (entry: Achievement) => {
 const format = (value: number) => value.toLocaleString()
 
 onMounted(async () => {
-  if (!store.loaded) await store.load()
-  await store.subscribe()
+  try {
+    if (!store.loaded) await store.load()
+    await store.subscribe()
+  } catch (error) {
+    loadFailure.value = errorMessage(error, 'Your achievements could not be loaded.')
+  }
 })
 onUnmounted(() => store.unsubscribe())
 </script>
@@ -57,7 +63,9 @@ onUnmounted(() => store.unsubscribe())
     </template>
 
     <template #content>
-      <div v-if="store.loading && !store.loaded" class="p-8 flex justify-center">
+      <Message v-if="loadFailure" severity="error" class="m-2">{{ loadFailure }}</Message>
+
+      <div v-else-if="!store.loaded" class="p-8 flex justify-center">
         <ProgressSpinner style="width: 2.5rem; height: 2.5rem" aria-label="Loading achievements" />
       </div>
 

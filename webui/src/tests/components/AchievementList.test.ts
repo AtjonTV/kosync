@@ -47,13 +47,13 @@ function achievement(overrides: Partial<Achievement> = {}): Achievement {
   }
 }
 
-function mountList(achievements: Achievement[]) {
+function mountList(achievements: Achievement[], loaded = true) {
   return mount(AchievementList, {
     global: {
       plugins: [
         createTestingPinia({
           createSpy: vi.fn,
-          initialState: { achievements: { achievements, loaded: true } },
+          initialState: { achievements: { achievements, loaded } },
         }),
         PrimeVue,
       ],
@@ -94,6 +94,15 @@ describe('AchievementList', () => {
     expect(wrapper.text()).toContain('every tier earned')
   })
 
+  // Nothing loaded and nothing earned look the same from a distance, and only
+  // one of them should say there is nothing to show.
+  it('waits before saying there is nothing', () => {
+    const wrapper = mountList([], false)
+
+    expect(wrapper.text()).not.toContain('Nothing to show yet')
+    expect(wrapper.find('.p-progressspinner').exists()).toBe(true)
+  })
+
   it('puts the earned ones before the rest', () => {
     const wrapper = mountList([
       achievement({ rule: 'night-prowler', name: 'Night Prowler', tier: 0, earned: [] }),
@@ -121,6 +130,20 @@ describe('achievements store', () => {
     expect(store.achievements).toHaveLength(1)
     expect(store.earned).toHaveLength(1)
     expect(store.pending).toHaveLength(0)
+  })
+
+  // A rule with no rows arrives as null from a server that has not been updated,
+  // and a computed that throws leaves the page on the last thing it drew.
+  it('survives a rule that arrives without its list of tiers', async () => {
+    const missing = { ...achievement({ tier: 0, value: 0 }), earned: null }
+    pbMockModule.send.mockResolvedValue({ achievements: [missing] })
+
+    const store = useAchievementsStore()
+    await store.load()
+
+    expect(store.achievements[0]?.earned).toEqual([])
+    expect(() => store.earned).not.toThrow()
+    expect(store.pending).toHaveLength(1)
   })
 
   it('reloads when a new tier is awarded', async () => {

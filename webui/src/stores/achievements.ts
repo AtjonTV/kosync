@@ -45,7 +45,15 @@ export const useAchievementsStore = defineStore('achievements', () => {
       const response = await pb.send<{ achievements?: Achievement[] }>(KosyncApi.achievements, {
         method: 'GET',
       })
-      achievements.value = response?.achievements ?? []
+
+      // An absent list is normalised here rather than at each place that reads
+      // it. A computed that throws leaves the page on the last thing it managed
+      // to draw, so a missing field is not a display problem but a stuck one,
+      // and this is the boundary where JSON becomes something typed.
+      achievements.value = (response?.achievements ?? []).map((entry) => ({
+        ...entry,
+        earned: entry.earned ?? [],
+      }))
       loaded.value = true
     } finally {
       loading.value = false

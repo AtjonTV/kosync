@@ -76,12 +76,20 @@ func (h *Handler) listAchievements(e *core.RequestEvent) error {
 
 	list := make([]jsonAchievement, 0, len(progress))
 	for _, entry := range progress {
+		// A rule nobody has earned yet has no rows, and an empty list has to stay
+		// a list: a nil slice encodes as null, and null is not something the
+		// interface can count the tiers of.
+		awarded := byRule[entry.Rule.Slug]
+		if awarded == nil {
+			awarded = []jsonEarned{}
+		}
+
 		// The measure is live and live data moves backwards, so on its own it
 		// would take a badge away — history deleted, a book started again, the
 		// retention window removing the days a streak was counted from. What was
 		// awarded is the durable answer and wins wherever the two disagree.
 		tier, next := entry.Tier, entry.Next
-		for _, one := range byRule[entry.Rule.Slug] {
+		for _, one := range awarded {
 			if one.Tier > tier {
 				tier = one.Tier
 				next = 0
@@ -102,7 +110,7 @@ func (h *Handler) listAchievements(e *core.RequestEvent) error {
 			Value:   entry.Value,
 			Tier:    tier,
 			Next:    next,
-			Earned:  byRule[entry.Rule.Slug],
+			Earned:  awarded,
 		})
 	}
 
