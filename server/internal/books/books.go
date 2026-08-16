@@ -29,6 +29,7 @@ import (
 	"git.obth.eu/atjontv/kosync/internal/config"
 	"git.obth.eu/atjontv/kosync/internal/epub"
 	"git.obth.eu/atjontv/kosync/internal/schema"
+	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/filesystem"
 )
@@ -58,6 +59,10 @@ func Register(app core.App, conf *config.Config) {
 	app.OnRecordCreateRequest(schema.CollectionBooks).BindFunc(func(e *core.RecordRequestEvent) error {
 		if err := describe(e.Record, conf); err != nil {
 			return e.BadRequestError(sentence(err.Error()), nil)
+		}
+
+		if message, duplicate := alreadyHere(e.App, e.Record); duplicate {
+			return e.BadRequestError(message, nil)
 		}
 
 		return e.Next()
@@ -130,6 +135,46 @@ func Register(app core.App, conf *config.Config) {
 
 		return e.Next()
 	})
+}
+
+// alreadyHere reports whether the owner has uploaded this exact file before,
+// with the sentence to say so.
+//
+// The unique index on (owner, content_hash) already refuses the second copy, but
+// what it refuses it with is "Failed to create record." — true, unhelpful, and
+// the same thing it would say about a dozen other problems. Somebody who has
+// just dragged in a file wants to know which of the two it was, and that the
+// answer is "nothing is wrong, you already have it".
+//
+// A lookup that fails is not treated as a duplicate. The index is still there
+// behind this, so the worst case is the old message rather than a book let in
+// twice.
+func alreadyHere(app core.App, record *core.Record) (string, bool) {
+	owner := record.GetString(schema.FieldOwner)
+	hash := record.GetString(schema.FieldContentHash)
+	if owner == "" || hash == "" {
+		return "", false
+	}
+
+	existing, err := app.FindRecordsByFilter(
+		schema.CollectionBooks,
+		fmt.Sprintf("%s = {:owner} && %s = {:hash}", schema.FieldOwner, schema.FieldContentHash),
+		"", 1, 0,
+		dbx.Params{"owner": owner, "hash": hash},
+	)
+	if err != nil || len(existing) == 0 {
+		return "", false
+	}
+
+	// The stored title rather than the incoming one: the same book can be
+	// uploaded again under a different file name, and naming what is already
+	// there is what lets somebody find it.
+	title := strings.TrimSpace(existing[0].GetString(schema.FieldTitle))
+	if title == "" {
+		return "That book is already in your library.", true
+	}
+
+	return fmt.Sprintf("%q is already in your library.", title), true
 }
 
 // sentence turns an idiomatic Go error into something worth showing a person.

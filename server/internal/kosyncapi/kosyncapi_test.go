@@ -384,3 +384,28 @@ func TestAnAwardedAchievementSurvivesTheReadingBehindIt(t *testing.T) {
 		},
 	})
 }
+
+// Which summary has already gone out is the server's bookkeeping. Set back by
+// hand it would ask for the same summary again on the next hourly run.
+func TestTheSummaryBookkeepingCannotBeSetByHand(t *testing.T) {
+	asUser(t, testutil.IdUserA, tests.ApiScenario{
+		Name:            "an account cannot rewrite which summary it was sent",
+		Method:          http.MethodPatch,
+		URL:             "/api/collections/users/records/" + testutil.IdUserA,
+		Body:            strings.NewReader(`{"summary_sent":"2020-W01"}`),
+		ExpectedStatus:  http.StatusBadRequest,
+		ExpectedContent: []string{"kept by the server"},
+	})
+}
+
+// The cadence itself is the account's own business.
+func TestTheSummaryCadenceIsTheAccountsOwn(t *testing.T) {
+	asUser(t, testutil.IdUserA, tests.ApiScenario{
+		Name:            "an account chooses how often it hears from the server",
+		Method:          http.MethodPatch,
+		URL:             "/api/collections/users/records/" + testutil.IdUserA,
+		Body:            strings.NewReader(`{"summary_mail":"weekly"}`),
+		ExpectedStatus:  http.StatusOK,
+		ExpectedContent: []string{`"summary_mail":"weekly"`},
+	})
+}

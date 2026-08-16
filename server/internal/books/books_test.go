@@ -370,13 +370,40 @@ func TestUploadRejectsTheSameFileTwice(t *testing.T) {
 	body, contentType := upload(t, testutil.IdUserA, "a-different-name.epub", content, nil)
 
 	asUser(t, testutil.IdUserA, tests.ApiScenario{
-		Name:            "the same file cannot be uploaded twice",
+		Name:           "the same file cannot be uploaded twice",
+		Method:         http.MethodPost,
+		URL:            booksURL,
+		Body:           body,
+		Headers:        map[string]string{"Content-Type": contentType},
+		ExpectedStatus: http.StatusBadRequest,
+		// Not "Failed to create record.", which is what the unique index alone
+		// produces: it is true of a dozen different problems, and this one is
+		// not a problem at all — the book is already there. The title says
+		// which one, because the second upload can carry a different file name.
+		ExpectedContent:    []string{"Zeit des Sturms", "already in your library"},
+		NotExpectedContent: []string{"Failed to create record"},
+		BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+			seedBookWith(t, app, hex.EncodeToString(digest[:]))
+		},
+	})
+}
+
+// The library is per account: two people owning the same file each keep their
+// own copy, and neither is told about the other's.
+func TestTheSameFileCanBeUploadedByAnotherAccount(t *testing.T) {
+	content := epubBytes(t, 120)
+	digest := sha256.Sum256(content)
+
+	body, contentType := upload(t, testutil.IdUserB, "same-book.epub", content, nil)
+
+	asUser(t, testutil.IdUserB, tests.ApiScenario{
+		Name:            "another account uploads the same file",
 		Method:          http.MethodPost,
 		URL:             booksURL,
 		Body:            body,
 		Headers:         map[string]string{"Content-Type": contentType},
-		ExpectedStatus:  http.StatusBadRequest,
-		ExpectedContent: []string{"validation_not_unique"},
+		ExpectedStatus:  http.StatusOK,
+		ExpectedContent: []string{`"title"`},
 		BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 			seedBookWith(t, app, hex.EncodeToString(digest[:]))
 		},

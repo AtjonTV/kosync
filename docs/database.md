@@ -113,7 +113,9 @@ correcting a publisher's metadata is the owner's business.
 `hash_binary` and `hash_filename` are the two ways KOReader identifies a document. They are stored as
 separate indexed columns so a progress push can be matched to a book by either. `content_hash` is a
 SHA-256 of the whole file and is unique per owner, so uploading the same file twice is refused rather
-than duplicated; two owners uploading the same book each keep their own copy.
+than duplicated; two owners uploading the same book each keep their own copy. The refusal is checked
+before the insert as well as by the index, so the answer names the book that is already there instead
+of the index's own "Failed to create record.".
 
 `hash_catalog` is a third indexed column and the odd one out: it is a filename hash again, but of the
 name the OPDS catalog serves the book under rather than the name it was uploaded with. Those are
