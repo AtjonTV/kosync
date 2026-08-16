@@ -5,9 +5,9 @@ their books the reader got, and roughly how long they read. This is how those ar
 
 ## Why they are precomputed
 
-KOsync 1 calculated them on every request, with a recursive query over the entire progress history.
-That query gets slower every time somebody reads a page, and it ran again for every dashboard load
-and every live update.
+Legacy KOsync calculated them on every request, with a recursive query over the entire progress
+history. That query gets slower every time somebody reads a page, and it ran again for every
+dashboard load and every live update.
 
 Here the numbers are computed once, in the background, and stored in the `reading_days` collection.
 The web interface reads and subscribes to that collection like any other, so a recomputed day appears

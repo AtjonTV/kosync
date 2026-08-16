@@ -106,9 +106,23 @@ Internal bookkeeping: the days waiting to be recomputed. Invisible to accounts.
 ### `books`
 
 An uploaded EPUB and everything read out of it. Only the file itself is supplied: the title, authors,
-language, identifiers, cover, word count and both document hashes are filled in by the server as the
-upload arrives, and the derived ones cannot be edited afterwards. The title and authors can, since
-correcting a publisher's metadata is the owner's business.
+language, identifiers, series, subjects, cover, word count and both document hashes are filled in by
+the server as the upload arrives, and the derived ones cannot be edited afterwards. The metadata read
+out of the file can be, since correcting what a publisher wrote is the owner's business.
+
+`series` and `series_index` are the series a book belongs to and where in it this volume sits. They
+are two columns rather than one string like `A Song of Ice and Fire #2`, because the catalog's series
+feed has to group by the name and sort by the number, and neither is possible once the two are
+spelled into one value. The index is a number, so a novella published as 1.5 keeps its place. Both
+are only filled where the file says so; a book with no series is simply not on one, and the feed
+leaves it out rather than inventing a shelf of one.
+
+`subjects` is what the file says the book is about, as a JSON array, stored as the publisher wrote
+it. Nothing reads it yet, deliberately: the values are of very mixed quality — on the reference
+library 143 of 202 distinct subjects belong to exactly one book — so a navigation feed of them would
+mostly be a list of single titles, and a hand-made collection is the better answer to the same
+question. It is stored because the file says it and throwing it away would mean re-reading every
+EPUB to get it back.
 
 `hash_binary` and `hash_filename` are the two ways KOReader identifies a document. They are stored as
 separate indexed columns so a progress push can be matched to a book by either. `content_hash` is a
@@ -139,6 +153,56 @@ how far into the reading it looked, so a book nobody has read since is not measu
 A `documents` row carries a `book` relation, set by the server when the document's hash matches an
 uploaded book. It is empty until such a book exists, and it is cleared rather than cascaded when the
 book is deleted: removing a file must not remove the reading done in it.
+
+### `book_collections`
+
+A shelf somebody put together by hand. The name is unfortunate and unavoidable: PocketBase calls its
+own tables collections too, and this is the KOsync kind.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `owner` | relation → `users` | deleting an account deletes its shelves |
+| `name` | text | up to 100 characters, unique per owner |
+| `description` | text | up to 1000 characters, optional |
+| `books` | relation → `books`, list | the shelf itself, in the order it was built |
+
+This is the one collection whose contents are entirely somebody's opinion. Everything else here is
+read out of a file or reported by a device and so is written by the server; a shelf is made, renamed,
+filled and thrown away by its owner, which is why all five rules are the owner rule and none of them
+is superuser only.
+
+The order of `books` is the shelf. A relation list keeps the order it was given, and that order is
+the one thing about a collection no query could work out — *Westeros, in order* is not alphabetical,
+not by upload date, and not by series index either once a spin-off is on it. So the catalog and the
+web interface both re-sort the rows they read back into the stored order rather than letting SQL
+choose.
+
+Unique on `(owner, name)`, through `idx_book_collections_owner_name`: two shelves of one name are two
+answers to the same question, and the index turns that into a validation error on the name the
+browser can say something useful about.
+
+The `books` relation deliberately does **not** cascade. PocketBase removes a deleted book's id from
+every list that named it and only deletes the record holding the list when the list empties, so a
+cascade here would mean that deleting the last book of a reading list deletes the reading list.
+Somebody who clears out a shelf still has the shelf.
+
+The ceiling of 2000 books exists because a relation field has to be told a maximum to be a list at
+all — PocketBase reads a maximum of one as a single value. It is set far past any library this
+serves.
+
+What the rules cannot say is that the books on a shelf have to be the owner's own: a rule is a filter
+over the record being written, and the books are a list of ids pointing somewhere else. Without that
+sentence an account could put any book id at all on a shelf and read the titles back through the
+relation's expansion, which is a way of asking what somebody else uploaded. So it is enforced by a
+hook in [`server/internal/collections`](../server/internal/collections), which refuses a create or
+update whose books are not all owned by the shelf's owner, and refuses a shelf changing owner. A book
+that has been deleted meanwhile is refused the same way, which is the case that arrives on its own:
+two browser tabs, one of them deleting.
+
+Books are added and taken off one at a time, with PocketBase's own `books+` and `books-` list
+modifiers, so that two open tabs cannot overwrite each other's shelf; the hook sees the merged list,
+so the check still holds. Reordering is the one operation that has to send the whole list, because
+there is no modifier for "third, not fifth".
 
 ### `devices`
 

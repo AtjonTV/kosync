@@ -45,6 +45,16 @@ describe('SetupGuide', () => {
     expect(wrapper.text()).toContain('http://localhost/opds')
   })
 
+  // KOReader's WebDAV dialog is given a collection, and the statistics plugin
+  // then syncs into it, so the address it asks for ends in a slash.
+  it('points the statistics sync at /webdav/', () => {
+    const wrapper = mount(SetupGuide, {
+      global: { plugins: [PrimeVue], components: { Card } },
+    })
+
+    expect(wrapper.text()).toContain('http://localhost/webdav/')
+  })
+
   it('tells the reader that registration happens in the web interface', () => {
     const wrapper = mount(SetupGuide, {
       global: { plugins: [PrimeVue], components: { Card } },

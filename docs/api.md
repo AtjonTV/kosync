@@ -40,7 +40,7 @@ Content-Type: application/json
 
 and is answered with `{"document": "...", "timestamp": 1772366400}`.
 
-A pull answers with the same fields plus `timestamp`, in **Unix seconds**. KOsync 1 returned its
+A pull answers with the same fields plus `timestamp`, in **Unix seconds**. Legacy KOsync returned its
 internal 1/10000 second unit here, which no KOReader build expects; a client written against that
 quirk needs adjusting.
 
@@ -110,9 +110,11 @@ pb.collection('reading_days').subscribe('*', handler)
 ### Uploading a book
 
 Books are created the same way, as a multipart record create. Only the file and the owner are sent:
-the server reads the EPUB as it arrives and fills in the title, authors, language, identifiers, cover,
-word count and both KOReader document hashes. Sending any of those is refused on update, and ignored
-in favour of the file on create.
+the server reads the EPUB as it arrives and fills in the title, authors, language, identifiers,
+series, subjects, cover, word count and both KOReader document hashes. The derived numbers and hashes
+are refused on update and ignored in favour of the file on create; the metadata read out of the file
+— the title, the authors, the language, the series and its index, the subjects — can be corrected
+afterwards, because what a publisher wrote is not always what the shelf should say.
 
 ```js
 const form = new FormData()
@@ -162,6 +164,39 @@ refused, and of the fields only `name` may be changed.
 await pb.collection('devices').update(id, { name: 'Boox Go 7' })
 ```
 
+### Collections
+
+`book_collections` is a shelf somebody put together by hand: a name, an optional description, and a
+list of books in the order they were arranged in. It is created, renamed, filled and deleted entirely
+through the collection API — there is no route of its own — and the order of the `books` list is the
+shelf, so whatever reads it back has to keep that order rather than sort by anything.
+
+Books go on and come off one at a time, with PocketBase's own list modifiers, so that two open tabs
+cannot overwrite each other's shelf:
+
+```js
+await pb.collection('book_collections').update(id, { 'books+': bookId })
+await pb.collection('book_collections').update(id, { 'books-': bookId })
+```
+
+Rearranging is the one change that has to send the whole list, because there is no modifier for
+"third, not fifth":
+
+```js
+await pb.collection('book_collections').update(id, { books: [second, first, third] })
+```
+
+Two refusals come from the server rather than from a rule, and both answer `400`:
+
+- **`A collection can only hold books from your own library.`** — every id in `books`, after the
+  modifiers have been applied, has to resolve to a book of the shelf's owner. A book somebody else
+  uploaded is refused, and so is one that has been deleted meanwhile, which is the case that arrives
+  on its own when a second tab is doing the deleting.
+- **`A collection cannot change owner.`** — sending the record back whole, owner included and
+  unchanged, is fine; changing it is not.
+
+A duplicate name is refused by the index on `(owner, name)`, as a validation error on `name`.
+
 ## 3. The OPDS catalog, under `/opds`
 
 The library as a catalog a reading device can browse and download from. OPDS 2.0, which is the
@@ -173,14 +208,50 @@ header protocol, and OPDS is a standard other readers speak.
 
 | Method | Route | Description |
 | --- | --- | --- |
-| GET | `/opds` | the catalog: the three shelves, and the search template |
+| GET | `/opds` | the catalog: the shelves, the navigation feeds, and the search template |
 | GET | `/opds/reading` | books started and not finished, most recently read first |
 | GET | `/opds/recent` | the library, newest upload first |
 | GET | `/opds/books` | the whole library, by title |
+| GET | `/opds/collections` | the shelves this account put together by hand |
+| GET | `/opds/authors` | every author, with a count |
+| GET | `/opds/series` | every series, with a count |
+| GET | `/opds/languages` | every language, with a count |
+| GET | `/opds/by?facet=…&value=…` | the books under one of those entries |
 | GET | `/opds/search?query=…` | books whose title or author matches |
 | GET | `/opds/books/{id}/download/{name}` | the EPUB itself |
 | GET | `/opds/books/{id}/cover` | the full cover image |
 | GET | `/opds/books/{id}/thumbnail` | the cover at 200x300, generated on first request |
+
+### Navigation feeds
+
+A shelf answers with books; a navigation feed answers with the ways the library divides up, each
+entry carrying its own count and pointing at `/opds/by`. Four of them ship, and the front page offers
+only the ones with something in them — a facet that would open on nothing costs a page turn to find
+that out:
+
+```json
+{ "metadata": { "title": "By author", "numberOfItems": 108 },
+  "navigation": [
+    { "rel": "subsection", "title": "Lee Child (29)",
+      "href": "https://host/opds/by?facet=authors&value=Lee+Child",
+      "type": "application/opds+json" } ] }
+```
+
+**Collections come first**, because they are the only division somebody decided on; the other three
+are the library described back to itself. A collection is a shelf its owner built by hand, in the
+order they put it in, and it is served in that order — see
+[database.md](database.md) for the record behind it. Its `value` is the collection's id rather than
+its name, so a bookmark survives a rename. An empty collection is left out of the feed.
+
+**Authors are folded before they are counted.** Publisher metadata writes a name either way round and
+punctuates initials as it pleases, so `Child, Lee` and `Lee Child` are one shelf, and the URL carries
+a readable spelling rather than the fold key. **Languages are folded** the same way — `de`, `de-DE`
+and `DE` are one entry, shown as a name — and a file that declines to name one is shelved under
+"Unknown". **A series is served in reading order**, by its index and only then by title.
+
+The value travels in the query string rather than in the path: author names carry slashes, dots,
+ampersands and apostrophes, and a path segment has to survive a reader, a proxy and a router without
+any of them normalising it away.
 
 **Authentication is HTTP Basic** against `koreader_accounts` — the same credential the device syncs
 with, and nothing new to create. Basic delivers the plain password, which the server hashes with MD5

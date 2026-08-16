@@ -1597,7 +1597,6 @@ nobody asked them about a weekly digest. `off` until somebody picks a cadence un
 
 - A release. `main.go` still says `26.08.0-dev` and there are no tags, which is now the only thing
   making a finished rewrite look unfinished.
-- The statistics import, §28.
 
 ### 27.5 The history that was fetched for nobody
 

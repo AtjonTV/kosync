@@ -289,7 +289,7 @@ func importCredential(txApp core.App, user legacyUser, owner *core.Record) error
 	record := core.NewRecord(collection)
 	record.Set(schema.FieldUsername, user.Username)
 	record.Set(schema.FieldOwner, owner.Id)
-	record.Set(schema.FieldLabel, "Imported from KOsync 1")
+	record.Set(schema.FieldLabel, "Imported from legacy KOsync")
 	record.SetPassword(user.Password)
 
 	if err := txApp.Save(record); err != nil {

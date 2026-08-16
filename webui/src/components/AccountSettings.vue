@@ -183,8 +183,8 @@ const changePassword = async () => {
       </p>
 
       <Message v-if="isPlaceholderEmail" severity="warn" class="mb-4">
-        Your address was generated during the import from KOsync 1 and cannot receive mail. Change
-        it to a real one so you can recover your account if you forget the password.
+        Your address was generated during the import from legacy KOsync and cannot receive mail.
+        Change it to a real one so you can recover your account if you forget the password.
       </Message>
       <Message v-else-if="!isVerified" severity="info" class="mb-4">
         Your address is not confirmed yet.

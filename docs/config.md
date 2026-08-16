@@ -140,9 +140,9 @@ switched off over the weekend still sends Monday's summary when it comes back, o
 
 ## Settings that are gone
 
-If you are coming from KOsync 1:
+If you are coming from legacy KOsync:
 
-| KOsync 1 | Now |
+| Legacy | Now |
 | --- | --- |
 | `DATABASE_FILE` | `kosync serve --dir` (PocketBase manages the file) |
 | `LISTEN_ADDRESS` | `kosync serve --http` |

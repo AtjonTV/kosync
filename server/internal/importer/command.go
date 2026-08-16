@@ -23,8 +23,8 @@ func NewCommand(app core.App, conf *config.Config) *cobra.Command {
 
 	command := &cobra.Command{
 		Use:   "import-legacy",
-		Short: "Imports the data of a legacy KOsync 1 SQLite database",
-		Long: "Imports users, documents and their history from a legacy KOsync 1 database.\n\n" +
+		Short: "Imports the data of a legacy KOsync SQLite database",
+		Long: "Imports users, documents and their history from a legacy KOsync database.\n\n" +
 			"Legacy users become KOReader credentials. Because a credential has to belong to an\n" +
 			"account, one account per legacy user is created unless --owner-email is given.\n" +
 			"The generated passwords are printed once and cannot be recovered afterwards.",

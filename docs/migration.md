@@ -1,6 +1,6 @@
-# Migrating from KOsync 1
+# Migrating from legacy KOsync
 
-KOsync 2 can import a KOsync 1 database. Devices keep working afterwards without being touched,
+KOsync 26.08.0 can import a legacy KOsync database. Devices keep working afterwards without being touched,
 because their credentials are carried over unchanged.
 
 ## Before you start
@@ -30,8 +30,8 @@ was already imported, are skipped instead of duplicated.
 
 ## What happens to your users
 
-A KOsync 1 user was one thing: a username and an MD5 password, used by both the device and the web
-interface. In KOsync 2 those are two different things, so each legacy user becomes:
+A legacy user was one thing: a username and an MD5 password, used by both the device and the web
+interface. Here those are two different things, so each legacy user becomes:
 
 - a **KOReader credential** with the same username and the same stored password, so the device keeps
   syncing, and

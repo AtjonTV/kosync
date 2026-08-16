@@ -1,36 +1,97 @@
-# KOsync v2
+# KOsync
 
-KOsync is a progress sync server for [KOReader](https://koreader.rocks), written in Go on top of
-[PocketBase](https://pocketbase.io).
+KOsync is a progress sync server for [KOReader](https://koreader.rocks) written in Go.
 
-This is the rewrite of [KOsync 1](https://git.obth.eu/atjontv/kosync). It keeps the KOReader sync
-protocol and the web interface, and replaces the hand written database layer, the JWT handling and the
-custom WebSocket protocol with what PocketBase already does well.
+This is **26.08.0**, the current version. It is a rewrite, built on
+[PocketBase](https://pocketbase.io), and it replaces the 1.x series, which is now the
+[legacy KOsync](https://git.obth.eu/atjontv/kosync). A legacy database can be imported and the
+devices syncing against it keep working — see [docs/migration.md](docs/migration.md).
 
-## What it does
+## Why?
 
-- **Syncs reading progress** with KOReader, using the same protocol as the official sync server.
-- **Shows a dashboard**: documents, reading progress, per document history, and reading statistics.
+The [official KOReader progress sync server](https://github.com/koreader/koreader-sync-server) is
+written in Lua using OpenResty.  
+For deployment it needs Nginx with OpenResty as well as Redis as database.
+
+KOsync wants to be simpler by not having any dependencies besides the OS itself.  
+(If you need TLS, a reverse proxy is also required, I recommend [Caddy](https://caddyserver.com))
+
+In addition to requiring Nginx, OpenResty and Redis, the official server is not very maintained.  
+The last feature adding commits was around 2016.
+
+It also wants to be worth having beyond the sync itself. A reading position is only the smallest
+thing a device knows: KOsync keeps the books, the history behind that position, and the record of
+when the reading actually happened.
+
+## KOsync vs [KOReader Sync Server](https://github.com/koreader/koreader-sync-server)
+
+You may choose KOsync over [KORSS](https://github.com/koreader/koreader-sync-server) due to the
+following differences:
+
+- Actively maintained and open for feature requests
+- Syncs reading progress with the same protocol, so no device has to be reconfigured beyond its
+  address
+- A [web interface](#webui) with your documents, their history, your statistics and your library
 - **Holds your books.** Upload an EPUB and it is matched to the reading you have already done, with
-  the cover, the metadata and a page count measured from your own device's progress.
-- **Serves the library as an OPDS catalog**, so a device can browse and download from it. A book
-  downloaded that way is recognised the moment you start reading it.
+  the cover, the metadata and a page count measured from your own device's progress
+- **Serves the library as an OPDS catalog**, browsable by author, series, language or a collection
+  you put together yourself. A book downloaded that way is recognised the moment you start reading
+  it
+- **Takes your statistics off the device by itself.** KOReader can sync its own page-turn database
+  to a WebDAV target, and this server is one — with the credential the device already has. What
+  arrives is real measurement, including the days you read with the WiFi off
 - **Keeps a history** of every position a document went through, and can put a document back into an
-  earlier one.
+  earlier one
 - **Merges split reading.** Two devices reading two copies of the same book report two documents;
-  fold them into one and they sync with each other from then on.
-- **Hands out achievements**, drawn as comic-book cats, for pages read, books finished, reading
-  streaks, the books you went back to, and the nights and mornings you read at either end of.
-- **Tells you when you earn one**, by mail, if you ask it to and the server can send any.
-- **Writes to you about your reading**, weekly or monthly if you pick a cadence: pages, hours, the
-  books you were in and anything you earned. A week you did not read in is not mailed.
-- **Takes your reading statistics off the device by itself.** KOReader can sync its own page-turn
-  database to a WebDAV target, and this server is one — with the credential the device already has.
-  What arrives is real measurement: how long each page was open, and on which day, including the days
-  you read with the WiFi off and nothing was ever pushed.
-- **Deploys as a single executable** with the web interface compiled in. No Redis, no Nginx, no Node.
+  fold them into one and they sync with each other from then on
+- **Hands out achievements**, drawn as comic-book cats, and will write to you weekly or monthly
+  about your own reading if you ask it to
+- Written in Go and deploys as a single executable
+- Simple SQLite database and ENV configuration instead of Redis
 
-## How the accounts fit together
+Additional differences that should be known:
+
+- KOsync is licensed under `EUPL-1.2 or later` compared to KORSS, which is `AGPL-3.0 or later`
+- Simple deployment via Docker
+- Requires a Reverse Proxy for TLS
+
+## KOsync 26.08.0 vs legacy KOsync
+
+The protocol is the same one and the reading is carried over, so this is an upgrade rather than a
+different server. What changed:
+
+- **The device address gains a prefix.** KOReader is pointed at `https://your-host/koreader` instead
+  of `https://your-host`; the username and password stay the same
+- **An account and a device credential are two different things** now, because KOReader can only
+  protect a password with MD5 — see [Accounts and devices](#accounts-and-devices)
+- **Registration happens in the web interface**, not from the device, since a credential has to
+  belong to an account
+- The hand written database layer, the JWT handling and the custom WebSocket protocol are gone;
+  PocketBase does all three, and realtime is an ordinary subscription
+- Statistics are precomputed rather than derived by a recursive query on every request
+- The library, the OPDS catalog, the collections, the achievements, the mail and the statistics
+  sync are all new; legacy KOsync synced a position and showed it to you
+
+### Simplicity
+
+**Simple Code**  
+KOsync is written in Go, with the web interface compiled into the same binary.  
+All you need to run KOsync is bundled into a single executable. No Redis, no Nginx, no Node.
+
+See [docs/build.md](docs/build.md) for build and deployment instructions.
+
+**Simple Datastore**  
+KOsync stores all user data in a PocketBase-managed SQLite database, next to the uploads and the
+backups, while deployment settings are stored in an environment file.
+
+```bash
+kosync serve --http=0.0.0.0:8080 --dir=/pb_data
+```
+
+On first start the server prints a link for creating the first superuser. The superuser interface
+lives at `/_/` and is PocketBase's own; the reading interface is at `/`.
+
+### Accounts and devices
 
 There are two kinds of credentials, and the difference matters:
 
@@ -41,13 +102,10 @@ There are two kinds of credentials, and the difference matters:
 | Password | bcrypt, with recovery by mail | whatever the device sends, hashed with MD5 first |
 | How many | one per person | as many as you like, one per device or one for all |
 
-KOReader can only protect its password with MD5, so those credentials are kept apart from the account
-password and can be revoked one at a time. A device credential can never be used to sign in to the API.
+A device credential can never be used to sign in to the API, and can be revoked one at a time
+without touching the account or the reading it pushed.
 
-Registration happens in the web interface only, because a device credential has to belong to an
-account and KOReader has no way to ask for one.
-
-## Setting up a device
+### Setting up a device
 
 1. Register in the web interface.
 2. Open **Account → KOReader credentials** and add one. The password is shown once.
@@ -55,31 +113,59 @@ account and KOReader has no way to ask for one.
 4. Log in with the credential from step 2.
 5. Enable **automatically keep documents in sync**, set **periodically sync every # pages** to 2 and
    **Document matching method** to "Binary".
-6. Optionally, add `https://your-host/opds` under **Search → OPDS catalog**, with the same credential,
-   to browse and download your library from the device.
+6. Optionally, add `https://your-host/opds` under **Search → OPDS catalog**, with the same
+   credential, to browse and download your library from the device.
+7. Optionally, add `https://your-host/webdav/` as a **WebDAV** cloud storage entry, again with the
+   same credential, and point the statistics plugin's cloud sync at it.
 
-## Running it
+The same steps, with the addresses of your own server filled in, are on the front page of the web
+interface until you have signed in.
 
-```bash
-kosync serve --http=0.0.0.0:8080 --dir=/pb_data
-```
+### Configuration
 
-On first start the server prints a link for creating the first superuser. The superuser interface
-lives at `/_/` and is PocketBase's own; the reading interface is at `/`.
+See [docs/config.md](docs/config.md)
 
-See [docs/build.md](docs/build.md) for building, [docs/config.md](docs/config.md) for the settings,
-and [docs/migration.md](docs/migration.md) for moving data over from KOsync 1.
+### Database
 
-## Documentation
+See [docs/database.md](docs/database.md)
 
-- [Building](docs/build.md)
-- [Configuration](docs/config.md)
-- [Database and collections](docs/database.md)
-- [API](docs/api.md)
-- [Reading statistics](docs/analytics.md)
-- [Migrating from KOsync 1](docs/migration.md)
-- [The rewrite plan](docs/rewrite-plan.md)
+### Backups
+
+PocketBase takes them, locally or to S3, on a schedule or on demand: **Settings → Backups** in the
+superuser interface.
+
+See [docs/database.md](docs/database.md#backups)
+
+### API Specification
+
+See [docs/api.md](docs/api.md) for the KOReader protocol, the collection API, the OPDS catalog and
+the WebDAV target.  
+See [docs/analytics.md](docs/analytics.md) for how the reading statistics are worked out.
+
+### WebUI
+
+Vue 3 and PrimeVue, built with Bun and embedded into the server binary, so there is nothing to serve
+separately: the dashboard, the library, the collections, the statistics and the account settings are
+all at `/`.
+
+### Migrating from legacy KOsync
+
+See [docs/migration.md](docs/migration.md)
+
+### The rewrite
+
+See [docs/rewrite-plan.md](docs/rewrite-plan.md) for what was built, in what order, and why.
+
+## AI Usage
+
+Most of this version (26.08.0 and newer) was built and changed using AI Tools.  
+The primary tool used is Anthropic Claude Opus 5.
+
+Each Git commit with AI contribution is marked with `AI-Agent` and `AI-Model`.  
+Commits without are human made.
 
 ## License
 
-EUPL-1.2 or later. Contributions are governed by the [OBTH Machine Policy](MACHINE_POLICY.md).
+KOsync is licensed under the [European Union Public License v1.2 or later](/LICENSE.txt)
+
+Contributions are governed by the [OBTH Machine Policy](MACHINE_POLICY.md).

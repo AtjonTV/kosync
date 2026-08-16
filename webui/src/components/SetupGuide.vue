@@ -13,6 +13,10 @@ const syncServer = computed(() => `${window.location.origin}/koreader`)
 // The catalog is a standard other readers speak too, which is why it does not
 // sit under the "/koreader" prefix.
 const catalog = computed(() => `${window.location.origin}/opds`)
+
+// KOReader's statistics plugin syncs through a WebDAV cloud storage entry, and
+// the trailing slash is how that dialog expects a collection to be written.
+const statistics = computed(() => `${window.location.origin}/webdav/`)
 </script>
 
 <template>
@@ -49,6 +53,30 @@ const catalog = computed(() => `${window.location.origin}/opds`)
           <code class="px-1 rounded bg-surface-100 dark:bg-surface-800">{{ catalog }}</code>
           and the same credential from step 2. Books downloaded from there are recognised the moment
           you start reading them, so their progress and statistics arrive without an upload.
+        </p>
+        <p class="text-surface-700 dark:text-surface-300">
+          The catalog opens on what you are reading now and what was added last, and then lets you
+          browse by author, by series, by language, or by any collection you have put together
+          yourself under <strong>Collections</strong>. A collection is served in the order you
+          arranged it in, which is the point of making one.
+        </p>
+      </div>
+
+      <div class="mt-6 pt-6 border-t border-surface-200 dark:border-surface-700">
+        <p class="mb-3 font-semibold">Syncing your reading statistics</p>
+        <p class="mb-3 text-surface-700 dark:text-surface-300">
+          KOReader keeps its own record of every page you turn, and can sync that file to a WebDAV
+          target. This server is one. In KOReader, add a cloud storage entry of type
+          <strong>WebDAV</strong> with the address
+          <code class="px-1 rounded bg-surface-100 dark:bg-surface-800">{{ statistics }}</code>
+          and, again, the credential from step 2 — then point the statistics plugin's own cloud sync
+          at that entry. The exact menu path moves between KOReader releases, so go by these names
+          rather than by where they sat last time.
+        </p>
+        <p class="text-surface-700 dark:text-surface-300">
+          Each account gets its own copy of the file and can see no other. Once a device has synced
+          it, the pages and hours it recorded — including everything from before you had an account
+          here — show up in your statistics.
         </p>
       </div>
     </template>
