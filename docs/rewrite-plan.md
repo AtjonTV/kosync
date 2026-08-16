@@ -1599,6 +1599,33 @@ nobody asked them about a weekly digest. `off` until somebody picks a cadence un
   making a finished rewrite look unfinished.
 - The statistics import, §28.
 
+### 27.5 The history that was fetched for nobody
+
+Reported from the real instance: every page load lagged, and the network panel showed the history of
+every document being fetched.
+
+It was. `documents.load()` fetched the whole `document_history` collection alongside the documents,
+joined the two in the browser, and did it on every view that shows a document — the dashboard, the
+documents page, a book page. On the reference instance that is **10,890 rows for 11 documents**, and
+`getFullList` pages at 500, so it was twenty-two sequential requests and ten thousand records parsed
+into objects before anything could render.
+
+All of it to fill a dialog that shows one document's history when somebody clicks the button.
+
+The history is now fetched there instead, filtered server side by `document_ref` — which the index on
+`(document_ref, last_read_at)` has always served. A page load is one request for eleven rows.
+
+Two things had to come with it, and both are the kind of detail that makes a lazy load wrong when it
+is left out:
+
+- **Realtime events are ignored for a document whose history has not been fetched.** Folding a single
+  live event into an empty array produces a list of one entry that looks like the whole story.
+- **A reload keeps the histories already in hand.** Reloading happens after every merge and every
+  restore, and it must not empty a dialog somebody is looking at.
+
+The lesson is not about this query. It is that "load everything the page might need" and "load
+everything the account has" stop being the same thing at a scale that arrives quietly.
+
 ---
 
 ## 28. The statistics sync target (phase 21)

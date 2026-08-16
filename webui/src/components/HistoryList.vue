@@ -69,7 +69,16 @@ const restoreHistoryItem = (entry: HistoryRecord) => {
 </script>
 
 <template>
-  <div v-if="document && document.history.length > 0">
+  <!-- The history is fetched when this dialog opens rather than with the page,
+       so there is a moment before it is here. Saying the document has no
+       history during that moment would be a lie about the common case. -->
+  <div
+    v-if="documents.historyLoading && !(document && document.history.length > 0)"
+    class="p-8 text-center"
+  >
+    <ProgressSpinner style="width: 2.5rem; height: 2.5rem" />
+  </div>
+  <div v-else-if="document && document.history.length > 0">
     <DataTable
       :value="document.history"
       data-key="id"

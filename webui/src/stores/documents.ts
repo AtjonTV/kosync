@@ -24,31 +24,70 @@ export const useDocumentsStore = defineStore('documents', () => {
   let unsubscribeDocuments: (() => void) | null = null
   let unsubscribeHistory: (() => void) | null = null
 
-  /** Loads every document with its history. */
+  /**
+   * Which documents have had their history fetched.
+   *
+   * A document whose history has never been asked for holds an empty array,
+   * which is indistinguishable from one that genuinely has no history — hence
+   * this rather than a check on the array itself.
+   */
+  const historyLoaded = ref(new Set<string>())
+  const historyLoading = ref(false)
+
+  /**
+   * Loads the documents, and deliberately not their history.
+   *
+   * The history is every state every document has ever been in — thousands of
+   * rows on an account that has been syncing for a year, fetched 500 at a time.
+   * It used to be loaded here, on every page that shows a document, and it is
+   * shown in exactly one place: a dialog, for one document, when somebody asks
+   * for it. So it is fetched there instead.
+   */
   async function load(): Promise<void> {
     loading.value = true
     try {
-      const [records, history] = await Promise.all([
-        pb.collection(Collections.documents).getFullList<DocumentRecord>({ sort: '-last_read_at' }),
-        pb
-          .collection(Collections.documentHistory)
-          .getFullList<HistoryRecord>({ sort: '-last_read_at' }),
-      ])
+      const records = await pb
+        .collection(Collections.documents)
+        .getFullList<DocumentRecord>({ sort: '-last_read_at' })
 
-      const byDocument = new Map<string, HistoryRecord[]>()
-      for (const entry of history) {
-        const entries = byDocument.get(entry.document_ref) ?? []
-        entries.push(entry)
-        byDocument.set(entry.document_ref, entries)
-      }
+      // Any history already in hand is kept: a reload should not empty a dialog
+      // somebody is looking at.
+      const existing = new Map(documents.value.map((entry) => [entry.id, entry.history]))
 
       documents.value = records.map((record) => ({
         ...record,
-        history: byDocument.get(record.id) ?? [],
+        history: existing.get(record.id) ?? [],
       }))
       loaded.value = true
     } finally {
       loading.value = false
+    }
+  }
+
+  /**
+   * Fetches the history of one document.
+   *
+   * Filtered server side and served by the index on (document_ref,
+   * last_read_at), so this is one indexed read of the rows that are about to be
+   * shown rather than a walk through everything the account has ever synced.
+   */
+  async function loadHistory(documentId: string, force = false): Promise<void> {
+    if (!documentId) return
+    if (historyLoaded.value.has(documentId) && !force) return
+
+    historyLoading.value = true
+    try {
+      const history = await pb.collection(Collections.documentHistory).getFullList<HistoryRecord>({
+        filter: pb.filter('document_ref = {:id}', { id: documentId }),
+        sort: '-last_read_at',
+      })
+
+      const document = documents.value.find((entry) => entry.id === documentId)
+      if (document) document.history = history
+
+      historyLoaded.value = new Set(historyLoaded.value).add(documentId)
+    } finally {
+      historyLoading.value = false
     }
   }
 
@@ -100,6 +139,11 @@ export const useDocumentsStore = defineStore('documents', () => {
     const document = documents.value.find((entry) => entry.id === record.document_ref)
     if (!document) return
 
+    // A document whose history has not been fetched has an empty array, and
+    // folding one live event into it would produce a list of one entry that
+    // looks like the whole story. It is fetched in full when it is asked for.
+    if (!historyLoaded.value.has(record.document_ref)) return
+
     const index = document.history.findIndex((entry) => entry.id === record.id)
 
     if (action === 'delete') {
@@ -136,6 +180,9 @@ export const useDocumentsStore = defineStore('documents', () => {
   async function restoreHistoryEntry(documentId: string, historyId: string): Promise<void> {
     await pb.send(KosyncApi.restoreHistory(documentId, historyId), { method: 'POST' })
     await load()
+    // The restore consumes the entry it restored and archives the state it
+    // replaced, so the list the dialog is showing is now wrong in two places.
+    await loadHistory(documentId, true)
   }
 
   /**
@@ -151,6 +198,10 @@ export const useDocumentsStore = defineStore('documents', () => {
       method: 'POST',
       body: { into, from },
     })
+
+    // Every history that was loaded may now belong to a different document, so
+    // none of them can be trusted; they are fetched again when asked for.
+    historyLoaded.value = new Set()
     await load()
 
     return response?.message ?? 'The documents were merged.'
@@ -159,6 +210,7 @@ export const useDocumentsStore = defineStore('documents', () => {
   function clear(): void {
     unsubscribe()
     documents.value = []
+    historyLoaded.value = new Set()
     loaded.value = false
   }
 
@@ -166,7 +218,9 @@ export const useDocumentsStore = defineStore('documents', () => {
     documents,
     loading,
     loaded,
+    historyLoading,
     load,
+    loadHistory,
     subscribe,
     unsubscribe,
     updateTitle,

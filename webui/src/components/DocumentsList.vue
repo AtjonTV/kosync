@@ -63,6 +63,9 @@ const deviceOf = (doc: DocumentWithHistory) =>
 const openHistory = (doc: DocumentWithHistory) => {
   selectedDocument.value = doc
   showHistoryDialog.value = true
+  // Fetched when it is asked for rather than with the page: the history of
+  // every document is thousands of rows nobody has looked at yet.
+  void store.loadHistory(doc.id)
 }
 
 // The document a merge is started from is the one that is kept, which is why

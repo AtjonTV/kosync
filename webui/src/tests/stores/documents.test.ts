@@ -75,7 +75,24 @@ describe('documents store', () => {
     pbMockModule.reset()
   })
 
-  it('joins the history onto its document', async () => {
+  // The history is every state every document has ever been in. Loading it with
+  // the page meant thousands of rows, fetched 500 at a time, on every view that
+  // shows a document — to be shown in one dialog nobody had opened yet.
+  it('does not fetch any history with the documents', async () => {
+    pbMockModule
+      .collection('documents')
+      .getFullList.mockResolvedValue([document('doc-1'), document('doc-2')])
+
+    const store = useDocumentsStore()
+    await store.load()
+
+    expect(store.documents).toHaveLength(2)
+    expect(store.documents[0]!.history).toHaveLength(0)
+    expect(store.loaded).toBe(true)
+    expect(pbMockModule.collection('document_history').getFullList).not.toHaveBeenCalled()
+  })
+
+  it("fetches one document's history when it is asked for", async () => {
     pbMockModule
       .collection('documents')
       .getFullList.mockResolvedValue([document('doc-1'), document('doc-2')])
@@ -85,11 +102,45 @@ describe('documents store', () => {
 
     const store = useDocumentsStore()
     await store.load()
+    await store.loadHistory('doc-1')
 
-    expect(store.documents).toHaveLength(2)
     expect(store.documents[0]!.history).toHaveLength(2)
     expect(store.documents[1]!.history).toHaveLength(0)
-    expect(store.loaded).toBe(true)
+
+    // Filtered server side, where there is an index on it, rather than fetched
+    // whole and sieved in the browser.
+    const [options] = pbMockModule.collection('document_history').getFullList.mock.calls[0]!
+    expect(options.filter).toContain('doc-1')
+  })
+
+  it('asks for a history it already has only once', async () => {
+    pbMockModule.collection('documents').getFullList.mockResolvedValue([document('doc-1')])
+    pbMockModule
+      .collection('document_history')
+      .getFullList.mockResolvedValue([history('hist-1', 'doc-1')])
+
+    const store = useDocumentsStore()
+    await store.load()
+    await store.loadHistory('doc-1')
+    await store.loadHistory('doc-1')
+
+    expect(pbMockModule.collection('document_history').getFullList).toHaveBeenCalledTimes(1)
+  })
+
+  // Reloading the documents happens on every merge and restore, and it must not
+  // empty a dialog somebody is looking at.
+  it('keeps a fetched history across a reload of the documents', async () => {
+    pbMockModule.collection('documents').getFullList.mockResolvedValue([document('doc-1')])
+    pbMockModule
+      .collection('document_history')
+      .getFullList.mockResolvedValue([history('hist-1', 'doc-1')])
+
+    const store = useDocumentsStore()
+    await store.load()
+    await store.loadHistory('doc-1')
+    await store.load()
+
+    expect(store.documents[0]!.history).toHaveLength(1)
   })
 
   it('sorts the documents by the most recently read', async () => {
@@ -144,6 +195,7 @@ describe('documents store', () => {
 
     const store = useDocumentsStore()
     await store.load()
+    await store.loadHistory('doc-1')
     await store.subscribe()
 
     pbMockModule.emit('documents', 'update', document('doc-1', { progress: 0.9 }))
@@ -152,7 +204,24 @@ describe('documents store', () => {
     expect(store.documents[0]!.history).toHaveLength(1)
   })
 
-  it('folds a new history entry into its document', async () => {
+  it('folds a new history entry into a document whose history is open', async () => {
+    pbMockModule.collection('documents').getFullList.mockResolvedValue([document('doc-1')])
+    pbMockModule.collection('document_history').getFullList.mockResolvedValue([])
+
+    const store = useDocumentsStore()
+    await store.load()
+    await store.loadHistory('doc-1')
+    await store.subscribe()
+
+    pbMockModule.emit('document_history', 'create', history('hist-1', 'doc-1'))
+
+    expect(store.documents[0]!.history).toHaveLength(1)
+  })
+
+  // A document whose history was never fetched holds an empty array. Folding a
+  // single live event into it would produce a list of one entry that looks like
+  // the whole story.
+  it('ignores history events for a document nobody has opened', async () => {
     pbMockModule.collection('documents').getFullList.mockResolvedValue([document('doc-1')])
 
     const store = useDocumentsStore()
@@ -161,7 +230,7 @@ describe('documents store', () => {
 
     pbMockModule.emit('document_history', 'create', history('hist-1', 'doc-1'))
 
-    expect(store.documents[0]!.history).toHaveLength(1)
+    expect(store.documents[0]!.history).toHaveLength(0)
   })
 
   it('ignores a history entry of an unknown document', async () => {
