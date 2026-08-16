@@ -572,3 +572,135 @@ func TestTheWebInterfaceStillAnswersEverythingElse(t *testing.T) {
 	}
 	scenario.Test(t)
 }
+
+// KOReader's database is in WAL mode, and opening one — even read only —
+// makes SQLite create -shm and -wal files beside it. The first version of the
+// validator did exactly that inside the account's directory and removed only
+// the upload, so every sync left two files behind for ever.
+func TestAnUploadLeavesNothingBesideItself(t *testing.T) {
+	content := walStatisticsBytes(t)
+
+	scenario := tests.ApiScenario{
+		Name:            "the directory holds one file after a sync",
+		Method:          http.MethodPut,
+		URL:             syncURL,
+		Body:            bytes.NewReader(content),
+		Headers:         basicAuth(testutil.KoUsernameA, testutil.KoPasswordA),
+		TestAppFactory:  newFactory(),
+		ExpectedStatus:  http.StatusCreated,
+		ExpectedContent: []string{"Created"},
+		AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
+			entries, err := os.ReadDir(filepath.Join(app.DataDir(), "webdav", testutil.IdUserA))
+			if err != nil {
+				t.Fatalf("read the directory: %v", err)
+			}
+
+			names := []string{}
+			for _, entry := range entries {
+				names = append(names, entry.Name())
+			}
+			if len(names) != 1 || names[0] != webdav.FileName {
+				t.Errorf("the directory holds %v, want only %s", names, webdav.FileName)
+			}
+		},
+	}
+	scenario.Test(t)
+}
+
+// And a refused upload leaves nothing either, sidecars included.
+func TestARefusedUploadLeavesNothingBehind(t *testing.T) {
+	scenario := tests.ApiScenario{
+		Name:            "a refused upload cleans up after itself",
+		Method:          http.MethodPut,
+		URL:             syncURL,
+		Body:            bytes.NewReader([]byte("not a database")),
+		Headers:         basicAuth(testutil.KoUsernameA, testutil.KoPasswordA),
+		TestAppFactory:  newFactory(),
+		ExpectedStatus:  http.StatusMethodNotAllowed,
+		ExpectedContent: []string{"Method Not Allowed"},
+		AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
+			entries, err := os.ReadDir(filepath.Join(app.DataDir(), "webdav", testutil.IdUserA))
+			if err != nil {
+				t.Fatalf("read the directory: %v", err)
+			}
+			if len(entries) != 0 {
+				t.Errorf("a refused upload left %d files behind", len(entries))
+			}
+		},
+	}
+	scenario.Test(t)
+}
+
+// Whatever is in the directory, a client is told about the one name this
+// endpoint offers and nothing else.
+func TestTheListingShowsOnlyTheOneName(t *testing.T) {
+	scenario := tests.ApiScenario{
+		Name:   "residue is not listed",
+		Method: "PROPFIND",
+		URL:    "/webdav/",
+		Headers: withHeader(basicAuth(testutil.KoUsernameA, testutil.KoPasswordA),
+			"Depth", "1"),
+		TestAppFactory: newFactory(),
+		BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+			put(t, app, testutil.IdUserA, statisticsBytes(t))
+
+			dir := filepath.Join(app.DataDir(), "webdav", testutil.IdUserA)
+			for _, leftover := range []string{
+				".statistics.sqlite3.123-shm",
+				".statistics.sqlite3.123-wal",
+				"holiday.jpg",
+			} {
+				if err := os.WriteFile(filepath.Join(dir, leftover), []byte("x"), 0o600); err != nil {
+					t.Fatalf("plant %s: %v", leftover, err)
+				}
+			}
+		},
+		ExpectedStatus:     http.StatusMultiStatus,
+		ExpectedContent:    []string{webdav.FileName},
+		NotExpectedContent: []string{"-shm", "-wal", "holiday.jpg"},
+	}
+	scenario.Test(t)
+}
+
+// walStatisticsBytes is a statistics database in WAL mode, which is the mode a
+// real KOReader ships. A test fixture in the default journal mode would never
+// have provoked the sidecars.
+func walStatisticsBytes(t testing.TB) []byte {
+	t.Helper()
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "wal.sqlite3")
+
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	if _, err := db.Exec(`PRAGMA journal_mode=WAL`); err != nil {
+		t.Fatalf("set WAL: %v", err)
+	}
+	for _, statement := range []string{
+		`CREATE TABLE book (id integer PRIMARY KEY autoincrement, title text, authors text,
+			notes integer, last_open integer, highlights integer, pages integer,
+			series text, language text, md5 text, total_read_time integer, total_read_pages integer)`,
+		`CREATE TABLE page_stat_data (id_book integer, page integer NOT NULL DEFAULT 0,
+			start_time integer NOT NULL DEFAULT 0, duration integer NOT NULL DEFAULT 0,
+			total_pages integer NOT NULL DEFAULT 0, UNIQUE (id_book, page, start_time))`,
+		`INSERT INTO book (title, md5, pages) VALUES ('Zeit des Sturms', '043f11771ef9d191364ac0ba08198d36', 668)`,
+	} {
+		if _, err := db.Exec(statement); err != nil {
+			t.Fatalf("build: %v", err)
+		}
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+
+	// Read the database alone: its own -wal file is not part of what a device
+	// uploads, and KOReader checkpoints before it syncs.
+	content, err := os.ReadFile(path) // #nosec G304 -- built above
+	if err != nil {
+		t.Fatalf("read back: %v", err)
+	}
+
+	return content
+}

@@ -1673,6 +1673,38 @@ The test that now guards it registers both, at the priority `registerWebUi` uses
 the only way such a test is worth anything: by putting the old route back and watching it reproduce
 the panic.
 
+### 28.3.2 What the first real sync showed
+
+A Boox Go 7 running KOReader for Android, configured against `/webdav/`:
+
+```
+PROPFIND /webdav/                  207
+GET      /webdav/statistics.sqlite3 404   (no remote copy yet)
+PUT      /webdav/statistics.sqlite3 201
+```
+
+Nothing was refused. No MKCOL, no upload under a temporary name followed by a MOVE, no LOCK — so the
+strict allow-list is the right shape and the refusal log stayed empty, which is the outcome it was
+built to be able to report.
+
+Two defects did turn up, and only because the directory was looked at afterwards:
+
+**SQLite left sidecars in the account's directory.** KOReader's database is in WAL mode, and opening a
+WAL database — even read only — makes SQLite create `-shm` and `-wal` beside it. Validation opened the
+temporary upload, so every sync left two files behind for ever, in the one directory that is supposed
+to hold exactly one thing. Fixed twice over: the connection now says `immutable=1`, which is true of a
+file that has already been written and closed and which makes SQLite read it in place and create
+nothing; and the upload's cleanup removes any sidecar regardless.
+
+**The listing showed them.** PROPFIND read the directory as it found it, so a client asking what was
+there was told about files the server had promised not to keep. The directory handle now filters to
+the one permitted name.
+
+The first of those is why the regression test builds its fixture in WAL mode. A statistics database in
+SQLite's default journal mode would never have provoked the sidecars, and the test would have passed
+against the bug — which it did, on the first attempt, until both defences were removed together to
+prove it could fail.
+
 ### 28.4 What this is not
 
 It receives the file. It does not read it. The import — turning `page_stat_data` into measured reading

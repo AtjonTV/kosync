@@ -27,6 +27,7 @@ package webdav
 import (
 	"context"
 	"net/http"
+	"os"
 	"path/filepath"
 
 	"git.obth.eu/atjontv/kosync/internal/config"
@@ -199,8 +200,13 @@ func (h *Handler) logRefusal(operation, name string, err error) {
 }
 
 // logRequest records the requests the implementation could not answer.
+//
+// A device's very first sync asks for a file that is not there yet, and that
+// 404 is the answer working rather than failing. Logging it would put a line
+// that reads like a fault into the log of every account that ever starts using
+// this.
 func (h *Handler) logRequest(request *http.Request, err error) {
-	if err == nil {
+	if err == nil || os.IsNotExist(err) {
 		return
 	}
 

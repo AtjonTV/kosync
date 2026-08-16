@@ -10,6 +10,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path"
@@ -105,7 +106,12 @@ func (s store) OpenFile(ctx context.Context, name string, flag int, _ fs.FileMod
 			return nil, os.ErrPermission
 		}
 
-		return os.Open(real) // #nosec G304 -- resolved above
+		opened, err := os.Open(real) // #nosec G304 -- resolved above
+		if err != nil {
+			return nil, err
+		}
+
+		return &listing{File: opened}, nil
 	}
 
 	if flag&(os.O_WRONLY|os.O_RDWR) == 0 {
@@ -185,6 +191,45 @@ func (s store) Rename(_ context.Context, oldName, newName string) error {
 	return os.ErrPermission
 }
 
+// listing is the account's directory, showing only what this endpoint admits to
+// having.
+//
+// The store accepts one name, so a listing that showed anything else would be
+// describing a directory the endpoint does not offer: a half-written upload, or
+// a file left behind by a version of this code that leaked one. A client asks
+// what is here before it decides whether to download, and the honest answer is
+// that one file, or nothing.
+type listing struct {
+	*os.File
+
+	read bool
+}
+
+func (l *listing) Readdir(count int) ([]fs.FileInfo, error) {
+	if l.read {
+		if count <= 0 {
+			return nil, nil
+		}
+
+		return nil, io.EOF
+	}
+	l.read = true
+
+	all, err := l.File.Readdir(-1)
+	if err != nil {
+		return nil, err
+	}
+
+	kept := []fs.FileInfo{}
+	for _, one := range all {
+		if one.Name() == FileName {
+			kept = append(kept, one)
+		}
+	}
+
+	return kept, nil
+}
+
 // upload is a file being written by a device.
 //
 // It exists to do two things the plain file cannot: stop at the size limit
@@ -234,20 +279,33 @@ func (u *upload) Close() error {
 		return fmt.Errorf("store the upload: %w", err)
 	}
 
+	// Whatever happens next, nothing but the stored file may be left in the
+	// directory. Validation opens the upload with immutable set so that SQLite
+	// writes no sidecars of its own, and this is the second lock on that door:
+	// a directory that accumulated two files per sync would fill up quietly and
+	// show a reader entries it never wrote.
+	defer discard(temp)
+
 	if err := Validate(temp); err != nil {
-		_ = os.Remove(temp)
 		u.refused("keep", FileName, err)
 
 		return err
 	}
 
 	if err := os.Rename(temp, u.final); err != nil {
-		_ = os.Remove(temp)
-
 		return fmt.Errorf("store the upload: %w", err)
 	}
 
 	return nil
+}
+
+// discard removes a temporary upload and anything SQLite may have put beside
+// it. A file that was renamed into place is already gone, which is what makes
+// this safe to defer.
+func discard(temp string) {
+	for _, path := range []string{temp, temp + "-shm", temp + "-wal", temp + "-journal"} {
+		_ = os.Remove(path)
+	}
 }
 
 // Readdir belongs to the directory handle and is inherited from *os.File for

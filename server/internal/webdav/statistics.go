@@ -72,10 +72,17 @@ func Validate(path string) error {
 		return fmt.Errorf("close the upload: %w", closeErr)
 	}
 
-	// Read only, and with the schema untrusted: an uploaded database is not a
-	// database this server chose to have.
+	// Read only, immutable, and with the schema untrusted.
+	//
+	// immutable is the one that is easy to leave out and wrong to. KOReader's
+	// database is in WAL mode, and opening a WAL database — even for reading —
+	// makes SQLite create the -shm and -wal files beside it. Beside it means
+	// inside the account's sync directory, where the only thing that should ever
+	// appear is the one permitted name. Promising the file cannot change makes
+	// SQLite read it as it lies and leave nothing behind, which is exactly true
+	// of an upload that has already been written and closed.
 	db, err := sql.Open("sqlite",
-		"file:"+path+"?mode=ro&_pragma=trusted_schema(off)&_pragma=query_only(true)&_pragma=busy_timeout(2000)")
+		"file:"+path+"?mode=ro&immutable=1&_pragma=trusted_schema(off)&_pragma=query_only(true)")
 	if err != nil {
 		return fmt.Errorf("%w: it cannot be opened", ErrNotStatistics)
 	}
