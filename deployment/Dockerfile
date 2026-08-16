@@ -1,7 +1,7 @@
 ## Multi-stage build: 1. compile the webui and a static binary, 2. run it against a /data volume
 
 # 1) Build stage
-FROM golang:1.26.5-alpine3.23 AS builder
+FROM golang:1.26.6-alpine3.23 AS builder
 
 WORKDIR /src
 

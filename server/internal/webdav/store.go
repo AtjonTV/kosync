@@ -110,6 +110,7 @@ func (s store) OpenFile(ctx context.Context, name string, flag int, _ fs.FileMod
 			return nil, os.ErrPermission
 		}
 
+		// bearer:disable go_gosec_filesystem_filereadtaint
 		opened, err := os.Open(real) // #nosec G304 -- resolved above
 		if err != nil {
 			return nil, err
@@ -119,6 +120,7 @@ func (s store) OpenFile(ctx context.Context, name string, flag int, _ fs.FileMod
 	}
 
 	if flag&(os.O_WRONLY|os.O_RDWR) == 0 {
+		// bearer:disable go_gosec_filesystem_filereadtaint
 		return os.Open(real) // #nosec G304 -- resolved above
 	}
 

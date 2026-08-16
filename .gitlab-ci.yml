@@ -6,7 +6,7 @@ stages:
   - analyze
 
 variables:
-  GO_VERSION: 1.26.5-alpine3.23
+  GO_VERSION: 1.26.6-alpine3.23
   BEARER_VERSION: 2.0.1
   WWHRD_VERSION: 9ccc2ff
   STATICCHECK_VERSION: 2026.1

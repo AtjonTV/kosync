@@ -6,9 +6,18 @@
 
 // Package epub reads the parts of an EPUB that KOsync needs: the document
 // hashes KOReader identifies a book by, and the metadata the library shows.
+//
+// The hashes are MD5, and every scanner that looks at this file says so. They
+// are not a security decision and cannot be changed here: KOReader computes them
+// on the device and sends them as the identity of a document, so a stronger
+// digest would simply match nothing. Nothing is authenticated, signed or kept
+// secret with them — they are names for files. Hence the #nosec and
+// bearer:disable annotations below, one per site rather than a blanket skip, so
+// that a new use of MD5 anywhere else is still reported.
 package epub
 
 import (
+	// bearer:disable go_gosec_blocklist_md5
 	"crypto/md5" // #nosec G501 -- KOReader's document identity is MD5; not a security decision
 	"encoding/hex"
 	"io"
@@ -47,6 +56,7 @@ func sampleOffsets() []int64 {
 // nothing. Two files match only if they are byte-identical in those windows,
 // which in practice means byte-identical files.
 func PartialMD5(rs io.ReadSeeker) (string, error) {
+	// bearer:disable go_gosec_crypto_weak_crypto
 	digest := md5.New() // #nosec G401 -- see the package comment
 	buffer := make([]byte, sampleSize)
 
@@ -68,6 +78,7 @@ func PartialMD5(rs io.ReadSeeker) (string, error) {
 		}
 	}
 
+	// bearer:disable go_lang_weak_hash_md5
 	return hex.EncodeToString(digest.Sum(nil)), nil
 }
 
@@ -77,6 +88,7 @@ func PartialMD5(rs io.ReadSeeker) (string, error) {
 // It only matches when the reader kept the name the file was served under, so
 // acquisition links have to serve a deterministic name.
 func FilenameMD5(name string) string {
+	// bearer:disable go_gosec_crypto_weak_crypto, go_lang_weak_hash_md5
 	sum := md5.Sum([]byte(filepath.Base(name))) // #nosec G401 -- see the package comment
 
 	return hex.EncodeToString(sum[:])

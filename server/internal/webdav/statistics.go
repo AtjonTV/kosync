@@ -56,6 +56,7 @@ var ErrNotStatistics = errors.New("not a KOReader statistics database")
 // is the gate that keeps a photo album, a log file, or a rename of something
 // else from being kept at all.
 func Validate(path string) error {
+	// bearer:disable go_gosec_filesystem_filereadtaint
 	file, err := os.Open(path) // #nosec G304 -- the path is built by this package
 	if err != nil {
 		return fmt.Errorf("open the upload: %w", err)
