@@ -7,69 +7,58 @@
 package books_test
 
 import (
+	"encoding/json"
+	"os"
 	"testing"
 
 	"git.obth.eu/atjontv/kosync/internal/books"
 )
 
-func TestANameWrittenBackwardsIsTurnedRound(t *testing.T) {
-	cases := map[string]string{
-		"Child, Lee":            "Lee Child",
-		"Gabaldon, Diana":       "Diana Gabaldon",
-		"Rowling, J.K.":         "J.K. Rowling",
-		"Sigurðardóttir, Lilja": "Lilja Sigurðardóttir",
-		"O'Leary, Anabel":       "Anabel O'Leary",
-		// The family name may be several words, and only the first comma
-		// separates the two halves.
-		"de la Cruz, Melissa":   "Melissa de la Cruz",
-		"Martin, George, R. R.": "George R. R. Martin",
-		// Untidy spacing is not a different name.
-		"  Child ,  Lee  ": "Lee Child",
+// sharedCases are the cases the rule is held to in both languages it is written
+// in: here, and in the browser's copy at webui/src/lib/grouping.ts. The two have
+// to agree or the same library reads differently depending on which client
+// asked, and a corpus each would let them drift apart quietly.
+type sharedCases struct {
+	Display          map[string]string `json:"display"`
+	SameAuthor       [][]string        `json:"sameAuthor"`
+	DifferentAuthors [][2]string       `json:"differentAuthors"`
+	NoKey            []string          `json:"noKey"`
+}
+
+func loadSharedCases(t testing.TB) sharedCases {
+	t.Helper()
+
+	raw, err := os.ReadFile("../../../testdata/author-names.json")
+	if err != nil {
+		t.Fatalf("failed to read the shared author cases: %v", err)
 	}
 
-	for written, expected := range cases {
+	var cases sharedCases
+	if err := json.Unmarshal(raw, &cases); err != nil {
+		t.Fatalf("failed to read the shared author cases: %v", err)
+	}
+	if len(cases.Display) == 0 || len(cases.SameAuthor) == 0 {
+		t.Fatal("the shared author cases are empty")
+	}
+
+	return cases
+}
+
+// The names turned round here are the ones written backwards in the reference
+// library; the ones left alone are what the rule must not touch — four people in
+// one field, a company suffix, half a name.
+func TestEveryNameIsShownTheWayTheSharedCasesSay(t *testing.T) {
+	for written, expected := range loadSharedCases(t).Display {
 		if actual := books.AuthorName(written); actual != expected {
 			t.Errorf("AuthorName(%q) = %q, want %q", written, actual, expected)
 		}
 	}
 }
 
-func TestANameThatIsNotBackwardsIsLeftAlone(t *testing.T) {
-	unchanged := []string{
-		"Lee Child",
-		"J.K. Rowling",
-		"村上春樹",
-		"",
-		// Four people in one field, not one name written backwards.
-		"Corinna Mieth, Simon Weber, Rainer Schäfer, Anna Schriefl",
-		// The word after the comma is a suffix, not a given name.
-		"Penguin Random House, LLC",
-		"Smith, Jr.",
-		"King, PhD",
-		// Half a name is not a name to turn round.
-		"Child,",
-		", Lee",
-	}
-
-	for _, name := range unchanged {
-		if actual := books.AuthorName(name); actual != name {
-			t.Errorf("AuthorName(%q) = %q, want it unchanged", name, actual)
-		}
-	}
-}
-
-// The five groups this merges are the five the reference library actually holds,
-// and the largest of them is its most read author split in two.
+// The groups this merges are the ones the reference library actually holds, and
+// the largest of them is its most read author split in two.
 func TestTheSpellingsOfOneAuthorShareAKey(t *testing.T) {
-	groups := [][]string{
-		{"Lee Child", "Child, Lee", "CHILD, LEE", "Lee  Child"},
-		{"George R. R. Martin", "George R.R. Martin", "Martin, George, R. R."},
-		{"J. K. Rowling", "J.K. Rowling", "Rowling, J.K."},
-		{"Diana Gabaldon", "Gabaldon, Diana"},
-		{"Pottermore Publishing", "Publishing, Pottermore"},
-	}
-
-	for _, spellings := range groups {
+	for _, spellings := range loadSharedCases(t).SameAuthor {
 		key := books.AuthorKey(spellings[0])
 		if key == "" {
 			t.Fatalf("AuthorKey(%q) is empty", spellings[0])
@@ -83,18 +72,10 @@ func TestTheSpellingsOfOneAuthorShareAKey(t *testing.T) {
 	}
 }
 
+// Nothing is transliterated, so a name in another script keeps itself rather than
+// folding into the group of everything unpronounceable.
 func TestTwoAuthorsDoNotShareAKey(t *testing.T) {
-	apart := [][2]string{
-		{"Lee Child", "Lee Childs"},
-		{"George R. R. Martin", "George Martin"},
-		{"Andrzej Sapkowski", "Andrew Sapkowski"},
-		// Nothing is transliterated, so a name in another script keeps itself
-		// rather than folding into the group of everything unpronounceable.
-		{"村上春樹", "東野圭吾"},
-		{"Александр Пушкин", "Лев Толстой"},
-	}
-
-	for _, pair := range apart {
+	for _, pair := range loadSharedCases(t).DifferentAuthors {
 		if books.AuthorKey(pair[0]) == books.AuthorKey(pair[1]) {
 			t.Errorf("AuthorKey(%q) and AuthorKey(%q) are the same key", pair[0], pair[1])
 		}
@@ -104,7 +85,7 @@ func TestTwoAuthorsDoNotShareAKey(t *testing.T) {
 // A name with no letters in it at all has no key, and the catalog drops it rather
 // than shelving every such book together under nothing.
 func TestANameOfPunctuationHasNoKey(t *testing.T) {
-	for _, name := range []string{"", "   ", "---", ".,.", ","} {
+	for _, name := range loadSharedCases(t).NoKey {
 		if key := books.AuthorKey(name); key != "" {
 			t.Errorf("AuthorKey(%q) = %q, want no key", name, key)
 		}

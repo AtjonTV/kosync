@@ -1879,7 +1879,34 @@ normalising it away is a much narrower target than a parameter. Shelves and face
 route pattern — two patterns differing only in the name of their wildcard are the same pattern to
 Go's router, and registering both panics at start up.
 
-### 29.4 The ISBN lookup, and what limits it (deferred)
+### 29.4 The same shelves in the browser
+
+The catalog and the web library are two views of one shelf, and the operator asked for the second one
+to group the way the first does. The library page grew a **Group by** control — nothing, author,
+series or language — which turns the flat grid into headed sections, remembered in `localStorage`
+because somebody who browses by series today will want to tomorrow. The dashboard's strip of recently
+read books is never grouped: it is a shelf, not a catalogue, and six books in headed sections is
+noise.
+
+Two rules the browser has that the server did not need. **Nothing may vanish.** A facet feed simply
+omits the books with no value for it, which is right for navigation and wrong for a page that claims
+to be the whole library — so a grouping ends in "Without a series" or "Without an author" when it has
+to, and a file that names no language is shelved with the ones that said `und`, since both mean
+nobody knows. And **the name on the card is the name on the shelf**: the grid used to print the
+authors exactly as the file wrote them, which under author grouping put "Child, Lee" beneath a shelf
+headed "Lee Child". Both the grid and the book page now show the tidied form.
+
+**The folding rule is written twice, and that is the risk this section exists to record.** The
+grouping happens in the browser, over a library it has already loaded in full — an endpoint would be
+a round trip to learn something the client is holding, and would go stale against the live
+subscription that keeps the grid current as books arrive. So `webui/src/lib/grouping.ts` is a second
+implementation of `internal/books/authors.go`, and two implementations of one rule drift. The guard
+is `testdata/author-names.json`: every case the fold is held to lives there, and both
+`server/internal/books/authors_test.go` and `webui/src/tests/lib/grouping.test.ts` read that same
+file. Changing the rule on one side without the other fails the other side's tests. Adding a case
+tests both.
+
+### 29.5 The ISBN lookup, and what limits it (deferred)
 
 Filling in what the file does not carry — subjects, series, publisher, a better cover — by asking an
 external catalogue (task #37). Three things bound it, and the first is the one that decides:

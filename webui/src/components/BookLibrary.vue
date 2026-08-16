@@ -4,11 +4,12 @@
   Copyright:   © 2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
 -->
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import { useBooksStore } from '@/stores/books'
 import { useDocumentsStore } from '@/stores/documents'
+import { authorName, groupBooks, type Grouping } from '@/lib/grouping'
 import type { Book } from '@/models'
 import type { FileUploadUploaderEvent } from 'primevue/fileupload'
 import { errorMessage, fileUrl } from '@/pb'
@@ -80,6 +81,42 @@ const sorted = computed(() => {
 const hidden = computed(() => (props.limit ? Math.max(books.books.length - props.limit, 0) : 0))
 
 /**
+ * How the library is broken up, remembered between visits.
+ *
+ * Somebody who browses by series wants to browse by series tomorrow as well, and
+ * the choice is worth less than the trouble of making it again. Stored rather than
+ * put in the route because it is a preference, not a place: the library page has
+ * one address whichever way its owner happens to be reading it.
+ */
+const groupingKey = 'library-grouping'
+const groupings: Grouping[] = ['none', 'authors', 'series', 'languages']
+
+const savedGrouping = localStorage.getItem(groupingKey) as Grouping | null
+const grouping = ref<Grouping>(
+  savedGrouping && groupings.includes(savedGrouping) ? savedGrouping : 'none',
+)
+
+watch(grouping, (chosen) => localStorage.setItem(groupingKey, chosen))
+
+const groupingOptions = [
+  { label: 'Nothing', value: 'none' },
+  { label: 'Author', value: 'authors' },
+  { label: 'Series', value: 'series' },
+  { label: 'Language', value: 'languages' },
+]
+
+/**
+ * How the books actually come out, which is not always what was chosen.
+ *
+ * The dashboard is a shelf and not a catalogue, so it is never grouped: breaking
+ * six recently read books into headed sections is noise, and the page it links to
+ * is where the grouping belongs.
+ */
+const groupedBy = computed<Grouping>(() => (props.limit ? 'none' : grouping.value))
+
+const shelves = computed(() => groupBooks(sorted.value, groupedBy.value))
+
+/**
  * How far the reading has got in each book, keyed by book id.
  *
  * The link is made by the server: a device pushes a document hash, and a book
@@ -104,7 +141,9 @@ const percentOf = (book: Book) => Math.round((progressOf(book) ?? 0) * 100)
 const coverUrl = (book: Book) => fileUrl(book, book.cover, '200x300')
 const downloadUrl = (book: Book) => fileUrl(book, book.file)
 
-const authorsOf = (book: Book) => (book.authors ?? []).join(', ')
+// Tidied the way the shelf headings and the catalog tidy them, so that a book
+// filed under "Lee Child" does not say "Child, Lee" underneath its own cover.
+const authorsOf = (book: Book) => (book.authors ?? []).map(authorName).join(', ')
 
 /**
  * The page count worth showing: the one measured from the reading if there is
@@ -207,21 +246,37 @@ onMounted(() => {
 <template>
   <Card class="bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-700">
     <template #title>
-      <div class="flex justify-between items-center gap-4">
+      <div class="flex flex-wrap justify-between items-center gap-4">
         <span v-if="props.heading" class="text-xl font-semibold">{{ props.heading }}</span>
         <span v-else></span>
-        <FileUpload
-          mode="basic"
-          name="file"
-          accept=".epub,application/epub+zip"
-          :multiple="true"
-          :auto="true"
-          :custom-upload="true"
-          :disabled="uploading"
-          choose-label="Add EPUB"
-          choose-icon="pi pi-upload"
-          @uploader="uploadFiles"
-        />
+        <div class="flex items-center gap-3">
+          <div v-if="!limit && books.books.length" class="flex items-center gap-2">
+            <label for="library-grouping" class="text-sm text-surface-600 dark:text-surface-400">
+              Group by
+            </label>
+            <Select
+              id="library-grouping"
+              v-model="grouping"
+              :options="groupingOptions"
+              option-label="label"
+              option-value="value"
+              size="small"
+              aria-label="Group the library by"
+            />
+          </div>
+          <FileUpload
+            mode="basic"
+            name="file"
+            accept=".epub,application/epub+zip"
+            :multiple="true"
+            :auto="true"
+            :custom-upload="true"
+            :disabled="uploading"
+            choose-label="Add EPUB"
+            choose-icon="pi pi-upload"
+            @uploader="uploadFiles"
+          />
+        </div>
       </div>
     </template>
     <template #content>
@@ -243,83 +298,94 @@ onMounted(() => {
         <ProgressSpinner style="width: 2.5rem; height: 2.5rem" />
       </div>
 
-      <div
-        v-else-if="sorted.length"
-        class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-6"
-      >
-        <div v-for="book in sorted" :key="book.id" class="flex flex-col gap-2 h-full">
-          <RouterLink
-            :to="{ name: 'book', params: { id: book.id } }"
-            class="relative aspect-[2/3] rounded-lg overflow-hidden bg-surface-100 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 block hover:border-primary-400 transition-colors"
-            :title="`Statistics for ${book.title}`"
+      <div v-else-if="shelves.length" class="flex flex-col gap-8">
+        <section v-for="shelf in shelves" :key="shelf.key" class="flex flex-col gap-4">
+          <h2
+            v-if="shelf.title"
+            class="flex items-baseline gap-2 pb-2 border-b border-surface-200 dark:border-surface-700"
           >
-            <img
-              v-if="book.cover"
-              :src="coverUrl(book)"
-              :alt="`Cover of ${book.title}`"
-              class="w-full h-full object-cover"
-              loading="lazy"
-            />
-            <div
-              v-else
-              class="w-full h-full flex items-center justify-center text-surface-400 dark:text-surface-500"
-            >
-              <i class="pi pi-book text-4xl"></i>
-            </div>
-
-            <div
-              v-if="progressOf(book) !== undefined"
-              class="absolute inset-x-0 bottom-0 bg-black/60 text-white text-xs px-2 py-1"
-            >
-              <div class="flex justify-between items-center gap-2">
-                <span>{{ percentOf(book) === 100 ? 'Finished' : 'Reading' }}</span>
-                <span class="tabular-nums">{{ percentOf(book) }}%</span>
-              </div>
-              <div class="mt-1 h-1 rounded-full bg-white/25 overflow-hidden">
-                <div class="h-full bg-white" :style="{ width: `${percentOf(book)}%` }"></div>
-              </div>
-            </div>
-          </RouterLink>
-
-          <div class="flex flex-col gap-1">
-            <RouterLink
-              :to="{ name: 'book', params: { id: book.id } }"
-              class="font-semibold leading-tight line-clamp-2 min-h-[2.5em] hover:underline"
-              :title="book.title"
-              >{{ book.title }}</RouterLink
-            >
-            <span
-              class="text-sm text-surface-600 dark:text-surface-400 leading-tight line-clamp-1 min-h-[1.25em]"
-              :title="authorsOf(book)"
-            >
-              {{ authorsOf(book) }}
+            <span class="text-lg font-semibold">{{ shelf.title }}</span>
+            <span class="text-sm text-surface-500 dark:text-surface-400 tabular-nums">
+              {{ shelf.books.length }}
             </span>
-            <span class="text-xs text-surface-500 dark:text-surface-400">
-              {{ formatCount(pagesOf(book)) }} pages · {{ formatCount(book.word_count) }} words
-            </span>
-          </div>
+          </h2>
 
-          <div class="flex gap-1 mt-auto">
-            <a :href="downloadUrl(book)" :download="`${book.title}.epub`">
-              <Button icon="pi pi-download" variant="text" rounded title="Download" />
-            </a>
-            <Button
-              icon="pi pi-pencil"
-              variant="text"
-              rounded
-              title="Change title"
-              @click="openRename(book)"
-            />
-            <Button
-              icon="pi pi-trash"
-              severity="danger"
-              variant="text"
-              rounded
-              title="Delete"
-              @click="remove(book)"
-            />
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-6">
+            <div v-for="book in shelf.books" :key="book.id" class="flex flex-col gap-2 h-full">
+              <RouterLink
+                :to="{ name: 'book', params: { id: book.id } }"
+                class="relative aspect-[2/3] rounded-lg overflow-hidden bg-surface-100 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 block hover:border-primary-400 transition-colors"
+                :title="`Statistics for ${book.title}`"
+              >
+                <img
+                  v-if="book.cover"
+                  :src="coverUrl(book)"
+                  :alt="`Cover of ${book.title}`"
+                  class="w-full h-full object-cover"
+                  loading="lazy"
+                />
+                <div
+                  v-else
+                  class="w-full h-full flex items-center justify-center text-surface-400 dark:text-surface-500"
+                >
+                  <i class="pi pi-book text-4xl"></i>
+                </div>
+
+                <div
+                  v-if="progressOf(book) !== undefined"
+                  class="absolute inset-x-0 bottom-0 bg-black/60 text-white text-xs px-2 py-1"
+                >
+                  <div class="flex justify-between items-center gap-2">
+                    <span>{{ percentOf(book) === 100 ? 'Finished' : 'Reading' }}</span>
+                    <span class="tabular-nums">{{ percentOf(book) }}%</span>
+                  </div>
+                  <div class="mt-1 h-1 rounded-full bg-white/25 overflow-hidden">
+                    <div class="h-full bg-white" :style="{ width: `${percentOf(book)}%` }"></div>
+                  </div>
+                </div>
+              </RouterLink>
+
+              <div class="flex flex-col gap-1">
+                <RouterLink
+                  :to="{ name: 'book', params: { id: book.id } }"
+                  class="font-semibold leading-tight line-clamp-2 min-h-[2.5em] hover:underline"
+                  :title="book.title"
+                  >{{ book.title }}</RouterLink
+                >
+                <span
+                  class="text-sm text-surface-600 dark:text-surface-400 leading-tight line-clamp-1 min-h-[1.25em]"
+                  :title="authorsOf(book)"
+                >
+                  {{ authorsOf(book) }}
+                </span>
+                <span class="text-xs text-surface-500 dark:text-surface-400">
+                  {{ formatCount(pagesOf(book)) }} pages · {{ formatCount(book.word_count) }} words
+                </span>
+              </div>
+
+              <div class="flex gap-1 mt-auto">
+                <a :href="downloadUrl(book)" :download="`${book.title}.epub`">
+                  <Button icon="pi pi-download" variant="text" rounded title="Download" />
+                </a>
+                <Button
+                  icon="pi pi-pencil"
+                  variant="text"
+                  rounded
+                  title="Change title"
+                  @click="openRename(book)"
+                />
+                <Button
+                  icon="pi pi-trash"
+                  severity="danger"
+                  variant="text"
+                  rounded
+                  title="Delete"
+                  @click="remove(book)"
+                />
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
       </div>
 
       <div v-else class="p-8 text-center text-surface-500 dark:text-surface-400">

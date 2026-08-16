@@ -4,7 +4,7 @@
 // Copyright:   © 2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
 //
 
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createTestingPinia } from '@pinia/testing'
 import PrimeVue from 'primevue/config'
@@ -42,6 +42,9 @@ function book(id: string, overrides: Partial<Book> = {}): Book {
     authors: ['Andrzej Sapkowski'],
     language: 'de',
     identifiers: {},
+    series: '',
+    series_index: 0,
+    subjects: null,
     page_count: 700,
     word_count: 109288,
     file_size: 1_200_000,
@@ -155,5 +158,87 @@ describe('BookLibrary', () => {
     const wrapper = mountLibrary([book('a')], { heading: '' })
 
     expect(wrapper.text()).not.toContain('Library')
+  })
+
+  describe('grouping', () => {
+    beforeEach(() => localStorage.clear())
+
+    it('offers the groupings on the library page', () => {
+      expect(mountLibrary([book('a')]).text()).toContain('Group by')
+    })
+
+    // Breaking six recently read books into headed sections is noise, and the
+    // page the dashboard links to is where the grouping belongs.
+    it('offers nothing to group on the dashboard shelf', () => {
+      expect(mountLibrary([book('a')], { limit: 6 }).text()).not.toContain('Group by')
+    })
+
+    it('offers nothing to group in an empty library', () => {
+      expect(mountLibrary([]).text()).not.toContain('Group by')
+    })
+
+    // Remembered because somebody who browses by series today wants to browse by
+    // series tomorrow, and the choice is worth less than making it again.
+    it('starts out the way it was last left', () => {
+      localStorage.setItem('library-grouping', 'series')
+
+      const wrapper = mountLibrary([
+        book('a', { title: 'Ambush', series: 'Jack Reacher', series_index: 3 }),
+        book('b', { title: 'Betrayal', series: 'Jack Reacher', series_index: 1 }),
+      ])
+      const text = wrapper.text()
+
+      expect(text).toContain('Jack Reacher')
+      expect(text.indexOf('Betrayal')).toBeLessThan(text.indexOf('Ambush'))
+    })
+
+    it('ignores a stored grouping it cannot make sense of', () => {
+      localStorage.setItem('library-grouping', 'by-colour-of-the-cover')
+
+      const wrapper = mountLibrary([book('a', { title: 'Ambush', series: 'Jack Reacher' })])
+
+      expect(wrapper.text()).not.toContain('Jack Reacher')
+    })
+
+    // The grid must never hide a book: whatever is chosen, everything in the
+    // library is still somewhere on the page.
+    it('keeps the books the grouping has no shelf for', () => {
+      localStorage.setItem('library-grouping', 'series')
+
+      const wrapper = mountLibrary([
+        book('a', { title: 'Alone' }),
+        book('b', { title: 'Betrayal', series: 'Jack Reacher', series_index: 1 }),
+      ])
+      const text = wrapper.text()
+
+      expect(text).toContain('Without a series')
+      expect(text).toContain('Alone')
+    })
+
+    // The whole reason the fold exists, seen from the page it now serves.
+    it('heads one shelf with the name the library settled on', () => {
+      localStorage.setItem('library-grouping', 'authors')
+
+      const wrapper = mountLibrary([
+        book('a', { title: 'Ambush', authors: ['Lee Child'] }),
+        book('b', { title: 'Betrayal', authors: ['Lee Child'] }),
+        book('c', { title: 'Choice', authors: ['Child, Lee'] }),
+      ])
+      const text = wrapper.text()
+
+      expect(text).toContain('Lee Child')
+      expect(text).not.toContain('Child, Lee')
+    })
+
+    it('never groups the dashboard shelf, whatever was last chosen', () => {
+      localStorage.setItem('library-grouping', 'series')
+
+      const wrapper = mountLibrary(
+        [book('a', { title: 'Betrayal', series: 'Jack Reacher', series_index: 1 })],
+        { limit: 6 },
+      )
+
+      expect(wrapper.find('h2').exists()).toBe(false)
+    })
   })
 })

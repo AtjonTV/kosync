@@ -8,6 +8,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import Chart from 'primevue/chart'
 import { fileUrl } from '@/pb'
+import { authorName } from '@/lib/grouping'
 import { useBooksStore } from '@/stores/books'
 import { useBookStatsStore } from '@/stores/bookStats'
 import { useDocumentsStore } from '@/stores/documents'
@@ -22,7 +23,9 @@ const devices = useDevicesStore()
 const bookId = computed(() => String(route.params.id ?? ''))
 const book = computed(() => books.books.find((entry) => entry.id === bookId.value) ?? null)
 
-const authors = computed(() => (book.value?.authors ?? []).join(', '))
+// Tidied the way the library grid and the catalog tidy them: one book should not
+// name its author differently depending on which page is open.
+const authors = computed(() => (book.value?.authors ?? []).map(authorName).join(', '))
 const coverUrl = computed(() =>
   book.value ? fileUrl(book.value, book.value.cover, '200x300') : '',
 )

@@ -26,6 +26,9 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
+      // Fixtures the server's tests read as well. Nothing outside a test imports
+      // them, so none of this reaches the bundle.
+      '@testdata': fileURLToPath(new URL('../testdata', import.meta.url)),
     },
   },
   server: {
