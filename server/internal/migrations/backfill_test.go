@@ -330,3 +330,35 @@ func TestBackfillGivesOlderBooksACatalogHash(t *testing.T) {
 		t.Errorf("expected the book not to look edited, %q became %q", before.String(), got.String())
 	}
 }
+
+// A book uploaded before the column existed has no size on its record, and the
+// only place its size can still be read is the filesystem it was stored on.
+func TestBackfillMeasuresOlderBooks(t *testing.T) {
+	app := testutil.NewApp(t)
+	alice := testutil.CreateUser(t, app, testutil.IdUserA, testutil.EmailUserA, testutil.PasswordUsers)
+
+	book := storeBook(t, app, testutil.PadId("booka"), alice.Id, "043f11771ef9d191364ac0ba08198d36", "")
+	if book.GetInt(schema.FieldFileSize) != 0 {
+		t.Fatal("expected the book to start unmeasured")
+	}
+
+	before := book.GetDateTime(schema.FieldUpdated)
+
+	for range 2 {
+		if err := migrations.BackfillFileSizes(app); err != nil {
+			t.Fatalf("backfill the file sizes: %v", err)
+		}
+	}
+
+	stored, err := app.FindRecordById(schema.CollectionBooks, book.Id)
+	if err != nil {
+		t.Fatalf("reload the book: %v", err)
+	}
+
+	if want := len("PK\x03\x04 stand-in"); stored.GetInt(schema.FieldFileSize) != want {
+		t.Errorf("measured %d bytes, want %d", stored.GetInt(schema.FieldFileSize), want)
+	}
+	if got := stored.GetDateTime(schema.FieldUpdated); got.String() != before.String() {
+		t.Errorf("expected the book not to look edited, %q became %q", before.String(), got.String())
+	}
+}

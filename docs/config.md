@@ -27,9 +27,11 @@ file. See [`server/kosync.env.example`](../server/kosync.env.example) for a copy
 | `KOREADER_AUTH_CACHE_TTL_SECONDS` | `300` | lifetime of a verified device credential in memory, `0` disables |
 | `KOREADER_AUTH_CACHE_ENTRIES` | `1024` | how many credentials are cached at most |
 | `BOOKS_WORDS_PER_PAGE` | `155` | fallback reading density for books whose page count cannot be measured |
+| `BOOKS_QUOTA_MEGABYTES` | `0` | how much room one account's books may take together, `0` means no limit |
 | `ENABLE_OPDS` | `true` | serve the library as an OPDS catalog at `/opds` |
 | `OPDS_PAGE_SIZE` | `50` | how many books one page of a catalog feed holds |
 | `ENABLE_ACHIEVEMENT_MAIL` | `true` | let the server tell an account what it has earned |
+| `ENABLE_SUMMARY_MAIL` | `true` | let the server send the weekly and monthly reading summaries |
 
 An invalid value falls back to its default instead of stopping the server.
 
@@ -54,11 +56,26 @@ that a reader gets back the name it reached the server by. Behind a reverse prox
 `X-Forwarded-Proto` and `X-Forwarded-Host` have to be set, or the acquisition links will point at
 whatever the proxy dialled — usually an address the device cannot reach.
 
+## About the library quota
+
+`BOOKS_QUOTA_MEGABYTES` is `0` by default, which means an account may upload as much as the disk
+holds. That is the right default for the instance this was written for — one reader, their own
+machine — and a limit is a decision about somebody else's library that only you can make.
+
+With a limit set, an upload that would not fit is refused with a message saying what it needed and
+what was free, and the library page shows a bar. Only the EPUB counts; the extracted cover is
+generated and small. Lowering the limit below what an account already holds takes nothing away: the
+books stay, no more can be added.
+
+Superusers are not counted against it, so an operator can always put a file into an instance they
+administer.
+
 ## About the mail
 
-There is only one message KOsync writes itself: the note that an account has earned an achievement.
-Everything else that arrives from this server — verification, password reset, the confirmation of an
-address change — is PocketBase's, from its own templates.
+There are three messages KOsync writes itself: the note that an account has earned an achievement,
+and the weekly and monthly summaries of its own reading. Everything else that arrives from this
+server — verification, password reset, the confirmation of an address change — is PocketBase's, from
+its own templates.
 
 All of it needs the SMTP settings in the superuser interface at `/_/` under **Settings → Mail**.
 Without them PocketBase falls back to the local `sendmail`, which a container does not have, and
@@ -74,6 +91,16 @@ the legacy import creates from being written to forever.
 One message goes out per statistics batch rather than one per badge. A first evaluation of an
 account that has been reading for years earns a dozen tiers at once, and a dozen mails about it would
 be a bug rather than a celebration.
+
+The summaries work the same way and start from further off: no account has a cadence until it picks
+one under **Account**, and the migration that added the setting deliberately does not backfill it.
+`ENABLE_SUMMARY_MAIL` is the operator's half. A summary covers the week or month that has *finished*
+and arrives at eight in the morning in the account's own timezone, so the job that sends them runs
+hourly and on most runs finds nobody to write to. A period with no reading in it is not mailed —
+there is nothing to report, and being told so weekly would be worse than silence.
+
+Which period an account was last written to about is stored on the account, so a server that was
+switched off over the weekend still sends Monday's summary when it comes back, once.
 
 ## Settings that are gone
 

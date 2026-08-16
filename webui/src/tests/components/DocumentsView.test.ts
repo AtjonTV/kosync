@@ -67,6 +67,7 @@ function book(): Book {
     identifiers: {},
     page_count: 700,
     word_count: 109288,
+    file_size: 1_200_000,
     content_hash: 'abc',
     hash_binary: 'bin',
     hash_filename: 'name',

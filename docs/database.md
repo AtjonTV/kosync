@@ -21,6 +21,12 @@ positive rather than a mute switch, because a boolean is false when it has never
 unsolicited mail the safe end of that is silence — so an account created outside the browser is quiet
 until somebody ticks the box. See [config.md](config.md).
 
+`summary_mail` is how often the account wants a report on its own reading: `off`, `weekly` or
+`monthly`. Unset means off, and unlike `achievement_mail` it is not backfilled for accounts that
+predate it — nobody asked them. `summary_sent` is the last period a summary went out for, written as
+`2026-W33` or `2026-07`; it is what makes the hourly job idempotent, and it is refused in an update
+request from anybody but a superuser, because moving it back would ask for the same summary again.
+
 `timezone` holds an IANA name such as `Europe/Vienna`, and is what the statistics days are reckoned
 in. The browser supplies it at registration, because nothing else can: the KOReader protocol carries
 no clock. It defaults to `UTC`, and changing it requeues every day the account has ever read — see
@@ -115,6 +121,12 @@ different strings — the uploader's name is whatever their file happened to be 
 name is derived from the title — so a reader that downloaded from the catalog and identifies
 documents by name needs its own column to be found by. It follows a rename, which does leave a device
 that downloaded the book earlier holding the old name; the binary hash still covers that device.
+
+`file_size` is how many bytes the uploaded file takes. It is stored rather than read from the
+filesystem because the per-account quota needs a sum over the whole library on every upload, and a
+stat call per book would get slower with every book added. The extracted cover is not counted: it is
+generated, it is small, and nobody chose to store it. Books uploaded before the column existed were
+measured once by the migration that added it.
 
 `page_count` is a fallback, derived from the word count at `BOOKS_WORDS_PER_PAGE`. An EPUB is
 reflowable and has no pages of its own, so a count measured from a reader's own progress is better

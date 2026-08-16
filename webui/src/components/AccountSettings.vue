@@ -78,6 +78,36 @@ const changeAchievementMail = async (on: boolean) => {
   }
 }
 
+// A cadence rather than a switch: a week says something about a habit and a
+// month says something about a book, and they are not degrees of one setting.
+const summaryOptions = [
+  { label: 'Never', value: 'off' },
+  { label: 'Every week', value: 'weekly' },
+  { label: 'Every month', value: 'monthly' },
+]
+
+const summaryBusy = ref(false)
+
+const wantsSummary = computed({
+  get: () => auth.summaryMail,
+  set: (cadence: string) => {
+    void changeSummaryMail(cadence)
+  },
+})
+
+const changeSummaryMail = async (cadence: string) => {
+  mailError.value = ''
+  summaryBusy.value = true
+
+  try {
+    await auth.setSummaryMail(cadence)
+  } catch (e) {
+    mailError.value = errorMessage(e, 'The setting could not be changed.')
+  } finally {
+    summaryBusy.value = false
+  }
+}
+
 const isVerified = computed(() => auth.record?.verified === true)
 
 // The legacy import parks every account it creates on this domain, so it is
@@ -301,6 +331,25 @@ const changePassword = async () => {
             One message per batch, never one per badge: earning five at once is one email. Nothing
             is sent while your address is unconfirmed, and a server without mail set up sends
             nothing at all.
+          </p>
+
+          <div class="flex flex-col gap-2">
+            <label for="summary-mail">Send me a summary of my reading</label>
+            <Select
+              id="summary-mail"
+              v-model="wantsSummary"
+              :options="summaryOptions"
+              option-label="label"
+              option-value="value"
+              :disabled="summaryBusy"
+              fluid
+            />
+          </div>
+
+          <p class="text-sm text-surface-500 dark:text-surface-400">
+            Pages, hours, the books you were in and anything you earned. It arrives in the morning
+            after the week or month has ended, and a period you did not read in is not mailed at
+            all.
           </p>
 
           <Message v-if="mailError" severity="error" variant="simple">{{ mailError }}</Message>

@@ -42,6 +42,7 @@ export const KosyncApi = {
     `/api/kosync/documents/${documentId}/restore/${historyId}`,
   mergeDocuments: '/api/kosync/documents/merge',
   achievements: '/api/kosync/achievements',
+  storage: '/api/kosync/storage',
 } as const
 
 /**
@@ -113,4 +114,28 @@ export function errorMessage(error: unknown, fallback = 'Something went wrong.')
   }
 
   return fallback
+}
+
+/**
+ * A number of bytes, written the way a person would say it.
+ *
+ * Binary units under their decimal names, which is what every file manager and
+ * every e-reader shows. This has to match the server's own formatting, because
+ * the bar and the message refusing an upload are read together.
+ */
+export function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes < 0) bytes = 0
+  if (bytes < 1024) return `${Math.round(bytes)} B`
+
+  const units = ['KB', 'MB', 'GB', 'TB']
+  let value = bytes
+  let name = units[0]
+
+  for (const next of units) {
+    name = next
+    value /= 1024
+    if (value < 1024) break
+  }
+
+  return value < 10 ? `${value.toFixed(1)} ${name}` : `${Math.round(value)} ${name}`
 }

@@ -41,6 +41,20 @@ const coverName = "cover"
 func Register(app core.App, conf *config.Config) {
 	registerMatching(app)
 
+	// Matching on arrival can fail, and nothing that arrives twice is guaranteed
+	// to arrive a third time. This asks the question again every night.
+	app.Cron().MustAdd(JobReconcile, scheduleReconcile, func() {
+		linked, err := Reconcile(app)
+		if err != nil {
+			app.Logger().Error("failed to reconcile the unlinked documents", "error", err)
+
+			return
+		}
+		if linked > 0 {
+			app.Logger().Info("linked documents to books they had been missing", "documents", linked)
+		}
+	})
+
 	app.OnRecordCreateRequest(schema.CollectionBooks).BindFunc(func(e *core.RecordRequestEvent) error {
 		if err := describe(e.Record, conf); err != nil {
 			return e.BadRequestError(sentence(err.Error()), nil)
@@ -48,6 +62,10 @@ func Register(app core.App, conf *config.Config) {
 
 		return e.Next()
 	})
+
+	// After the hook above, which is where the size of the incoming file is
+	// learned: a quota cannot weigh a book nobody has measured yet.
+	registerQuota(app, conf.QuotaBytes())
 
 	// The catalog serves a book under a name derived from its title, so the hash
 	// of that name has to be recomputed whenever the title changes. These are the
@@ -75,6 +93,7 @@ func Register(app core.App, conf *config.Config) {
 			schema.FieldHashBinary,
 			schema.FieldHashFilename,
 			schema.FieldWordCount,
+			schema.FieldFileSize,
 		} {
 			if _, present := info.Body[field]; present {
 				return e.BadRequestError(
@@ -175,6 +194,7 @@ func describe(record *core.Record, conf *config.Config) error {
 	}
 
 	record.Set(schema.FieldContentHash, content)
+	record.Set(schema.FieldFileSize, upload.Size)
 	record.Set(schema.FieldHashBinary, binary)
 	// The name the reader has on disk is the one it hashes, so this matches a
 	// device that holds the very file that was uploaded. A copy served from the

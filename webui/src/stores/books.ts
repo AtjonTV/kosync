@@ -4,10 +4,10 @@
 // Copyright:   © 2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
 //
 
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { pb, Collections } from '@/pb'
-import type { Book } from '@/models'
+import { pb, Collections, KosyncApi } from '@/pb'
+import type { Book, StorageUsage } from '@/models'
 
 /**
  * The uploaded books of the signed in account.
@@ -24,6 +24,17 @@ export const useBooksStore = defineStore('books', () => {
 
   let unsubscribe: (() => void) | null = null
 
+  /**
+   * How much room the library takes, and how much it may take.
+   *
+   * The limit is an operator setting rather than data, so it cannot be summed
+   * from the books the way the usage could be: the server has to say it. Both
+   * halves come from the same answer so the bar and a refused upload can never
+   * disagree about what full means.
+   */
+  const usage = ref<StorageUsage | null>(null)
+  const limited = computed(() => (usage.value?.quota ?? 0) > 0)
+
   async function load(): Promise<void> {
     loading.value = true
     try {
@@ -31,6 +42,14 @@ export const useBooksStore = defineStore('books', () => {
       loaded.value = true
     } finally {
       loading.value = false
+    }
+
+    // After the books, and never in a way that can fail the load: a library
+    // that cannot show how full it is should still show its books.
+    try {
+      usage.value = await pb.send<StorageUsage>(KosyncApi.storage, { method: 'GET' })
+    } catch {
+      usage.value = null
     }
   }
 
@@ -94,6 +113,7 @@ export const useBooksStore = defineStore('books', () => {
   function clear(): void {
     unsubscribeAll()
     books.value = []
+    usage.value = null
     loaded.value = false
   }
 
@@ -101,6 +121,8 @@ export const useBooksStore = defineStore('books', () => {
     books,
     loading,
     loaded,
+    usage,
+    limited,
     load,
     upload,
     rename,

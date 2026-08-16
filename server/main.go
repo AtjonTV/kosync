@@ -23,6 +23,7 @@ import (
 	"git.obth.eu/atjontv/kosync/internal/importer"
 	"git.obth.eu/atjontv/kosync/internal/koreader"
 	"git.obth.eu/atjontv/kosync/internal/kosyncapi"
+	"git.obth.eu/atjontv/kosync/internal/mail"
 	"git.obth.eu/atjontv/kosync/internal/opds"
 	"git.obth.eu/atjontv/kosync/internal/webui"
 	"github.com/pocketbase/pocketbase"
@@ -62,6 +63,7 @@ func main() {
 	books.Register(app, conf)
 	devices.Register(app)
 	opds.Register(app, conf, sync)
+	mail.RegisterSummaries(app, conf)
 
 	app.RootCmd.AddCommand(importer.NewCommand(app, conf))
 

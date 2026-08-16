@@ -75,6 +75,7 @@ func (h *Handler) Mount(se *core.ServeEvent) {
 	group.POST("/documents/{id}/restore/{historyId}", h.restoreHistory)
 	group.POST("/documents/merge", h.mergeDocuments)
 	group.GET("/achievements", h.listAchievements)
+	group.GET("/storage", h.storage)
 }
 
 // registerGuards keeps operations that must go through this package from
@@ -95,6 +96,25 @@ func (h *Handler) registerGuards() {
 					nil,
 				)
 			}
+		}
+
+		return e.Next()
+	})
+
+	// The bookkeeping of which summary has already gone out is the server's, not
+	// the account's. Setting it by hand would either skip a report or, set back,
+	// ask for the same one again on the next hourly run.
+	h.app.OnRecordUpdateRequest(schema.CollectionUsers).BindFunc(func(e *core.RecordRequestEvent) error {
+		info, err := e.RequestInfo()
+		if err != nil {
+			return err
+		}
+
+		if _, present := info.Body[schema.FieldSummarySent]; present && !e.HasSuperuserAuth() {
+			return e.BadRequestError(
+				fmt.Sprintf("%q is kept by the server and cannot be set by hand.", schema.FieldSummarySent),
+				nil,
+			)
 		}
 
 		return e.Next()

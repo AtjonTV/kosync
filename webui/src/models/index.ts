@@ -72,6 +72,8 @@ export interface Book extends BaseRecord {
   identifiers: Record<string, string>
   page_count: number
   word_count: number
+  /** How many bytes the uploaded file takes. Covers are not counted. */
+  file_size: number
   content_hash: string
   hash_binary: string
   hash_filename: string
@@ -144,4 +146,16 @@ export interface Achievement {
   /** The next threshold, zero when every tier is done. */
   next: number
   earned: EarnedTier[]
+}
+
+/**
+ * How much room an account's library takes, and how much it may take.
+ *
+ * `quota` is zero when the operator has not set a limit, which is not the same
+ * as a full library and has to be told apart from one.
+ */
+export interface StorageUsage {
+  books: number
+  used: number
+  quota: number
 }

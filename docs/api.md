@@ -253,6 +253,7 @@ session (`Authorization: <token>`).
 | POST | `/api/kosync/documents/{id}/restore/{historyId}` | Put a document back into an earlier state. The state being replaced is archived first, so the restore itself can be undone. |
 | POST | `/api/kosync/documents/merge` | Fold several documents into one. Body: `{"into":…,"from":[…]}`. |
 | GET | `/api/kosync/achievements` | Every achievement rule with your standing in it. |
+| GET | `/api/kosync/storage` | How much room your library takes, and how much it may take. |
 
 Anything that belongs to somebody else answers `404`, the same as something that does not exist.
 
@@ -301,6 +302,18 @@ There are eight of them:
 
 Subscribe to the `achievements` collection for the moment one is awarded, then read this again — the
 record says which tier was earned, while the card also shows how far the next one is.
+
+### Library storage
+
+```json
+{ "books": 42, "used": 391143424, "quota": 1073741824 }
+```
+
+Bytes, and only the EPUBs: covers are generated and not counted. `quota` is `0` when the operator has
+set no limit, which is not the same as a full library and has to be told apart from one. Half of this
+answer is a server setting rather than data, which is why it is an endpoint and not a sum over the
+`books` collection — and it means the bar in the interface and the message refusing an upload can
+never disagree about what full is.
 
 ### Merging documents
 

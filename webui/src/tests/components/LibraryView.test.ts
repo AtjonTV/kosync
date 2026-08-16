@@ -24,6 +24,7 @@ vi.mock('@/pb', async () => {
     browserTimezone: actual.browserTimezone,
     timezoneNames: actual.timezoneNames,
     fileUrl: actual.fileUrl,
+    formatBytes: actual.formatBytes,
   }
 })
 
@@ -62,5 +63,25 @@ describe('LibraryView', () => {
     const wrapper = mountLibrary()
 
     expect(wrapper.findComponent({ name: 'BookLibrary' }).attributes('heading')).toBe('')
+  })
+
+  it('shows how full the library is when the server sets a limit', async () => {
+    const wrapper = mountLibrary()
+    const books = useBooksStore()
+    books.usage = { books: 3, used: 512 * 1024 * 1024, quota: 1024 * 1024 * 1024 }
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.text()).toContain('512 MB of 1.0 GB')
+  })
+
+  // An instance with no quota has nothing to be a fraction of, and a bar with no
+  // end would be decoration.
+  it('says nothing about storage when there is no limit', async () => {
+    const wrapper = mountLibrary()
+    const books = useBooksStore()
+    books.usage = { books: 3, used: 512 * 1024 * 1024, quota: 0 }
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.text()).not.toContain('Storage')
   })
 })

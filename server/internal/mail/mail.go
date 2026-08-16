@@ -48,16 +48,8 @@ func Achievements(app core.App, ownerId string, earned []achievements.Awarded) (
 		return false, nil
 	}
 
-	// An unverified address is either one nobody has proved they can read or one
-	// of the placeholders the legacy import parks accounts on, and mail to those
-	// bounces forever without anybody being told. The interface says as much
-	// beside the setting.
-	if !owner.Verified() {
-		return false, nil
-	}
-
-	address := strings.TrimSpace(owner.Email())
-	if address == "" {
+	address, ok := deliverableAddress(owner)
+	if !ok {
 		return false, nil
 	}
 
@@ -77,6 +69,25 @@ func Achievements(app core.App, ownerId string, earned []achievements.Awarded) (
 	}
 
 	return true, nil
+}
+
+// deliverableAddress returns the address an account can actually be written to.
+//
+// An unverified address is either one nobody has proved they can read or one of
+// the placeholders the legacy import parks accounts on, and mail to those
+// bounces forever without anybody being told. The interface says as much beside
+// the settings.
+func deliverableAddress(owner *core.Record) (string, bool) {
+	if !owner.Verified() {
+		return "", false
+	}
+
+	address := strings.TrimSpace(owner.Email())
+	if address == "" {
+		return "", false
+	}
+
+	return address, true
 }
 
 // subject names the badge when there is one and counts them when there are more.

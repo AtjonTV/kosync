@@ -44,6 +44,7 @@ function book(id: string, overrides: Partial<Book> = {}): Book {
     identifiers: {},
     page_count: 700,
     word_count: 109288,
+    file_size: 1_200_000,
     content_hash: id,
     hash_binary: 'bin' + id,
     hash_filename: '',

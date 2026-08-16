@@ -84,6 +84,31 @@ const FieldTimezone = "timezone"
 // asked for is the kind of default worth getting the wrong way round.
 const FieldAchievementMail = "achievement_mail"
 
+// FieldSummaryMail is how often the account wants a summary of its own reading,
+// and FieldSummarySent is the last period one was sent for.
+//
+// The cadence is a choice rather than a switch because the two answers are
+// genuinely different: a week is a report on a habit, a month is a report on a
+// book. Unset means neither, which is what an account that has never been asked
+// should get.
+//
+// FieldSummarySent is what makes the sending idempotent. A server that was
+// switched off over the weekend has still not sent last week's summary when it
+// comes back, and the only way to know that is to have written down which
+// period the last one covered.
+const (
+	FieldSummaryMail = "summary_mail"
+	FieldSummarySent = "summary_sent"
+)
+
+// The cadences FieldSummaryMail may hold. An empty value means the same as
+// SummaryOff: a field nobody has set cannot be a promise to send anything.
+const (
+	SummaryOff     = "off"
+	SummaryWeekly  = "weekly"
+	SummaryMonthly = "monthly"
+)
+
 // koreader_accounts field names.
 const (
 	FieldUsername = "username"
@@ -171,6 +196,14 @@ const (
 	FieldPageCount   = "page_count"
 	FieldWordCount   = "word_count"
 	FieldContentHash = "content_hash"
+
+	// FieldFileSize is how many bytes the uploaded EPUB takes, stored because
+	// nothing else records it: PocketBase keeps the name of a file on the
+	// record and its size only on the filesystem, and asking the filesystem
+	// once per book is not a question a quota can afford to ask on every
+	// upload. The extracted cover is not counted; it is generated, small, and
+	// nobody chose to store it.
+	FieldFileSize = "file_size"
 
 	// FieldHashBinary and FieldHashFilename are the two document hashes
 	// KOReader identifies a book by. They are separate indexed columns rather

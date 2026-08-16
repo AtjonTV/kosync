@@ -27,6 +27,9 @@ export const useAuthStore = defineStore('auth', () => {
   const displayName = computed(() => (record.value?.name as string) || email.value)
   const timezone = computed(() => (record.value?.timezone as string) || 'UTC')
   const achievementMail = computed(() => record.value?.achievement_mail === true)
+  // Empty means the same as "off": a field nobody has set cannot be a promise
+  // to send anything.
+  const summaryMail = computed(() => (record.value?.summary_mail as string) || 'off')
 
   async function login(identity: string, password: string): Promise<void> {
     await pb.collection(Collections.users).authWithPassword(identity, password)
@@ -117,6 +120,14 @@ export const useAuthStore = defineStore('auth', () => {
     record.value = await pb.collection(Collections.users).update(id, { achievement_mail: on })
   }
 
+  /** Chooses how often a summary of the account's own reading arrives. */
+  async function setSummaryMail(cadence: string): Promise<void> {
+    const id = record.value?.id
+    if (!id) throw new Error('You are not signed in.')
+
+    record.value = await pb.collection(Collections.users).update(id, { summary_mail: cadence })
+  }
+
   function logout(): void {
     pb.authStore.clear()
   }
@@ -148,6 +159,8 @@ export const useAuthStore = defineStore('auth', () => {
     changeTimezone,
     achievementMail,
     setAchievementMail,
+    summaryMail,
+    setSummaryMail,
     logout,
     refresh,
     errorMessage,

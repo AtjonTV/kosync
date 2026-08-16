@@ -32,6 +32,19 @@ func TestNewUsesDocumentedDefaults(t *testing.T) {
 	if conf.KoreaderAuthCacheTtl != 300 {
 		t.Errorf("expected KoreaderAuthCacheTtl 300, got %d", conf.KoreaderAuthCacheTtl)
 	}
+	// The mail switches are the operator's half of a decision the account also
+	// has to make, so they default to allowed rather than to silence.
+	if !conf.EnableAchievementMail {
+		t.Errorf("expected EnableAchievementMail to default to true")
+	}
+	if !conf.EnableSummaryMail {
+		t.Errorf("expected EnableSummaryMail to default to true")
+	}
+	// A library with no limit is the default, because a limit is a decision
+	// about other people's uploads that only an operator can make.
+	if conf.BooksQuotaMegabytes != 0 {
+		t.Errorf("expected BooksQuotaMegabytes 0, got %d", conf.BooksQuotaMegabytes)
+	}
 }
 
 func TestNewReadsEnvironment(t *testing.T) {
@@ -70,6 +83,7 @@ func TestNormalizeRejectsOutOfRangeValues(t *testing.T) {
 		AnalyticsReconcileDays:     0,
 		KoreaderAuthCacheTtl:       -10,
 		KoreaderAuthCacheEntries:   0,
+		BooksQuotaMegabytes:        -1,
 	}
 
 	conf.Normalize()
@@ -97,6 +111,14 @@ func TestNormalizeRejectsOutOfRangeValues(t *testing.T) {
 	}
 	if conf.KoreaderAuthCacheEntries != 1024 {
 		t.Errorf("expected KoreaderAuthCacheEntries 1024, got %d", conf.KoreaderAuthCacheEntries)
+	}
+	// A negative quota is a typo, and the harmless reading of it is "no limit"
+	// rather than "no uploads at all".
+	if conf.BooksQuotaMegabytes != 0 {
+		t.Errorf("expected a negative quota to clamp to 0, got %d", conf.BooksQuotaMegabytes)
+	}
+	if got := conf.QuotaBytes(); got != 0 {
+		t.Errorf("expected QuotaBytes 0, got %d", got)
 	}
 }
 

@@ -48,6 +48,13 @@ type Config struct {
 	// usually quoted for print.
 	BooksWordsPerPage int `env:"BOOKS_WORDS_PER_PAGE" default:"155"`
 
+	// BooksQuotaMegabytes is how much room one account's uploaded books may take
+	// together. Zero means no limit, which is the right default for the instance
+	// this server was written for — one reader, their own disk — and turning a
+	// limit on is a decision about other people's libraries that only the
+	// operator can make.
+	BooksQuotaMegabytes int `env:"BOOKS_QUOTA_MEGABYTES" default:"0"`
+
 	// EnableOpds serves the library as an OPDS catalog. It is on by default:
 	// the catalog shows one account its own books and needs the same credential
 	// the device already syncs with, so it exposes nothing the sync API does not.
@@ -63,6 +70,11 @@ type Config struct {
 	// as well, so this is the switch for an operator who would rather the server
 	// sent no mail of its own at all.
 	EnableAchievementMail bool `env:"ENABLE_ACHIEVEMENT_MAIL" default:"true"`
+
+	// EnableSummaryMail lets the server send the weekly and monthly reports. It
+	// asks twice as well: the account has to have chosen a cadence, and unlike
+	// the achievement notice no account has one until it says so.
+	EnableSummaryMail bool `env:"ENABLE_SUMMARY_MAIL" default:"true"`
 }
 
 // New loads the configuration from "./kosync.env" (if present) and the environment.
@@ -112,6 +124,11 @@ func (c *Config) Normalize() {
 	if c.BooksWordsPerPage < 1 {
 		c.BooksWordsPerPage = 155
 	}
+	// A negative quota is a typo, and the harmless reading of it is "no limit"
+	// rather than "no uploads ever".
+	if c.BooksQuotaMegabytes < 0 {
+		c.BooksQuotaMegabytes = 0
+	}
 	if c.OpdsPageSize < 1 {
 		c.OpdsPageSize = 50
 	}
@@ -126,6 +143,12 @@ func (c *Config) WorkerInterval() time.Duration {
 // counted as continuous reading time.
 func (c *Config) SessionGap() time.Duration {
 	return time.Duration(c.AnalyticsSessionGapSeconds) * time.Second
+}
+
+// QuotaBytes returns the per-account library limit in bytes, or zero when there
+// is none. Megabytes here are the binary ones a file manager shows.
+func (c *Config) QuotaBytes() int64 {
+	return int64(c.BooksQuotaMegabytes) * 1024 * 1024
 }
 
 // AuthCacheTtl returns the lifetime of a verified KOReader credential in the

@@ -932,10 +932,9 @@ on the next start.
 moves when a book is uploaded. Uploading, or deleting and re-uploading, therefore changed nothing on
 screen until the page was reloaded. `LibraryView` now subscribes to both.
 
-One gap remains by choice: if a match fails transiently, that document stays unlinked until the book is
-re-uploaded, because nothing re-examines existing pairs. A periodic reconcile would close it. It is not
-built, on the grounds that the failure is logged and the cost is a page of missing progress rather than
-lost data — but if unmatched documents ever show up in practice, that is the thing to add.
+One gap remained by choice for a while: if a match fails transiently, that document stays unlinked
+until the book is re-uploaded, because nothing re-examines existing pairs. That is now closed by the
+nightly reconcile in §27.1.
 
 ### 18.2 What phase 9 deliberately left out
 
@@ -1508,3 +1507,94 @@ numbers that are out of range but cannot know that a boolean's documented defaul
 come from the `env` struct tags, and only `config.New` reads those. The first version of the worker
 test therefore watched for a mail that the worker had been told not to send. Both mail tests now set
 the flag they are testing, in both directions, so neither can pass by accident.
+
+
+---
+
+## 27. After the plan (phases 18 to 20)
+
+Everything in §13 is built. These three were not on the list: two were gaps the plan admitted to and
+one is a feature that only became cheap once the mail existed.
+
+### 27.1 The reconcile that §18.1 asked for
+
+Matching happens three times as things arrive: on the push that creates a document, on the rename
+that first gives it a filename, and on the upload that brings a book to documents already waiting for
+it. All three can fail, and none of them can be retried — a device must never lose a reading position
+over a link that is only a convenience — so a failed match used to be permanent, with re-uploading
+the file the only way out.
+
+`books.Reconcile` asks the whole question again, nightly at 03:30. It is one join rather than a
+lookup per document, because the ordinary night is a library where nothing is missing: on an account
+with two hundred documents and no gaps it is a single indexed scan that returns nothing.
+
+Two details are load-bearing. The emptiness guard in the join — a book with no catalog hash and a
+document no device ever reported a filename for both hold an empty string, and two empty strings are
+equal, which is a match a naive join would happily make. And the repair goes through `app.Save`
+rather than an `UPDATE`, because the link is what the statistics count pages by: saving the record
+queues every day of that document for recomputation and puts the progress on the cover without a
+reload. A run with nothing to do writes nothing at all, which the tests check by watching the
+`updated` timestamp — a nightly job that rewrote every linked document would requeue every day of
+every book, every night.
+
+### 27.2 A quota, off by default
+
+`BOOKS_QUOTA_MEGABYTES` defaults to `0`, meaning no limit. That is not indecision: this server was
+written for one reader on their own disk, and a limit is a decision about somebody else's library.
+The moment there is a second account, it is the thing to set.
+
+The size had to be stored, because PocketBase keeps the name of a file on the record and its size
+only on the filesystem, and a quota needs a sum over the whole library on every upload. `file_size`
+is written as the upload is described, and the migration measured the books that predate the column
+once, from the filesystem. A file that has gone missing stays at zero rather than failing the
+migration: a library with one broken record in it must still start.
+
+The check is on the request hook, not the record one, so the importer, the migrations and the tests
+can still write books server side. That is the honest place for it — a quota is a rule about what
+people may ask for, not an invariant of the data. An operator who lowers the limit below what an
+account already holds has broken nothing: every book stays, no more can be added.
+
+Superusers are exempt, because locking the administrator out of the instance they administer would be
+absurd.
+
+The interface shows a bar, fed by `GET /api/kosync/storage` rather than by summing the books in the
+browser — half the answer is a server setting the browser cannot know, and sending both from one
+place means the bar and the refusal can never disagree about what full means.
+
+### 27.3 The summaries
+
+The one new capability. It is small because everything it needs already existed: the daily rows are
+precomputed, the per-book rows are precomputed, the achievements are recorded, and phase 14 built the
+sending. What was left was three queries and a decision about time.
+
+**The decision about time.** A summary covers the period that has *finished* — a report on a week
+still being read would be wrong by the evening — and it arrives at eight in the morning in the
+account's own zone, because the mail is about reading somebody has just done and there is no hurry.
+That combination is why the job runs hourly rather than weekly: "Monday at eight" is a different
+instant for every account, and on all but one run an hour this job finds nobody to write to.
+
+**`summary_sent`.** The account records which period it was last written to about. That one column
+turns an hourly job into a weekly message, and it means a server switched off over the weekend still
+sends Monday's summary on Wednesday, once, rather than either skipping it or sending it three times.
+
+The mark goes down *before* the message goes out, deliberately. A mail host that is refusing
+connections would otherwise be retried on every hourly run for the rest of the week. A summary is a
+courtesy about reading that is already on the dashboard: missing one is a smaller harm than a hundred
+attempts, or than sending the same summary twice because the failure came after the message was
+accepted.
+
+**A period with no reading in it is not mailed.** The period is still marked, so this does not become
+a weekly reminder of not having read.
+
+**Only books are named, not documents.** A document nobody has uploaded the file for has no title
+beyond its hash, and "you read 40 pages of 043f11771ef9d191364ac0ba08198d36" is not a sentence worth
+mailing anybody. Those pages are still in the totals, which is where they belong.
+
+**Not backfilled, unlike `achievement_mail`.** Those accounts were asked about milestone mail once;
+nobody asked them about a weekly digest. `off` until somebody picks a cadence under **Account**.
+
+### 27.4 What is left
+
+- A release. `main.go` still says `26.08.0-dev` and there are no tags, which is now the only thing
+  making a finished rewrite look unfinished.
+- Nothing else is outstanding. §15's open risks are unchanged.

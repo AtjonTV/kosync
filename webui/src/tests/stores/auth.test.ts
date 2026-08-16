@@ -179,4 +179,23 @@ describe('auth store', () => {
       achievement_mail: false,
     })
   })
+
+  it('chooses how often a reading summary arrives', async () => {
+    const store = useAuthStore()
+    store.record = { id: 'user-a', collectionId: 'c', collectionName: 'users' }
+    await store.setSummaryMail('weekly')
+
+    expect(pbMockModule.collection('users').update).toHaveBeenCalledWith('user-a', {
+      summary_mail: 'weekly',
+    })
+  })
+
+  // An account that has never been asked hears nothing, which is what makes the
+  // whole feature safe to add to a server people are already using.
+  it('reads an unset cadence as off', () => {
+    const store = useAuthStore()
+    store.record = { id: 'user-a', collectionId: 'c', collectionName: 'users' }
+
+    expect(store.summaryMail).toBe('off')
+  })
 })

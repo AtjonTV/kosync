@@ -22,6 +22,8 @@ custom WebSocket protocol with what PocketBase already does well.
 - **Hands out achievements**, drawn as comic-book cats, for pages read, books finished, reading
   streaks, the books you went back to, and the nights and mornings you read at either end of.
 - **Tells you when you earn one**, by mail, if you ask it to and the server can send any.
+- **Writes to you about your reading**, weekly or monthly if you pick a cadence: pages, hours, the
+  books you were in and anything you earned. A week you did not read in is not mailed.
 - **Deploys as a single executable** with the web interface compiled in. No Redis, no Nginx, no Node.
 
 ## How the accounts fit together

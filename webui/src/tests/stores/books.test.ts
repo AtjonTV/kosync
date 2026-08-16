@@ -124,6 +124,39 @@ describe('books store', () => {
     expect(store.books.map((book) => book.id)).toEqual(['b1'])
   })
 
+  it('asks the server how full the library is', async () => {
+    pbMockModule.send.mockResolvedValueOnce({ books: 2, used: 4096, quota: 1048576 })
+
+    const store = useBooksStore()
+    await store.load()
+
+    expect(pbMockModule.send).toHaveBeenCalledWith('/api/kosync/storage', { method: 'GET' })
+    expect(store.usage?.used).toBe(4096)
+    expect(store.limited).toBe(true)
+  })
+
+  // The quota is the operator's setting, and not having one is the default.
+  it('is not limited when the server reports no quota', async () => {
+    pbMockModule.send.mockResolvedValueOnce({ books: 2, used: 4096, quota: 0 })
+
+    const store = useBooksStore()
+    await store.load()
+
+    expect(store.limited).toBe(false)
+  })
+
+  // A library that cannot say how full it is must still show its books.
+  it('keeps the books when the usage cannot be fetched', async () => {
+    pbMockModule.collection('books').getFullList.mockResolvedValueOnce([{ id: 'b1', title: 'One' }])
+    pbMockModule.send.mockRejectedValueOnce(new Error('nope'))
+
+    const store = useBooksStore()
+    await store.load()
+
+    expect(store.books).toHaveLength(1)
+    expect(store.usage).toBeNull()
+  })
+
   it('drops the library and its subscription on clear', async () => {
     const store = useBooksStore()
     await store.subscribe()
