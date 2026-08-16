@@ -67,11 +67,53 @@ shorter than `ANALYTICS_SESSION_GAP_SECONDS` (five minutes by default). This is 
 is worth being explicit about why: KOReader reports positions, never durations. Reading with sync set
 to every two pages produces a good estimate; reading with sync switched off produces almost none.
 
+Unless the device has said otherwise — see **Measured days** below.
+
 **`documents_touched`** — how many documents saw a progress update that day.
 
 **`pages_read`** — the sum of the pages read in each book that day. Progress in a document with no
 uploaded book contributes nothing: an EPUB that is not on the server has no length, and a guess would
 be worse than a gap. See **Pages** below.
+
+## Measured days
+
+Everything above is an inference. The sync protocol carries no clock, so a day is worked out from
+when pushes *arrived* and a duration from the gaps between them. Two things follow, and both are
+wrong rather than imprecise:
+
+- A device that reads offline and reconnects later lands all of that reading on the day it
+  reconnected, with no reading time at all — a single push has no gap to measure.
+- The days it actually read on hold no rows whatsoever.
+
+KOReader keeps its own database of page turns, and it can sync that database to this server (see
+[config.md](config.md)). What it holds is not another opinion about the same numbers: it is the only
+record of when the reading happened, with a duration per page that was counted rather than deduced.
+
+On the reference instance, over eight months:
+
+| | inferred from pushes | measured by the device |
+| --- | --- | --- |
+| Reading time | 70.4 h | **130.9 h** |
+| Days with reading | 91 | **107** |
+
+So where a day has measurements, they win:
+
+- `reading_time` becomes the sum of the durations,
+- `pages_read` becomes the number of distinct pages opened,
+- `documents_touched` grows to include documents that were never pushed,
+- and a day with measurements is **kept even when no push ever landed on it**.
+
+Everything the pushes alone can say — `update_count`, `progress_increase` — is still theirs, because
+the statistics database has nothing to say about progress through a document.
+
+The measurements are stored as events, in `page_reads`, and aggregated at recomputation time in the
+account's own timezone. That is what lets a zone change move them the same way it moves everything
+else, and it is why an import queues the days it touched rather than writing totals directly.
+
+One consequence worth stating: on a measured day, `pages_read` is the day's own count and is no longer
+the sum of its book rows. Reading in a file that was never uploaded has pages the device counted and
+no book to attribute them to, so the day is larger than its books. The alternative would be to throw
+those pages away for tidiness.
 
 ## Per book
 
@@ -90,7 +132,9 @@ agree — deliberately:
 - **Pages do add up.** Every page is read in exactly one book, so the day's `pages_read` is the sum
   of its book rows and nothing falls between them.
 
-Only documents matched to an uploaded book appear here at all.
+Only documents matched to an uploaded book appear here at all. Measured reading is folded into these
+rows the same way it is into the day: the reading time and pages of a book the device measured replace
+the inferred ones, and a book read entirely offline gets a row it would otherwise never have had.
 
 ## Pages
 

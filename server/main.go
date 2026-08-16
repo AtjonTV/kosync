@@ -66,7 +66,9 @@ func main() {
 	opds.Register(app, conf, sync)
 	// The same credential again: a device that can push progress can leave its
 	// statistics here, without anybody typing anything into an e-ink browser.
-	webdav.Register(app, conf, sync)
+	// What arrives is imported into the reading days, where it beats the times
+	// this server can only infer from when pushes happened to land.
+	analytics.RegisterMeasurements(app, webdav.Register(app, conf, sync))
 	mail.RegisterSummaries(app, conf)
 
 	app.RootCmd.AddCommand(importer.NewCommand(app, conf))

@@ -102,7 +102,9 @@ would be handing back something the device never wrote.
 Everything the endpoint turns down is logged, which is how to find out what a KOReader release wants
 that this does not offer.
 
-Note that the file is only *received* today. Reading the reading times out of it is separate work.
+What arrives is imported: the page turns become rows, and the days they fall on are queued for
+recomputation, where the measured reading time replaces the one this server can only infer from when
+pushes happened to land. See [analytics.md](analytics.md).
 
 ## About the mail
 

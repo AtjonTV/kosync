@@ -42,6 +42,10 @@ type store struct {
 	root  string
 	limit int64
 
+	// stored is called once an upload has been accepted and put in place, with
+	// the account it belongs to and where it now is.
+	stored func(ownerId, path string)
+
 	// refused is called for every method and name this store turns down.
 	//
 	// This is here on purpose while the shape of KOReader's own client is still
@@ -118,7 +122,7 @@ func (s store) OpenFile(ctx context.Context, name string, flag int, _ fs.FileMod
 		return os.Open(real) // #nosec G304 -- resolved above
 	}
 
-	return s.receive(real)
+	return s.receive(ownerFrom(ctx), real)
 }
 
 // receive starts an upload.
@@ -127,7 +131,7 @@ func (s store) OpenFile(ctx context.Context, name string, flag int, _ fs.FileMod
 // already on the server survives an upload that is cut off half way. A reader
 // that loses WiFi mid-sync would otherwise be left with a truncated database on
 // both ends, and the next merge would take the truncation for the truth.
-func (s store) receive(final string) (dav.File, error) {
+func (s store) receive(ownerId, final string) (dav.File, error) {
 	temp, err := os.CreateTemp(filepath.Dir(final), "."+FileName+".*")
 	if err != nil {
 		return nil, fmt.Errorf("open the upload: %w", err)
@@ -139,7 +143,14 @@ func (s store) receive(final string) (dav.File, error) {
 		return nil, fmt.Errorf("open the upload: %w", err)
 	}
 
-	return &upload{File: temp, final: final, limit: s.limit, refused: s.refused}, nil
+	return &upload{
+		File:    temp,
+		owner:   ownerId,
+		final:   final,
+		limit:   s.limit,
+		refused: s.refused,
+		stored:  s.stored,
+	}, nil
 }
 
 // Stat describes the directory or the file.
@@ -239,10 +250,12 @@ func (l *listing) Readdir(count int) ([]fs.FileInfo, error) {
 type upload struct {
 	*os.File
 
+	owner   string
 	final   string
 	limit   int64
 	written int64
 	refused func(operation, name string, err error)
+	stored  func(ownerId, path string)
 }
 
 // ErrTooLarge is returned when an upload runs past the configured limit.
@@ -294,6 +307,12 @@ func (u *upload) Close() error {
 
 	if err := os.Rename(temp, u.final); err != nil {
 		return fmt.Errorf("store the upload: %w", err)
+	}
+
+	// Only now, and only on the way out: whatever reads this file wants the one
+	// that is in place, not the one still being written.
+	if u.stored != nil {
+		u.stored(u.owner, u.final)
 	}
 
 	return nil

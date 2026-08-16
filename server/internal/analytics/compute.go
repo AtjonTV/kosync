@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"git.obth.eu/atjontv/kosync/internal/schema"
+	"git.obth.eu/atjontv/kosync/internal/statistics"
+	"git.obth.eu/atjontv/kosync/internal/timezone"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 )
@@ -138,6 +140,15 @@ func RecomputeDay(app core.App, ownerId, date string, sessionGap time.Duration) 
 		return err
 	}
 
+	// What the device measured, if it has ever uploaded its own statistics. This
+	// is not another opinion about the same numbers — it is the only record of
+	// when the reading happened, against which everything above is an inference
+	// from when pushes arrived.
+	measured, err := measuredDay(app, ownerId, date)
+	if err != nil {
+		return err
+	}
+
 	// Before the books are counted, not after: a page count measured from this
 	// very day's pushes is the unit the day should be reckoned in.
 	MeasureBooksOfDay(app, ownerId, date)
@@ -147,12 +158,29 @@ func RecomputeDay(app core.App, ownerId, date string, sessionGap time.Duration) 
 		return err
 	}
 
+	if !measured.IsEmpty() {
+		// The measurement wins where the two disagree, the same way a page count
+		// measured from a device's own progress already beats the one implied by
+		// a word count. The inferred figures are not thrown away — they are
+		// simply not what gets stored for a day somebody has real numbers for.
+		stats.ReadingTime = measured.Seconds
+		pagesRead = measured.Pages
+		if measured.Documents > stats.DocumentsTouched {
+			// A document read offline and never pushed is still a document that
+			// was open.
+			stats.DocumentsTouched = measured.Documents
+		}
+	}
+
 	existing, err := findDay(app, ownerId, date)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return err
 	}
 
-	if stats.IsEmpty() {
+	// A day the device measured is a day that happened, even when no push ever
+	// landed on it — which is the whole point: reading done offline used to
+	// leave no row at all.
+	if stats.IsEmpty() && measured.IsEmpty() {
 		if existing == nil {
 			return nil
 		}
@@ -178,6 +206,20 @@ func RecomputeDay(app core.App, ownerId, date string, sessionGap time.Duration) 
 	record.Set(schema.FieldComputedAt, time.Now().UTC())
 
 	return app.Save(record)
+}
+
+// measuredDay reads what the device recorded for one of the reader's days.
+//
+// The day is resolved to the same half-open range of UTC instants the inferred
+// statistics use, so both are answering a question about exactly the same
+// stretch of the reader's own clock.
+func measuredDay(app core.App, ownerId, date string) (statistics.Day, error) {
+	start, end, err := timezone.DayRange(timezone.Of(app, ownerId), date)
+	if err != nil {
+		return statistics.Day{}, fmt.Errorf("resolve the day %s of %s: %w", date, ownerId, err)
+	}
+
+	return statistics.MeasuredDay(app, ownerId, start, end)
 }
 
 // findDay loads the stored statistics of a single day.

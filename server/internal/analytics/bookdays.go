@@ -13,6 +13,8 @@ import (
 
 	"git.obth.eu/atjontv/kosync/internal/books"
 	"git.obth.eu/atjontv/kosync/internal/schema"
+	"git.obth.eu/atjontv/kosync/internal/statistics"
+	"git.obth.eu/atjontv/kosync/internal/timezone"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 )
@@ -174,6 +176,15 @@ func RecomputeBookDays(app core.App, ownerId, date string, sessionGap time.Durat
 		return 0, err
 	}
 
+	// What the device measured for each book, which replaces the inferred
+	// figures wherever it has an opinion and adds rows for books that were read
+	// entirely offline — those have no pushes on this day at all, so the query
+	// above cannot see them.
+	stats, err = withMeasurements(app, ownerId, date, stats)
+	if err != nil {
+		return 0, err
+	}
+
 	existing, err := findBookDays(app, ownerId, date)
 	if err != nil {
 		return 0, err
@@ -219,6 +230,45 @@ func RecomputeBookDays(app core.App, ownerId, date string, sessionGap time.Durat
 	}
 
 	return pagesRead, nil
+}
+
+// withMeasurements folds a device's own record into the inferred per-book rows.
+//
+// The measured reading time and pages win, because they were counted rather than
+// deduced. Everything else on the row — how many pushes there were, how much
+// further into the book they got — is still the pushes' to say, and a book read
+// offline simply has none of it.
+func withMeasurements(app core.App, ownerId, date string, inferred []BookDayStats) ([]BookDayStats, error) {
+	start, end, err := timezone.DayRange(timezone.Of(app, ownerId), date)
+	if err != nil {
+		return nil, fmt.Errorf("resolve the day %s of %s: %w", date, ownerId, err)
+	}
+
+	measured, err := statistics.MeasuredBookDays(app, ownerId, start, end)
+	if err != nil {
+		return nil, err
+	}
+	if len(measured) == 0 {
+		return inferred, nil
+	}
+
+	byBook := make(map[string]int, len(inferred))
+	for index, row := range inferred {
+		byBook[row.Book] = index
+	}
+
+	for _, row := range measured {
+		index, known := byBook[row.Book]
+		if !known {
+			inferred = append(inferred, BookDayStats{Book: row.Book})
+			index = len(inferred) - 1
+		}
+
+		inferred[index].ReadingTime = row.Seconds
+		inferred[index].PagesRead = row.Pages
+	}
+
+	return inferred, nil
 }
 
 // findBookDays loads the stored per-book rows of one day, keyed by book.

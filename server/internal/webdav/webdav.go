@@ -68,6 +68,11 @@ type Handler struct {
 	conf *config.Config
 	auth Authenticator
 	dav  *dav.Handler
+
+	// onStored is what happens to an accepted upload next. This package's own
+	// job ends at "the file is here and it is genuine"; what the numbers inside
+	// are worth belongs to whoever registers here.
+	onStored func(ownerId, path string)
 }
 
 // Register mounts the endpoint unless the operator has turned it off.
@@ -91,8 +96,13 @@ func NewHandler(app core.App, conf *config.Config, auth Authenticator) *Handler 
 	handler := &Handler{app: app, conf: conf, auth: auth}
 
 	handler.dav = &dav.Handler{
-		Prefix:     RoutePrefix,
-		FileSystem: store{root: filepath.Join(app.DataDir(), storeDir), limit: conf.WebdavMaxBytes(), refused: handler.logRefusal},
+		Prefix: RoutePrefix,
+		FileSystem: store{
+			root:    filepath.Join(app.DataDir(), storeDir),
+			limit:   conf.WebdavMaxBytes(),
+			refused: handler.logRefusal,
+			stored:  handler.notifyStored,
+		},
 		LockSystem: dav.NewMemLS(),
 		Logger:     handler.logRequest,
 	}
@@ -180,6 +190,32 @@ func (h *Handler) serve(e *core.RequestEvent) error {
 	h.dav.ServeHTTP(e.Response, e.Request)
 
 	return nil
+}
+
+// OnStored registers what to do with an upload once it has been accepted.
+//
+// A callback rather than this package importing the thing that reads the file:
+// receiving a database and understanding one are different jobs, and the endpoint
+// is worth having even when nothing is listening.
+func (h *Handler) OnStored(handle func(ownerId, path string)) {
+	// Register returns a nil handler when the endpoint is switched off, and a
+	// nil pointer in an interface is not a nil interface — so the caller's own
+	// check would not have caught this. Doing nothing is the right answer:
+	// nothing will ever be stored to tell anybody about.
+	if h == nil {
+		return
+	}
+
+	h.onStored = handle
+}
+
+// notifyStored tells whoever is listening about a new upload.
+func (h *Handler) notifyStored(ownerId, path string) {
+	if h.onStored == nil {
+		return
+	}
+
+	h.onStored(ownerId, path)
 }
 
 // ownerFrom returns the account a request belongs to.

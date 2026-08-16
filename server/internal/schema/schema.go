@@ -51,6 +51,13 @@ const (
 	// records that something happened, not that it is still true.
 	CollectionAchievements = "achievements"
 
+	// CollectionPageReads holds what a device's own statistics database says
+	// about individual page turns: which page of which document, when, and for
+	// how long. It is measurement rather than inference — the sync protocol
+	// carries no clock, so everything else here has to reason about reading
+	// times from the moments pushes happened to arrive.
+	CollectionPageReads = "page_reads"
+
 	// CollectionReadingBookDays holds the daily reading statistics of a single
 	// book. It is a separate collection rather than a grouping of reading_days
 	// because a day's reading time cannot be split across books without losing
@@ -172,6 +179,22 @@ const (
 	FieldTier     = "tier"
 	FieldValue    = "value"
 	FieldEarnedAt = "earned_at"
+)
+
+// page_reads field names.
+//
+// FieldDocument is shared with the documents collection and means the same
+// thing: KOReader's own hash of the file. A statistics database calls it md5,
+// and it is the same string, which is what makes this exact rather than a guess.
+//
+// FieldStartedAt is when the page was turned to and FieldDuration is how long it
+// stayed open, both from the device, both in the device's own reckoning of the
+// clock — which is the only reckoning there is of when reading actually
+// happened.
+const (
+	FieldPage      = "page"
+	FieldStartedAt = "started_at"
+	FieldDuration  = "duration"
 )
 
 // reading_days and reading_months field names.

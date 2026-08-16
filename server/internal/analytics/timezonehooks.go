@@ -80,6 +80,10 @@ func RequeueEverything(app core.App, ownerId string) error {
 		LastReadAt types.DateTime `db:"last_read_at"`
 	}{}
 
+	// The measured page turns are in here as well, not only the pushes. A day
+	// that exists solely because the device recorded reading on it still moves
+	// when the zone moves, and a zone change that left those days computed under
+	// the old boundaries would be the same bug in a place nobody looks.
 	err := app.DB().
 		NewQuery(`
 			SELECT DISTINCT [[last_read_at]] AS last_read_at
@@ -88,6 +92,10 @@ func RequeueEverything(app core.App, ownerId string) error {
 			UNION
 			SELECT DISTINCT [[last_read_at]] AS last_read_at
 			FROM {{` + schema.CollectionDocumentHistory + `}}
+			WHERE [[owner]] = {:owner}
+			UNION
+			SELECT DISTINCT [[` + schema.FieldStartedAt + `]] AS last_read_at
+			FROM {{` + schema.CollectionPageReads + `}}
 			WHERE [[owner]] = {:owner}
 		`).
 		Bind(dbx.Params{"owner": ownerId}).

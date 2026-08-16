@@ -26,6 +26,8 @@ custom WebSocket protocol with what PocketBase already does well.
   books you were in and anything you earned. A week you did not read in is not mailed.
 - **Takes your reading statistics off the device by itself.** KOReader can sync its own page-turn
   database to a WebDAV target, and this server is one — with the credential the device already has.
+  What arrives is real measurement: how long each page was open, and on which day, including the days
+  you read with the WiFi off and nothing was ever pushed.
 - **Deploys as a single executable** with the web interface compiled in. No Redis, no Nginx, no Node.
 
 ## How the accounts fit together

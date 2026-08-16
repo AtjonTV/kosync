@@ -184,6 +184,28 @@ The rules themselves are not stored. They are code, in
 only code can ask, and the web interface reads them from `/api/kosync/achievements` rather than
 keeping a copy. There are eight; [api.md](api.md) lists them with their thresholds.
 
+### `page_reads`
+
+What a device measured about its own reading: which page of which document, from when, for how long.
+It arrives by importing the statistics database KOReader uploads to `/webdav` (see
+[config.md](config.md)) and is the only record anywhere of *when* reading actually happened — the sync
+protocol carries no clock, so everything else here infers a day from the moment a push arrived.
+
+`document` is KOReader's `md5`, which is the same string this database calls a document hash and the
+same one a book's `hash_binary` holds. That is what makes the matching exact rather than a guess at a
+title. There is deliberately no relation to `documents` or `books`: a device measures reading in files
+that were never pushed and never uploaded, and that reading is no less real for it. The books are
+matched by a join when the days are computed, so a book uploaded next month makes last month's
+measurements count towards it without anything having to be repaired.
+
+Stored as events rather than as a daily summary for two reasons: a day depends on a timezone that can
+be changed afterwards, and the events are what makes the import idempotent. The unique index on
+`(owner, document, page, started_at)` is KOReader's own key, so re-importing a database that has grown
+by a week inserts exactly that week.
+
+Nothing writes these through the API — the rules allow reading your own and nothing else. A row
+somebody typed in would be a measurement nothing measured.
+
 ### `reading_book_days`
 
 The daily statistics of a single book, keyed by owner, day and book. Read only through the API, like

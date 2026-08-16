@@ -1705,13 +1705,41 @@ SQLite's default journal mode would never have provoked the sidecars, and the te
 against the bug — which it did, on the first attempt, until both defences were removed together to
 prove it could fail.
 
-### 28.4 What this is not
+### 28.4 The import
 
-It receives the file. It does not read it. The import — turning `page_stat_data` into measured reading
-days — is separate work, and it will be written against a database this endpoint has actually been
-given rather than against a guess at what one contains. `book.md5` is the same partial MD5 already
-stored in `documents.document` and `books.hash_binary`, so the matching will be exact rather than
-heuristic; 32 of the reference instance's 39 synced documents match by string equality.
+Written after the endpoint had been given a real database rather than against a guess at one, which is
+why it is a separate section and was a separate day's work.
+
+`book.md5` is the same partial MD5 already stored in `documents.document` and `books.hash_binary`, so
+the matching is exact rather than heuristic — 32 of the reference instance's 39 synced documents match
+by string equality, and the reference database imported as 5,644 page turns over 107 days.
+
+**Events, not summaries.** `page_reads` holds one row per page turn. Summarising on the way in would
+bake in a day boundary that depends on a timezone the account can change afterwards, and the events
+are also what makes the import idempotent: the unique index is KOReader's own key, so re-importing a
+database that has grown by a week inserts exactly that week and nothing else. The reference database
+imported twice adds 5,644 rows and then none.
+
+**No stored link to a book.** The books are matched by a join at recomputation time, over the same
+three hashes the catalog matches on. A link written at import time would have to be repaired when a
+book was uploaded later — which is the bug this codebase has already had twice (§18.1), and declining
+to introduce it a third time is cheaper than the cron that would have to clean up after it.
+
+**The merge rule.** Where a day has measurements they win: reading time becomes the sum of the
+durations, pages the count of distinct pages, and a measured day is kept even when no push ever landed
+on it. What only the pushes can know — the update count, the progress through a document — stays
+theirs. This is the same shape as `measured_pages` beating `page_count` (§19), one level up.
+
+One invariant is deliberately broken by it. On a measured day the day's pages are no longer the sum of
+its book rows, because a device measures pages in files that were never uploaded and there is no book
+to attribute them to. Keeping the sum tidy would mean throwing that reading away.
+
+**Off the request.** The import runs in its own goroutine after the upload is stored, like the
+achievement mail, and a shutdown waits for it. Nothing is lost if it is interrupted: the file is
+already on disk, and the next sync imports it again from the beginning, which is a no-op for
+everything that was already there.
+
+### 28.5 What does not change
 
 Progress sync does not become secondary. `page_stat_data` has a page number and no xpointer, and a
 page number is font-size dependent — which is why the plugin ships a view that rescales them. It
