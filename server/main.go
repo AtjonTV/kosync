@@ -25,6 +25,7 @@ import (
 	"git.obth.eu/atjontv/kosync/internal/kosyncapi"
 	"git.obth.eu/atjontv/kosync/internal/mail"
 	"git.obth.eu/atjontv/kosync/internal/opds"
+	"git.obth.eu/atjontv/kosync/internal/webdav"
 	"git.obth.eu/atjontv/kosync/internal/webui"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/apis"
@@ -63,6 +64,9 @@ func main() {
 	books.Register(app, conf)
 	devices.Register(app)
 	opds.Register(app, conf, sync)
+	// The same credential again: a device that can push progress can leave its
+	// statistics here, without anybody typing anything into an e-ink browser.
+	webdav.Register(app, conf, sync)
 	mail.RegisterSummaries(app, conf)
 
 	app.RootCmd.AddCommand(importer.NewCommand(app, conf))

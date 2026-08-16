@@ -30,6 +30,8 @@ file. See [`server/kosync.env.example`](../server/kosync.env.example) for a copy
 | `BOOKS_QUOTA_MEGABYTES` | `0` | how much room one account's books may take together, `0` means no limit |
 | `ENABLE_OPDS` | `true` | serve the library as an OPDS catalog at `/opds` |
 | `OPDS_PAGE_SIZE` | `50` | how many books one page of a catalog feed holds |
+| `ENABLE_WEBDAV` | `true` | serve a WebDAV target at `/webdav` for KOReader's statistics database |
+| `WEBDAV_MAX_MEGABYTES` | `64` | the largest statistics database that will be accepted |
 | `ENABLE_ACHIEVEMENT_MAIL` | `true` | let the server tell an account what it has earned |
 | `ENABLE_SUMMARY_MAIL` | `true` | let the server send the weekly and monthly reading summaries |
 
@@ -69,6 +71,38 @@ books stay, no more can be added.
 
 Superusers are not counted against it, so an operator can always put a file into an instance they
 administer.
+
+## About the statistics sync
+
+KOReader keeps its own database of every page turn — which book, which page, when, and for how long —
+and can sync it to a cloud target. The targets it offers are Dropbox, FTP and WebDAV, and of those
+only WebDAV is something this server can be, so `/webdav` is one.
+
+The point is that nothing has to be carried by hand. A device that already pushes progress has a
+credential, and that same credential is what the WebDAV target takes; there is no browser to log into
+on an e-ink screen and no file to move between machines.
+
+Setting it up on the device, roughly: add a WebDAV cloud storage entry pointing at
+`https://your-server/webdav/`, with the username and password of a KOReader credential from
+**Account → KOReader credentials**; then point the statistics plugin's cloud sync at it. The exact
+menu path moves between KOReader releases, so go by the names rather than by the order.
+
+What the endpoint will accept is deliberately almost nothing:
+
+- one directory per account, which nothing can name but the account that owns it;
+- one file name in it, `statistics.sqlite3`, and no other;
+- capped at `WEBDAV_MAX_MEGABYTES`;
+- and kept only if it really is a SQLite database with KOReader's statistics tables in it.
+
+An upload is written beside the stored copy and only replaces it once all of that passes, so a sync
+that is cut off half way leaves the previous copy intact. What is stored is returned byte for byte,
+because the plugin downloads it and merges its own history into it — a server that rewrote the file
+would be handing back something the device never wrote.
+
+Everything the endpoint turns down is logged, which is how to find out what a KOReader release wants
+that this does not offer.
+
+Note that the file is only *received* today. Reading the reading times out of it is separate work.
 
 ## About the mail
 

@@ -65,6 +65,19 @@ type Config struct {
 	// a large library against a page turn on a small one.
 	OpdsPageSize int `env:"OPDS_PAGE_SIZE" default:"50"`
 
+	// EnableWebdav serves a WebDAV target for KOReader's statistics database. It
+	// is on by default for the same reason the catalog is: it takes the device
+	// credential the account already has, it shows one account only its own
+	// directory, and the one file name it accepts is fixed — so it exposes
+	// nothing the sync API does not, and turning it off is for an operator who
+	// would rather the endpoint were not there at all.
+	EnableWebdav bool `env:"ENABLE_WEBDAV" default:"true"`
+
+	// WebdavMaxMegabytes is the largest statistics database that will be
+	// accepted. A few years of heavy reading is a handful of megabytes; the
+	// default has room for far more than that and still cannot fill a disk.
+	WebdavMaxMegabytes int `env:"WEBDAV_MAX_MEGABYTES" default:"64"`
+
 	// EnableAchievementMail lets the server tell an account what it has earned.
 	// It is on by default and still asks twice: the account has to have opted in
 	// as well, so this is the switch for an operator who would rather the server
@@ -132,6 +145,11 @@ func (c *Config) Normalize() {
 	if c.OpdsPageSize < 1 {
 		c.OpdsPageSize = 50
 	}
+	// A limit of zero would mean an upload of any size at all, which is not a
+	// reading of "0" anybody intends on a write endpoint.
+	if c.WebdavMaxMegabytes < 1 {
+		c.WebdavMaxMegabytes = 64
+	}
 }
 
 // WorkerInterval returns the analytics queue drain interval.
@@ -143,6 +161,11 @@ func (c *Config) WorkerInterval() time.Duration {
 // counted as continuous reading time.
 func (c *Config) SessionGap() time.Duration {
 	return time.Duration(c.AnalyticsSessionGapSeconds) * time.Second
+}
+
+// WebdavMaxBytes returns the largest accepted upload, in bytes.
+func (c *Config) WebdavMaxBytes() int64 {
+	return int64(c.WebdavMaxMegabytes) * 1024 * 1024
 }
 
 // QuotaBytes returns the per-account library limit in bytes, or zero when there

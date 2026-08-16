@@ -1597,4 +1597,92 @@ nobody asked them about a weekly digest. `off` until somebody picks a cadence un
 
 - A release. `main.go` still says `26.08.0-dev` and there are no tags, which is now the only thing
   making a finished rewrite look unfinished.
-- Nothing else is outstanding. §15's open risks are unchanged.
+- The statistics import, §28.
+
+---
+
+## 28. The statistics sync target (phase 21)
+
+### 28.1 The hole the protocol cannot see
+
+The KOReader sync protocol carries no clock (§24.1), so `last_read_at` is the moment a push *arrives*.
+A device that reads offline and reconnects therefore lands a fortnight of reading on one day, with no
+reading time attached — a single push has no gap to measure — and the days actually read on hold no
+rows at all.
+
+Measured against the reference data, that is not a corner case:
+
+| | from pushes | from KOReader's own statistics |
+| --- | --- | --- |
+| Reading time | 70.4 h | **130.9 h** |
+| Days with reading | 91 | **105** |
+
+The estimate is capturing 54% of the reading time, and fifteen days of reading are invisible to it.
+
+### 28.2 Why WebDAV, and why it is the whole feature
+
+KOReader's statistics plugin syncs its database to Dropbox, FTP or WebDAV. Only one of those is
+something this server can be, and it happens to be the one that is HTTP with more verbs — so it is
+served from the same port, behind the same device credential, as the catalog.
+
+That is the entire reason this is worth building. A statistics database that has to be carried off an
+e-reader by hand is one that gets carried once, in the first week, and never again. The value is not
+in the file format; it is in nobody having to think about it.
+
+`golang.org/x/net/webdav` does the protocol and `modernc.org/sqlite` reads the upload. Both were
+already in the module graph as indirect dependencies of PocketBase, so this cost no new supply chain
+at all.
+
+### 28.3 What keeps a sync target from being a file host
+
+Four things, and the first two are what matter:
+
+- one directory per account, named by the authenticated owner and never by the request path;
+- one permitted file name, so nothing anybody can choose ends up on the disk;
+- a size cap, applied both to the request body and to the writes, because the second catches a client
+  that lies about its length;
+- and a schema check: the SQLite header first, then the tables and the columns the import will read.
+
+Only the columns that will actually be read are required. A KOReader release that adds one must not
+be refused by a server that has not heard of it yet — that would turn a routine device update into a
+sync that silently stops.
+
+The upload is written beside the stored copy and renamed over it only once all of that passes, so an
+interrupted sync leaves the previous copy whole, and a reader downloading during an upload gets one
+version or the other rather than the seam. What is stored is returned byte for byte, because the
+plugin merges its own history into the copy it downloads: a server that rewrote the file would be
+handing back something the device never wrote.
+
+Everything refused is logged, deliberately. The shape of KOReader's own client is still being learned,
+and a refusal that says nothing would mean a device that will not sync and a server with no opinion
+about why.
+
+### 28.3.1 The route that would not start
+
+The first version bound the endpoint to every method at once, which is the obvious way to serve a
+protocol with thirteen verbs. It made the server panic on boot.
+
+To net/http, `"/webdav/{path...}"` bound to every method and the web interface's `"GET /{path...}"`
+are two patterns where neither is more specific than the other: the first matches more methods, the
+second a more general path. That is a conflict, and a conflict is a panic while the mux is being
+built — after every test in the package had passed, because not one of them mounted a web interface
+beside the endpoint. The fix is to name the thirteen verbs, which makes this route strictly the more
+specific one where the two overlap and disjoint everywhere else.
+
+The test that now guards it registers both, at the priority `registerWebUi` uses, and it was checked
+the only way such a test is worth anything: by putting the old route back and watching it reproduce
+the panic.
+
+### 28.4 What this is not
+
+It receives the file. It does not read it. The import — turning `page_stat_data` into measured reading
+days — is separate work, and it will be written against a database this endpoint has actually been
+given rather than against a guess at what one contains. `book.md5` is the same partial MD5 already
+stored in `documents.document` and `books.hash_binary`, so the matching will be exact rather than
+heuristic; 32 of the reference instance's 39 synced documents match by string equality.
+
+Progress sync does not become secondary. `page_stat_data` has a page number and no xpointer, and a
+page number is font-size dependent — which is why the plugin ships a view that rescales them. It
+cannot put a reader back on the right line on another device. The division is clean: **the sync
+protocol owns where you are, the statistics own what happened**, and where both describe a day the
+measurement wins, exactly as `measured_pages` already beats `page_count` (§19).

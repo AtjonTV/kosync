@@ -24,6 +24,8 @@ custom WebSocket protocol with what PocketBase already does well.
 - **Tells you when you earn one**, by mail, if you ask it to and the server can send any.
 - **Writes to you about your reading**, weekly or monthly if you pick a cadence: pages, hours, the
   books you were in and anything you earned. A week you did not read in is not mailed.
+- **Takes your reading statistics off the device by itself.** KOReader can sync its own page-turn
+  database to a WebDAV target, and this server is one — with the credential the device already has.
 - **Deploys as a single executable** with the web interface compiled in. No Redis, no Nginx, no Node.
 
 ## How the accounts fit together

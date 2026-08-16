@@ -255,6 +255,17 @@ session (`Authorization: <token>`).
 | GET | `/api/kosync/achievements` | Every achievement rule with your standing in it. |
 | GET | `/api/kosync/storage` | How much room your library takes, and how much it may take. |
 
+## 5. The statistics sync target, under `/webdav`
+
+A WebDAV collection holding one file, `statistics.sqlite3`, per account — the sync target KOReader's
+statistics plugin uploads to. Authentication is HTTP Basic with a **KOReader device credential**, the
+same one the sync protocol and the catalog take, so a device needs nothing new.
+
+`PROPFIND`, `GET`, `HEAD`, `PUT`, `DELETE` and `OPTIONS` work on that one name; `MKCOL`, `MOVE`,
+`COPY` and any other name are refused. An upload has to be a real SQLite database carrying KOReader's
+`book` and `page_stat_data` tables, or it is not kept. See [config.md](config.md) for the reasoning
+and the device setup.
+
 Anything that belongs to somebody else answers `404`, the same as something that does not exist.
 
 ### Achievements
