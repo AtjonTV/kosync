@@ -4,7 +4,7 @@ KOsync is a progress sync server for [KOReader](https://koreader.rocks) written 
 
 This is **26.08.0**, the current version. It is a rewrite, built on
 [PocketBase](https://pocketbase.io), and it replaces the 1.x series, which is now the
-[legacy KOsync](https://git.obth.eu/atjontv/kosync). A legacy database can be imported and the
+[legacy KOsync](https://git.obth.eu/atjontv/kosync/-/tree/legacy-main). A legacy database can be imported and the
 devices syncing against it keep working — see [docs/migration.md](docs/migration.md).
 
 ## Why?
