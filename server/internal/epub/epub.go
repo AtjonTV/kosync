@@ -12,8 +12,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/url"
 	"path"
+	"strconv"
 	"strings"
 )
 
@@ -27,12 +29,27 @@ const maxDocumentBytes = 32 << 20
 // ErrNotEPUB is returned when the archive has no EPUB container.
 var ErrNotEPUB = errors.New("epub: not an EPUB archive")
 
+// maxSubjects caps how many subjects are kept from one book.
+//
+// Not a defence against a hostile file so much as against an enthusiastic one:
+// a book in the reference library declares a hundred and one keywords, which is
+// a search engine strategy rather than a description of what it is about.
+const maxSubjects = 24
+
 // Metadata is what the library shows about a book.
+//
+// Series and SeriesIndex are what a reader wants to walk down and are the least
+// standardised thing in here: EPUB 3 has belongs-to-collection, Calibre wrote a
+// name/content meta long before that existed, and the files in the wild are
+// split between them.
 type Metadata struct {
 	Title       string
 	Authors     []string
 	Language    string
 	Identifiers map[string]string
+	Series      string
+	SeriesIndex float64
+	Subjects    []string
 	SpineCount  int
 }
 
@@ -55,9 +72,14 @@ type opfPackage struct {
 			Scheme string `xml:"scheme,attr"`
 			Value  string `xml:",chardata"`
 		} `xml:"identifier"`
-		Metas []struct {
-			Name    string `xml:"name,attr"`
-			Content string `xml:"content,attr"`
+		Subjects []string `xml:"subject"`
+		Metas    []struct {
+			ID       string `xml:"id,attr"`
+			Name     string `xml:"name,attr"`
+			Content  string `xml:"content,attr"`
+			Property string `xml:"property,attr"`
+			Refines  string `xml:"refines,attr"`
+			Value    string `xml:",chardata"`
 		} `xml:"meta"`
 	} `xml:"metadata"`
 	Manifest struct {
@@ -154,7 +176,134 @@ func (r *Reader) Metadata() Metadata {
 		}
 	}
 
+	meta.Series, meta.SeriesIndex = r.series()
+	meta.Subjects = r.subjects()
+
 	return meta
+}
+
+// series returns the series the book belongs to and its position in it.
+//
+// Two spellings, because the files are split between them. EPUB 3 declares a
+// collection and refines it with its type and the book's place in it; Calibre
+// has written a pair of name/content metas since long before that existed, and
+// on the reference library those two never appear in the same file. The EPUB 3
+// form is read first only because it is the one with a standard behind it.
+func (r *Reader) series() (string, float64) {
+	if name, index, found := r.collection(); found {
+		return name, index
+	}
+
+	var name string
+	var index float64
+
+	for _, meta := range r.pkg.Metadata.Metas {
+		switch strings.ToLower(normalize(meta.Name)) {
+		case "calibre:series":
+			name = normalize(meta.Content)
+		case "calibre:series_index":
+			index = number(meta.Content)
+		}
+	}
+
+	if name == "" {
+		return "", 0
+	}
+
+	return name, index
+}
+
+// collection reads the EPUB 3 belongs-to-collection form.
+//
+// A collection that refines another one is a set within a set — an omnibus
+// inside a series — and naming the book after the inner one would file the
+// three volumes of a trilogy under three different series. Only the outermost
+// is taken. A collection typed as anything other than a series is skipped for
+// the same reason: a publisher's imprint is not something to browse a shelf by.
+func (r *Reader) collection() (string, float64, bool) {
+	for _, meta := range r.pkg.Metadata.Metas {
+		if strings.ToLower(normalize(meta.Property)) != "belongs-to-collection" {
+			continue
+		}
+		if meta.Refines != "" {
+			continue
+		}
+
+		name := normalize(meta.Value)
+		if name == "" {
+			continue
+		}
+
+		kind := r.refinement(meta.ID, "collection-type")
+		if kind != "" && !strings.EqualFold(kind, "series") {
+			continue
+		}
+
+		return name, number(r.refinement(meta.ID, "group-position")), true
+	}
+
+	return "", 0, false
+}
+
+// refinement returns the value of a meta refining the element with the given id.
+func (r *Reader) refinement(id, property string) string {
+	if id == "" {
+		return ""
+	}
+
+	for _, meta := range r.pkg.Metadata.Metas {
+		if strings.TrimPrefix(normalize(meta.Refines), "#") != id {
+			continue
+		}
+		if strings.EqualFold(normalize(meta.Property), property) {
+			return normalize(meta.Value)
+		}
+	}
+
+	return ""
+}
+
+// subjects returns what the book says it is about, deduplicated and capped.
+//
+// The duplicates are real and are not typos: publishers list "Thriller" beside
+// "Thrillers", and the same keyword arrives twice in different cases. Folding
+// case is as far as this goes — anything cleverer would be guessing at what a
+// publisher meant, and the record is supposed to say what the file says.
+func (r *Reader) subjects() []string {
+	var subjects []string
+	seen := make(map[string]bool)
+
+	for _, raw := range r.pkg.Metadata.Subjects {
+		subject := normalize(raw)
+		if subject == "" {
+			continue
+		}
+
+		key := strings.ToLower(subject)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+
+		subjects = append(subjects, subject)
+		if len(subjects) == maxSubjects {
+			break
+		}
+	}
+
+	return subjects
+}
+
+// number parses a metadata value that is supposed to be one. Calibre writes the
+// first volume of a series as "1.0", EPUB 3 group positions are usually "1", and
+// a value that is neither is not worth failing an upload over.
+func number(value string) float64 {
+	parsed, err := strconv.ParseFloat(normalize(value), 64)
+	if err != nil || math.IsNaN(parsed) || math.IsInf(parsed, 0) || parsed < 0 {
+		return 0
+	}
+
+	return parsed
 }
 
 // normalize collapses the whitespace inside a metadata value. Real books put

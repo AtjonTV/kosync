@@ -220,6 +220,21 @@ const (
 	FieldWordCount   = "word_count"
 	FieldContentHash = "content_hash"
 
+	// FieldSeries and FieldSeriesIndex are the series a book belongs to and
+	// where in it this volume sits. Two columns rather than one string like
+	// "A Song of Ice and Fire #2", because a series shelf has to sort by the
+	// number and group by the name, and neither is possible once they are
+	// spelled into one value.
+	//
+	// FieldSubjects is what the file says the book is about, as a JSON array.
+	// It is stored as the publisher wrote it: the values are of very mixed
+	// quality — on the reference library 143 of 202 distinct subjects belong to
+	// exactly one book — so what they are good for is search and seeding a
+	// hand-made collection, not a shelf of their own.
+	FieldSeries      = "series"
+	FieldSeriesIndex = "series_index"
+	FieldSubjects    = "subjects"
+
 	// FieldFileSize is how many bytes the uploaded EPUB takes, stored because
 	// nothing else records it: PocketBase keeps the name of a file on the
 	// record and its size only on the filesystem, and asking the filesystem

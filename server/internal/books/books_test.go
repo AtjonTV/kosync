@@ -514,3 +514,127 @@ func seedBookWith(t testing.TB, app *tests.TestApp, contentHash string) {
 		t.Fatalf("seed book: %v", err)
 	}
 }
+
+// seriesDocument is a package document for a volume of a series, in the form
+// twenty-nine of the reference library's books use.
+const seriesDocument = `<?xml version="1.0"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:title>A Clash of Kings</dc:title>
+    <dc:creator>George R. R. Martin</dc:creator>
+    <dc:language>en</dc:language>
+    <dc:subject>Fantasy</dc:subject>
+    <dc:subject>Epic</dc:subject>
+    <dc:subject>fantasy</dc:subject>
+    <meta name="calibre:series" content="A Song of Ice and Fire"/>
+    <meta name="calibre:series_index" content="2.0"/>
+  </metadata>
+  <manifest>
+    <item id="one" href="text/one.xhtml" media-type="application/xhtml+xml"/>
+  </manifest>
+  <spine><itemref idref="one"/></spine>
+</package>`
+
+func TestUploadStoresTheSeriesAndSubjects(t *testing.T) {
+	body, contentType := upload(t, testutil.IdUserA, "a_clash_of_kings.epub",
+		epubBytesWith(t, 100, seriesDocument), nil)
+
+	asUser(t, testutil.IdUserA, tests.ApiScenario{
+		Name:            "a series is read from the file",
+		Method:          http.MethodPost,
+		URL:             booksURL,
+		Body:            body,
+		Headers:         map[string]string{"Content-Type": contentType},
+		ExpectedStatus:  http.StatusOK,
+		ExpectedContent: []string{`"series":"A Song of Ice and Fire"`, `"series_index":2`},
+		AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
+			book, err := app.FindFirstRecordByData(schema.CollectionBooks, schema.FieldOwner, testutil.IdUserA)
+			if err != nil {
+				t.Fatalf("expected the book to be stored: %v", err)
+			}
+			if got := book.GetString(schema.FieldSeries); got != "A Song of Ice and Fire" {
+				t.Errorf("series is %q", got)
+			}
+			if got := book.GetFloat(schema.FieldSeriesIndex); got != 2 {
+				t.Errorf("series index is %v, want 2", got)
+			}
+
+			var subjects []string
+			if err := json.Unmarshal([]byte(book.GetString(schema.FieldSubjects)), &subjects); err != nil {
+				t.Fatalf("subjects are not JSON: %v", err)
+			}
+			if len(subjects) != 2 || subjects[0] != "Fantasy" || subjects[1] != "Epic" {
+				t.Errorf("subjects are %v, want the two distinct ones", subjects)
+			}
+		},
+	})
+}
+
+// A book that belongs to nothing says so, rather than joining a series called
+// the empty string.
+func TestUploadWithoutASeriesLeavesItEmpty(t *testing.T) {
+	body, contentType := upload(t, testutil.IdUserA, "standalone.epub", epubBytes(t, 100), nil)
+
+	asUser(t, testutil.IdUserA, tests.ApiScenario{
+		Name:            "no series is stored for a book without one",
+		Method:          http.MethodPost,
+		URL:             booksURL,
+		Body:            body,
+		Headers:         map[string]string{"Content-Type": contentType},
+		ExpectedStatus:  http.StatusOK,
+		ExpectedContent: []string{`"series":""`},
+		AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
+			book, err := app.FindFirstRecordByData(schema.CollectionBooks, schema.FieldOwner, testutil.IdUserA)
+			if err != nil {
+				t.Fatalf("expected the book to be stored: %v", err)
+			}
+			if got := book.GetFloat(schema.FieldSeriesIndex); got != 0 {
+				t.Errorf("series index is %v, want 0", got)
+			}
+		},
+	})
+}
+
+// Publishers spell a series differently across its own volumes, which is the
+// thing that splits one shelf into two. Correcting it has to stick.
+func TestUploadKeepsASuppliedSeries(t *testing.T) {
+	body, contentType := upload(t, testutil.IdUserA, "a_clash_of_kings.epub",
+		epubBytesWith(t, 100, seriesDocument),
+		map[string]string{schema.FieldSeries: "Das Lied von Eis und Feuer"})
+
+	asUser(t, testutil.IdUserA, tests.ApiScenario{
+		Name:            "a supplied series survives",
+		Method:          http.MethodPost,
+		URL:             booksURL,
+		Body:            body,
+		Headers:         map[string]string{"Content-Type": contentType},
+		ExpectedStatus:  http.StatusOK,
+		ExpectedContent: []string{`"series":"Das Lied von Eis und Feuer"`},
+		AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
+			book, err := app.FindFirstRecordByData(schema.CollectionBooks, schema.FieldOwner, testutil.IdUserA)
+			if err != nil {
+				t.Fatalf("expected the book to be stored: %v", err)
+			}
+			// The number still comes from the file, so this is not simply
+			// "the client wins".
+			if got := book.GetFloat(schema.FieldSeriesIndex); got != 2 {
+				t.Errorf("series index is %v, want the file's 2", got)
+			}
+		},
+	})
+}
+
+// The series is bibliography, not a description of the file, so it stays
+// editable the way the title does.
+func TestSeriesRemainsEditable(t *testing.T) {
+	asUser(t, testutil.IdUserA, tests.ApiScenario{
+		Name:   "the series can be corrected",
+		Method: http.MethodPatch,
+		URL:    booksURL + "/" + testutil.PadId("booka"),
+		Body: strings.NewReader(`{"` + schema.FieldSeries + `":"Die Hexer-Saga",` +
+			`"` + schema.FieldSeriesIndex + `":1.5}`),
+		ExpectedStatus:  http.StatusOK,
+		ExpectedContent: []string{`"series":"Die Hexer-Saga"`, `"series_index":1.5`},
+		BeforeTestFunc:  seedBook,
+	})
+}

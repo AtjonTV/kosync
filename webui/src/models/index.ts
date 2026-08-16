@@ -70,6 +70,15 @@ export interface Book extends BaseRecord {
   authors: string[]
   language: string
   identifiers: Record<string, string>
+  /** The series this volume belongs to, empty if it belongs to none. */
+  series: string
+  /** Where in that series it sits. Not an integer: half-numbered volumes exist. */
+  series_index: number
+  /**
+   * What the file says the book is about, as the publisher wrote it. Null for
+   * a book that declares none, and of very mixed quality when it does.
+   */
+  subjects: string[] | null
   page_count: number
   word_count: number
   /** How many bytes the uploaded file takes. Covers are not counted. */

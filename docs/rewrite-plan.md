@@ -1776,7 +1776,7 @@ measurement wins, exactly as `measured_pages` already beats `page_count` (§19).
 
 ---
 
-## 29. Browsing a library that got big (recorded, not built)
+## 29. Browsing a library that got big (phase 22)
 
 Reported once the reference library passed about two hundred books: the OPDS catalog is three flat
 shelves, and skimming it on an e-reader stopped working. What follows is what was measured before
@@ -1784,15 +1784,15 @@ anything was designed, so that the cost of each idea is known rather than assume
 
 ### 29.1 What the library actually holds
 
-Counted on the reference instance (121 books at the time of measuring):
+First counted at 121 books, then recounted with the finished parser over all **192**:
 
 | | |
 | --- | --- |
-| Books with authors | **121 / 121**, 87 distinct authors |
-| Books with a language | **121 / 121**, 6 languages |
-| Books with an ISBN | **28 / 121** — the rest carry a Calibre UUID and nothing else |
-| Series in the EPUB (`calibre:series`) | in 5 of 8 files sampled |
-| Subjects in the EPUB (`dc:subject`) | present, and of very mixed quality |
+| Books with authors | **192 / 192**, 115 distinct authors |
+| Books with a language | **192 / 192** — 9 stored spellings, 5 actual languages |
+| Books with an ISBN | **28 / 121** at the time of measuring — the rest carry a Calibre UUID and nothing else |
+| Books with a series | **30 / 192**, in 9 series |
+| Books with subjects | **80 / 192**, 334 subjects, 202 of them distinct |
 
 Two of those change the design.
 
@@ -1803,30 +1803,62 @@ language and identifiers only.
 
 **Subjects are present and mostly junk.** One sampled book declares six subjects that are all the
 same phrase rearranged: "dark fantasy romance", "dark romance books", "dark fantasy romance books",
-and so on. Others declare a clean single "Fantasy". A subject facet built straight from publisher
-metadata would be a long tail of near-duplicates, which is worse than no facet at all.
+and so on. Others declare a clean single "Fantasy". Counted over the whole library with the
+parser's own rules, **143 of the 202 distinct subjects belong to exactly one book** — a navigation
+feed of 202 entries, most of them leading to a single title, is a worse way to find something than
+the flat list it would be replacing.
 
 ### 29.2 The three pieces, in dependency order
 
-**Authors and languages can be browsed today.** Both are stored on every book, and SQLite's
-`json_each` groups the authors JSON without a schema change:
+**Series and subjects had to be extracted first** (task #34, built). `internal/epub` read title,
+authors, language and identifiers only. It now also reads the series both ways it is written — EPUB 2
+`calibre:series` with its `calibre:series_index`, and EPUB 3 `belongs-to-collection` refined by
+`collection-type` and `group-position` — and the `dc:subject` list, deduplicated case-insensitively
+and capped at 24. Migration `1787961600_book_series_subjects.go` adds `series`, `series_index` and
+`subjects` with an index on `(owner, series)`, and backfills them by re-reading every stored EPUB the
+way `BackfillFileSizes` already does. `series_index` is not an integer column: the reference library
+holds volumes numbered 0.1, 16.5 and 17.5.
 
-```sql
-SELECT value AS author, COUNT(*) FROM books, json_each(books.authors) GROUP BY value
-```
-
-**Series and subjects need extracting first** (task #34): two more fields, a migration, and a backfill
-that re-reads the stored EPUBs the way `BackfillFileSizes` already does.
-
-**The catalog needs a second kind of feed** (task #35). `internal/opds/catalog.go` has a `shelf` with
-a `list` function returning books; a navigation feed returns groups. The routing, pagination,
-authentication and rendering are all already there.
+**The catalog grew a second kind of feed** (task #35, built). A `shelf` has a `list` function
+returning books; a `facet` (`internal/opds/facets.go`) has a `groups` function returning values with
+counts. The routing, pagination, authentication and rendering were already there. Three facets ship,
+and the front page offers only the ones with something in them.
 
 **Hand-made collections** (task #36) are independent of all of it and need no external data — an owned
 record with a relation to books, exposed as its own feed. They are also the honest answer to §29.1's
 subject problem: a shelf somebody curated beats a facet built from keyword spam.
 
-### 29.3 The ISBN lookup, and what limits it
+### 29.3 What the finished feeds do
+
+Three facets, at `/opds/authors`, `/opds/series` and `/opds/languages`, each entry linking to
+`/opds/by?facet=…&value=…`. On the reference library:
+
+| Feed | Entries | What it looks like |
+| --- | --- | --- |
+| By author | 115 | `Alfred Bekker (8)`, `William Shakespeare (39)` — three pages of 50 |
+| By series | 9 | `Jack Reacher (19)`, `A Song of Ice and Fire (3)` |
+| By language | 5 | `German (96)`, `English (92)`, `French (2)`, `Dutch (1)`, `Unknown (1)` |
+
+Four decisions are worth keeping written down.
+
+**No subject facet.** The column is stored and the web UI can show it, but 143 of 202 subjects lead
+to one book. Curated collections are the answer to that problem, not a feed.
+
+**Languages are folded, not listed.** The library spells German four ways — `de`, `de-DE`, `DE`, and
+English three — and shelving the spellings apart reproduces exactly the splitting the feature exists
+to undo. The region and the case are dropped, and the tag is shown as a name: `und` is a file
+declining to name a language, and "Unknown" is a better shelf to find that book on than "UND".
+
+**A series is shelved in reading order**, by `series_index` and only then by title, because a series
+read alphabetically is a series read in the wrong order. An unnumbered volume sorts to the front.
+
+**The value travels in the query string.** Author names carry slashes, dots, ampersands and
+apostrophes; a path segment that has to survive a reader, a proxy and a router without any of them
+normalising it away is a much narrower target than a parameter. Shelves and facets also share one
+route pattern — two patterns differing only in the name of their wildcard are the same pattern to
+Go's router, and registering both panics at start up.
+
+### 29.4 The ISBN lookup, and what limits it (deferred)
 
 Filling in what the file does not carry — subjects, series, publisher, a better cover — by asking an
 external catalogue (task #37). Three things bound it, and the first is the one that decides:
@@ -1841,3 +1873,5 @@ external catalogue (task #37). Three things bound it, and the first is the one t
 
 Whatever it fills, it must fill only what is empty and record where each value came from — the same
 rule the upload already follows when publisher metadata meets a title the owner corrected.
+
+Left out of this phase on the operator's call. It is recorded here rather than built.

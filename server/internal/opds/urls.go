@@ -81,6 +81,25 @@ func (u urls) shelf(slug string, page int) string {
 	return withPage(address, page)
 }
 
+// facet is a navigation feed — the authors, the series, the languages — at the
+// given one based page.
+func (u urls) facet(slug string, page int) string {
+	return withPage(u.base+RoutePrefix+"/"+slug, page)
+}
+
+// group is the books under one entry of a navigation feed.
+func (u urls) group(slug, value string, page int) string {
+	address := u.base + RoutePrefix + "/by?" + url.Values{
+		facetParam: {slug},
+		valueParam: {value},
+	}.Encode()
+	if page > 1 {
+		address += "&" + pageParam + "=" + strconv.Itoa(page)
+	}
+
+	return address
+}
+
 // search is the result page for a query.
 func (u urls) search(query string, page int) string {
 	address := u.base + RoutePrefix + "/search?" + url.Values{queryParam: {query}}.Encode()

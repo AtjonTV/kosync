@@ -18,6 +18,7 @@
 package opds
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -34,6 +35,8 @@ const RoutePrefix = "/opds"
 const (
 	pageParam  = "page"
 	queryParam = "query"
+	facetParam = "facet"
+	valueParam = "value"
 )
 
 // CatalogTitle is the name of the whole catalog.
@@ -83,7 +86,11 @@ func (h *Handler) Mount(se *core.ServeEvent) {
 	// somewhere, and it arrives with a trailing slash about as often as not.
 	group.GET("/", h.rootOrNotFound)
 	group.GET("/search", h.search)
-	group.GET("/{shelf}", h.shelf)
+	group.GET("/by", h.byValue)
+	// Shelves and navigation feeds share one pattern rather than having one
+	// each. Two patterns that differ only in the name of their wildcard are the
+	// same pattern to the router, and registering both is a panic at start up.
+	group.GET("/{shelf}", h.section)
 	group.GET("/books/{id}/download/{filename}", h.download)
 	group.GET("/books/{id}/cover", h.cover)
 	group.GET("/books/{id}/thumbnail", h.thumbnail)
@@ -112,6 +119,27 @@ func (h *Handler) root(e *core.RequestEvent) error {
 		})
 	}
 
+	// A facet with nothing in it is left off rather than offered and then found
+	// empty: a library with no series in it should not have a series shelf, and
+	// finding that out costs a reader two round trips on a device where each one
+	// is a visible pause.
+	for _, entry := range facets {
+		_, total, err := entry.groups(h.app, ownerFrom(e), 0, 0)
+		if err != nil {
+			return e.InternalServerError("Failed to read the library.", err)
+		}
+		if total == 0 {
+			continue
+		}
+
+		feed.Navigation = append(feed.Navigation, Link{
+			Rel:   RelSubsection,
+			Href:  at.facet(entry.Slug, 1),
+			Type:  MediaFeed,
+			Title: entry.Title,
+		})
+	}
+
 	return h.write(e, feed)
 }
 
@@ -128,13 +156,23 @@ func (h *Handler) rootOrNotFound(e *core.RequestEvent) error {
 	return h.root(e)
 }
 
-// shelf serves one page of one list of books.
-func (h *Handler) shelf(e *core.RequestEvent) error {
-	entry, found := findShelf(e.Request.PathValue("shelf"))
-	if !found {
-		return e.NotFoundError("No such part of the catalog.", nil)
+// section serves whatever lives under one name: a shelf of books, or a
+// navigation feed of the values the library can be broken up by.
+func (h *Handler) section(e *core.RequestEvent) error {
+	slug := e.Request.PathValue("shelf")
+
+	if entry, found := findShelf(slug); found {
+		return h.shelf(e, entry)
+	}
+	if entry, found := findFacet(slug); found {
+		return h.facet(e, entry)
 	}
 
+	return e.NotFoundError("No such part of the catalog.", nil)
+}
+
+// shelf serves one page of one list of books.
+func (h *Handler) shelf(e *core.RequestEvent, entry shelf) error {
 	at := urls{base: baseURL(e)}
 	page := pageNumber(e)
 	size := h.conf.OpdsPageSize
@@ -148,6 +186,91 @@ func (h *Handler) shelf(e *core.RequestEvent) error {
 	feed.Id = at.shelf(entry.Slug, 1)
 	feed.Links = append(feed.Links, pagination(func(number int) string {
 		return at.shelf(entry.Slug, number)
+	}, feed.Page)...)
+
+	return h.write(e, feed)
+}
+
+// facet serves one page of a navigation feed: the authors, the series or the
+// languages, each pointing at the books under it.
+func (h *Handler) facet(e *core.RequestEvent, entry facet) error {
+	at := urls{base: baseURL(e)}
+	page := pageNumber(e)
+	size := h.conf.OpdsPageSize
+
+	groups, total, err := entry.groups(h.app, ownerFrom(e), (page-1)*size, size)
+	if err != nil {
+		return e.InternalServerError("Failed to read the library.", err)
+	}
+
+	feed := &Feed{
+		Id:    at.facet(entry.Slug, 1),
+		Title: entry.Title,
+		Page:  &Page{Number: page, Size: size, Total: total},
+		Links: []Link{
+			{Rel: RelStart, Href: at.root(), Type: MediaFeed},
+			{Rel: RelSearch, Href: at.searchTemplate(), Type: MediaFeed, Templated: true},
+		},
+	}
+
+	for _, one := range groups {
+		feed.Navigation = append(feed.Navigation, Link{
+			Rel:  RelSubsection,
+			Href: at.group(entry.Slug, one.Value, 1),
+			Type: MediaFeed,
+			// The count is in the title because that is the only place a reader
+			// is certain to show it. OPDS 2.0 has a properties field for it that
+			// the clients this serves ignore, and a list of a hundred names is
+			// far easier to skim when the long ones stand out.
+			Title: fmt.Sprintf("%s (%d)", one.Title, one.Count),
+		})
+	}
+
+	feed.Links = append(feed.Links, pagination(func(number int) string {
+		return at.facet(entry.Slug, number)
+	}, feed.Page)...)
+
+	return h.write(e, feed)
+}
+
+// byValue serves the books under one entry of a navigation feed.
+//
+// The value is in the query string rather than the path because it is somebody
+// else's text: author names carry slashes, dots and every kind of punctuation,
+// and a path segment that has to survive a reader, a proxy and a router without
+// any of them normalising it away is a much narrower target than a parameter.
+func (h *Handler) byValue(e *core.RequestEvent) error {
+	query := e.Request.URL.Query()
+
+	entry, found := findFacet(query.Get(facetParam))
+	if !found {
+		return e.NotFoundError("No such part of the catalog.", nil)
+	}
+
+	value := query.Get(valueParam)
+	if value == "" {
+		return e.NotFoundError("No such part of the catalog.", nil)
+	}
+
+	at := urls{base: baseURL(e)}
+	page := pageNumber(e)
+	size := h.conf.OpdsPageSize
+
+	records, total, err := entry.list(h.app, ownerFrom(e), value, (page-1)*size, size)
+	if err != nil {
+		return e.InternalServerError("Failed to read the library.", err)
+	}
+	if total == 0 {
+		// Nothing is under this value, which for a link that came out of a
+		// navigation feed means it no longer exists.
+		return e.NotFoundError("No such part of the catalog.", nil)
+	}
+
+	feed := h.feed(at, entry.heading(value), records,
+		&Page{Number: page, Size: size, Total: total}, ownerFrom(e))
+	feed.Id = at.group(entry.Slug, value, 1)
+	feed.Links = append(feed.Links, pagination(func(number int) string {
+		return at.group(entry.Slug, value, number)
 	}, feed.Page)...)
 
 	return h.write(e, feed)

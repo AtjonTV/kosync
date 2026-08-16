@@ -10,6 +10,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -313,5 +314,155 @@ func TestWordCountToleratesHTMLEntities(t *testing.T) {
 	}
 	if words == 0 {
 		t.Error("entities defeated the word count entirely")
+	}
+}
+
+// withMetadata builds a book with extra elements inside <metadata>.
+func withMetadata(t testing.TB, extra string) *epub.Reader {
+	t.Helper()
+
+	pkg := strings.Replace(packageDocument, "  </metadata>", extra+"\n  </metadata>", 1)
+	book := build(t, []entry{
+		{name: "META-INF/container.xml", content: container},
+		{name: "OEBPS/content.opf", content: pkg},
+		{name: "OEBPS/text/one.xhtml", content: chapter(5)},
+		{name: "OEBPS/text/two.xhtml", content: chapter(5)},
+	})
+
+	reader, err := epub.Open(book, int64(book.Len()))
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+
+	return reader
+}
+
+// Twenty-nine of the reference library's books are shaped like this one.
+func TestSeriesFromCalibreMetas(t *testing.T) {
+	meta := withMetadata(t, `
+    <meta name="calibre:series" content="A Song of Ice and Fire"/>
+    <meta name="calibre:series_index" content="2.0"/>`).Metadata()
+
+	if meta.Series != "A Song of Ice and Fire" {
+		t.Errorf("series is %q", meta.Series)
+	}
+	if meta.SeriesIndex != 2 {
+		t.Errorf("series index is %v, want 2", meta.SeriesIndex)
+	}
+}
+
+// Three of them are shaped like this one, which is the form with a standard
+// behind it.
+func TestSeriesFromEPUB3Collection(t *testing.T) {
+	meta := withMetadata(t, `
+    <meta property="belongs-to-collection" id="id-3">Die Legende von Gold und Jade</meta>
+    <meta refines="#id-3" property="collection-type">series</meta>
+    <meta refines="#id-3" property="group-position">1</meta>`).Metadata()
+
+	if meta.Series != "Die Legende von Gold und Jade" {
+		t.Errorf("series is %q", meta.Series)
+	}
+	if meta.SeriesIndex != 1 {
+		t.Errorf("series index is %v, want 1", meta.SeriesIndex)
+	}
+}
+
+// A collection with no type declared is still a collection worth shelving by.
+func TestSeriesWithoutADeclaredType(t *testing.T) {
+	meta := withMetadata(t, `
+    <meta property="belongs-to-collection" id="c1">Verborgene Schätze</meta>`).Metadata()
+
+	if meta.Series != "Verborgene Schätze" {
+		t.Errorf("series is %q", meta.Series)
+	}
+	if meta.SeriesIndex != 0 {
+		t.Errorf("series index is %v, want 0", meta.SeriesIndex)
+	}
+}
+
+// An omnibus is a set inside a series. Filing the book under the inner one puts
+// each volume of a trilogy on a shelf of its own, which is the opposite of what
+// a series shelf is for.
+func TestTheOutermostCollectionWins(t *testing.T) {
+	meta := withMetadata(t, `
+    <meta property="belongs-to-collection" id="outer">The Wheel of Time</meta>
+    <meta refines="#outer" property="collection-type">series</meta>
+    <meta refines="#outer" property="group-position">3</meta>
+    <meta property="belongs-to-collection" id="inner" refines="#outer">Boxed Set</meta>
+    <meta refines="#inner" property="collection-type">set</meta>`).Metadata()
+
+	if meta.Series != "The Wheel of Time" {
+		t.Errorf("series is %q, want the outer collection", meta.Series)
+	}
+	if meta.SeriesIndex != 3 {
+		t.Errorf("series index is %v, want 3", meta.SeriesIndex)
+	}
+}
+
+// An imprint is not a series, and a shelf of imprints is not a thing anybody
+// wants to browse.
+func TestANonSeriesCollectionIsNotASeries(t *testing.T) {
+	meta := withMetadata(t, `
+    <meta property="belongs-to-collection" id="c1">Penguin Classics</meta>
+    <meta refines="#c1" property="collection-type">publication</meta>`).Metadata()
+
+	if meta.Series != "" {
+		t.Errorf("series is %q, want none", meta.Series)
+	}
+}
+
+func TestSubjectsAreReadAndDeduplicated(t *testing.T) {
+	meta := withMetadata(t, `
+    <dc:subject>Fantasy</dc:subject>
+    <dc:subject>  Dark   Fantasy </dc:subject>
+    <dc:subject>fantasy</dc:subject>
+    <dc:subject></dc:subject>`).Metadata()
+
+	want := []string{"Fantasy", "Dark Fantasy"}
+	if len(meta.Subjects) != len(want) {
+		t.Fatalf("subjects are %v, want %v", meta.Subjects, want)
+	}
+	for index, subject := range want {
+		if meta.Subjects[index] != subject {
+			t.Errorf("subject %d is %q, want %q", index, meta.Subjects[index], subject)
+		}
+	}
+}
+
+// One book in the reference library declares a hundred and one keywords. That
+// is a search engine strategy, not a description, and the record should not
+// carry all of it.
+func TestSubjectsAreCapped(t *testing.T) {
+	var declared strings.Builder
+	for index := range 101 {
+		fmt.Fprintf(&declared, "\n    <dc:subject>Keyword %d</dc:subject>", index)
+	}
+
+	meta := withMetadata(t, declared.String()).Metadata()
+	if len(meta.Subjects) != 24 {
+		t.Errorf("kept %d subjects, want the cap of 24", len(meta.Subjects))
+	}
+}
+
+// A book with neither says so, rather than saying it belongs to the series "".
+func TestABookWithNoSeriesOrSubjects(t *testing.T) {
+	meta := withMetadata(t, "")
+
+	if got := meta.Metadata(); got.Series != "" || got.SeriesIndex != 0 || got.Subjects != nil {
+		t.Errorf("series %q index %v subjects %v, want all empty", got.Series, got.SeriesIndex, got.Subjects)
+	}
+}
+
+// A series index that is not a number does not take the series down with it.
+func TestAnUnparseableSeriesIndexIsZero(t *testing.T) {
+	meta := withMetadata(t, `
+    <meta name="calibre:series" content="Discworld"/>
+    <meta name="calibre:series_index" content="the first one"/>`).Metadata()
+
+	if meta.Series != "Discworld" {
+		t.Errorf("series is %q", meta.Series)
+	}
+	if meta.SeriesIndex != 0 {
+		t.Errorf("series index is %v, want 0", meta.SeriesIndex)
 	}
 }

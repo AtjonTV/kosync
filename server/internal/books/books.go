@@ -255,6 +255,13 @@ func describe(record *core.Record, conf *config.Config) error {
 	setJSONIfEmpty(record, schema.FieldAuthors, metadata.Authors)
 	setJSONIfEmpty(record, schema.FieldIdentifiers, metadata.Identifiers)
 
+	// The series and its subjects are as correctable as the title is, and for
+	// the same reason: publishers spell a series differently across its own
+	// volumes, which is exactly the thing that would split one shelf into two.
+	setIfEmpty(record, schema.FieldSeries, metadata.Series)
+	setNumberIfZero(record, schema.FieldSeriesIndex, metadata.SeriesIndex)
+	setJSONIfEmpty(record, schema.FieldSubjects, metadata.Subjects)
+
 	if err := attachCover(record, book); err != nil {
 		return err
 	}
@@ -360,6 +367,19 @@ func setIfEmpty(record *core.Record, field, value string) {
 	record.Set(field, value)
 }
 
+// setNumberIfZero fills a number the uploader left alone. Zero is the only
+// value that can mean "not said" here — a series has no volume nought — so it
+// is the one the file is allowed to overwrite.
+func setNumberIfZero(record *core.Record, field string, value float64) {
+	if value == 0 {
+		return
+	}
+	if record.GetFloat(field) != 0 {
+		return
+	}
+	record.Set(field, value)
+}
+
 // setJSONIfEmpty stores a value as JSON unless the uploader already supplied
 // one.
 func setJSONIfEmpty(record *core.Record, field string, value any) {
@@ -372,6 +392,14 @@ func setJSONIfEmpty(record *core.Record, field string, value any) {
 
 	encoded, err := json.Marshal(value)
 	if err != nil {
+		return
+	}
+	// An empty list is not worth writing down. A nil slice does not compare
+	// equal to nil once it is inside an interface, so it arrives here and
+	// encodes as "null" — which is the same nothing the column already holds,
+	// spelled a second way for anything that later has to ask.
+	switch string(encoded) {
+	case "null", "[]", "{}":
 		return
 	}
 	record.Set(field, string(encoded))
