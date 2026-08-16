@@ -27,6 +27,9 @@ export const Collections = {
   readingDays: 'reading_days',
   readingMonths: 'reading_months',
   books: 'books',
+  // Not "collections": PocketBase calls its own tables that, and the API path
+  // would then read /api/collections/collections/records.
+  bookCollections: 'book_collections',
   readingBookDays: 'reading_book_days',
   devices: 'devices',
   achievements: 'achievements',

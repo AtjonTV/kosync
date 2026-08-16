@@ -27,11 +27,22 @@ const props = withDefaults(
      * "Library" is not printed twice above the same grid.
      */
     heading?: string
+    /**
+     * The books to show, in the order they are to be shown in. Unset means the
+     * whole library, which is what the library page and the dashboard want.
+     *
+     * A collection passes its own books and its own order, and gets a grid
+     * without the upload button or the grouping: neither belongs on a page whose
+     * order is the point of it.
+     */
+    books?: Book[]
+    /** What to say when there is nothing to show. */
+    empty?: string
   }>(),
-  { heading: 'Library' },
+  { heading: 'Library', empty: 'No books yet. Add an EPUB to keep a copy here.' },
 )
 
-const books = useBooksStore()
+const library = useBooksStore()
 const documents = useDocumentsStore()
 const confirm = useConfirm()
 const toast = useToast()
@@ -59,10 +70,10 @@ const lastReadByBook = computed(() => {
   return latest
 })
 
-const byTitle = computed(() => [...books.books].sort((a, b) => a.title.localeCompare(b.title)))
+const byTitle = computed(() => [...library.books].sort((a, b) => a.title.localeCompare(b.title)))
 
 const byRecency = computed(() =>
-  [...books.books].sort((a, b) => {
+  [...library.books].sort((a, b) => {
     const left = lastReadByBook.value.get(a.id) ?? ''
     const right = lastReadByBook.value.get(b.id) ?? ''
     if (left !== right) return right.localeCompare(left)
@@ -72,13 +83,16 @@ const byRecency = computed(() =>
 )
 
 const sorted = computed(() => {
+  // A given list is already in the order it is meant to be read in — a shelf is
+  // a sequence somebody decided on — so it is passed through untouched.
+  if (props.books) return props.books
   if (!props.limit) return byTitle.value
 
   return byRecency.value.slice(0, props.limit)
 })
 
 /** How many books the limit is hiding. */
-const hidden = computed(() => (props.limit ? Math.max(books.books.length - props.limit, 0) : 0))
+const hidden = computed(() => (props.limit ? Math.max(library.books.length - props.limit, 0) : 0))
 
 /**
  * How the library is broken up, remembered between visits.
@@ -111,8 +125,11 @@ const groupingOptions = [
  * The dashboard is a shelf and not a catalogue, so it is never grouped: breaking
  * six recently read books into headed sections is noise, and the page it links to
  * is where the grouping belongs.
+ *
+ * A given list is never grouped either, for the stronger reason that grouping it
+ * would sort it: the order is the whole content of a hand-made collection.
  */
-const groupedBy = computed<Grouping>(() => (props.limit ? 'none' : grouping.value))
+const groupedBy = computed<Grouping>(() => (props.limit || props.books ? 'none' : grouping.value))
 
 const shelves = computed(() => groupBooks(sorted.value, groupedBy.value))
 
@@ -171,7 +188,7 @@ const uploadFiles = async (event: FileUploadUploaderEvent) => {
   try {
     for (const file of chosen) {
       try {
-        await books.upload(file)
+        await library.upload(file)
         added += 1
       } catch (error) {
         failures.value.push(`${file.name}: ${errorMessage(error, 'could not be uploaded.')}`)
@@ -204,7 +221,7 @@ const rename = async () => {
   renameError.value = ''
   busy.value = true
   try {
-    await books.rename(renameTarget.value.id, newTitle.value.trim())
+    await library.rename(renameTarget.value.id, newTitle.value.trim())
     showRename.value = false
   } catch (error) {
     renameError.value = errorMessage(error, 'Could not change the title.')
@@ -222,7 +239,7 @@ const remove = (book: Book) => {
     acceptProps: { label: 'Delete', severity: 'danger' },
     accept: async () => {
       try {
-        await books.remove(book.id)
+        await library.remove(book.id)
       } catch (error) {
         toast.add({
           severity: 'error',
@@ -236,7 +253,7 @@ const remove = (book: Book) => {
 }
 
 onMounted(() => {
-  books.load()
+  library.load()
   // The reading progress comes from the documents, which the dashboard loads
   // too; asking again here keeps the library usable on its own.
   if (!documents.loaded) documents.load()
@@ -250,7 +267,10 @@ onMounted(() => {
         <span v-if="props.heading" class="text-xl font-semibold">{{ props.heading }}</span>
         <span v-else></span>
         <div class="flex items-center gap-3">
-          <div v-if="!limit && books.books.length" class="flex items-center gap-2">
+          <div
+            v-if="!limit && !props.books && library.books.length"
+            class="flex items-center gap-2"
+          >
             <label for="library-grouping" class="text-sm text-surface-600 dark:text-surface-400">
               Group by
             </label>
@@ -264,7 +284,9 @@ onMounted(() => {
               aria-label="Group the library by"
             />
           </div>
+          <slot name="header" />
           <FileUpload
+            v-if="!props.books"
             mode="basic"
             name="file"
             accept=".epub,application/epub+zip"
@@ -280,7 +302,7 @@ onMounted(() => {
       </div>
     </template>
     <template #content>
-      <p v-if="!limit" class="mb-4 text-surface-600 dark:text-surface-400">
+      <p v-if="!limit && !props.books" class="mb-4 text-surface-600 dark:text-surface-400">
         Books you upload are kept here as a backup, and let KOsync recognise which book a device is
         reporting progress for. Upload the very file you read on the device: the match is made on
         the file's contents, so another copy of the same title will not do.
@@ -294,7 +316,7 @@ onMounted(() => {
         </div>
       </Message>
 
-      <div v-if="books.loading && !books.loaded" class="p-8 text-center">
+      <div v-if="library.loading && !library.loaded" class="p-8 text-center">
         <ProgressSpinner style="width: 2.5rem; height: 2.5rem" />
       </div>
 
@@ -374,7 +396,13 @@ onMounted(() => {
                   title="Change title"
                   @click="openRename(book)"
                 />
+                <!--
+                  Left off a given list: a page about one shelf offers taking a
+                  book off it, and two trash cans side by side, one of which
+                  deletes the file, is a trap rather than a convenience.
+                -->
                 <Button
+                  v-if="!props.books"
                   icon="pi pi-trash"
                   severity="danger"
                   variant="text"
@@ -382,6 +410,7 @@ onMounted(() => {
                   title="Delete"
                   @click="remove(book)"
                 />
+                <slot name="actions" :book="book" />
               </div>
             </div>
           </div>
@@ -389,12 +418,12 @@ onMounted(() => {
       </div>
 
       <div v-else class="p-8 text-center text-surface-500 dark:text-surface-400">
-        No books yet. Add an EPUB to keep a copy here.
+        {{ props.empty }}
       </div>
 
       <div v-if="hidden" class="mt-6 text-center">
         <RouterLink :to="{ name: 'library' }" class="hover:underline">
-          See all {{ books.books.length }} books
+          See all {{ library.books.length }} books
         </RouterLink>
       </div>
     </template>

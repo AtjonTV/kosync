@@ -18,6 +18,7 @@ import (
 
 	"git.obth.eu/atjontv/kosync/internal/analytics"
 	"git.obth.eu/atjontv/kosync/internal/books"
+	"git.obth.eu/atjontv/kosync/internal/collections"
 	"git.obth.eu/atjontv/kosync/internal/config"
 	"git.obth.eu/atjontv/kosync/internal/devices"
 	"git.obth.eu/atjontv/kosync/internal/importer"
@@ -62,6 +63,7 @@ func main() {
 	kosyncapi.Register(app, conf)
 	analytics.Register(app, conf)
 	books.Register(app, conf)
+	collections.Register(app)
 	devices.Register(app)
 	opds.Register(app, conf, sync)
 	// The same credential again: a device that can push progress can leave its

@@ -1824,9 +1824,10 @@ returning books; a `facet` (`internal/opds/facets.go`) has a `groups` function r
 counts. The routing, pagination, authentication and rendering were already there. Three facets ship,
 and the front page offers only the ones with something in them.
 
-**Hand-made collections** (task #36) are independent of all of it and need no external data — an owned
-record with a relation to books, exposed as its own feed. They are also the honest answer to §29.1's
-subject problem: a shelf somebody curated beats a facet built from keyword spam.
+**Hand-made collections** (task #36, built) are independent of all of it and need no external data — an
+owned record with a relation to books, exposed as its own feed. They are also the honest answer to
+§29.1's subject problem: a shelf somebody curated beats a facet built from keyword spam. §29.5 has
+what they turned into.
 
 ### 29.3 What the finished feeds do
 
@@ -1906,7 +1907,56 @@ is `testdata/author-names.json`: every case the fold is held to lives there, and
 file. Changing the rule on one side without the other fails the other side's tests. Adding a case
 tests both.
 
-### 29.5 The ISBN lookup, and what limits it (deferred)
+### 29.5 Collections somebody made (task #36)
+
+The one part of the library that is nobody's metadata: a named shelf, a description, and a list of
+books in the order its owner put them there. `book_collections`, one migration, one request hook, a
+fourth facet, two pages in the browser.
+
+**The order is the whole content.** Everything else in the library can be reconstructed from the
+files: titles, authors, series, languages, even the page counts. A reading list cannot — it is a
+sequence somebody decided on, and the moment anything sorts it, it is gone. So the order the ids sit
+in the relation field *is* the shelf, and it survives everywhere: `listCollection` loads the shelf's
+owned books and re-orders them in Go by their position in the stored list before paging, because
+there is no SQL sort that means "the order this list is written in"; the browser's grid takes a given
+list and passes it through untouched, with the Group by control forced off, because grouping would
+sort it. Two catalog tests pin it, one of them across a page boundary — a page-two query that sorted
+by anything would quietly return the wrong three books.
+
+**It is called `book_collections` and not `collections`.** PocketBase calls its own tables
+collections. The API path would have read `/api/collections/collections/records`, and every sentence
+in this document about either kind would have needed a qualifier.
+
+**"The books must be yours" is a hook, not an access rule.** A rule can only see the record being
+written, and the ids in `books` point at another table; without the check an account could name a
+stranger's book id and read the title back out through relation expansion. `internal/collections`
+counts how many of the submitted ids belong to the caller and refuses the write unless the counts
+match. The hook reads `e.Record`, which is the *merged* list — so it also covers the `books+`
+modifier, which is what the browser actually sends. The owner guard runs before the book check, in
+that order deliberately: a changed owner makes every book on the shelf foreign, and the answer would
+then be true but about the wrong thing.
+
+**Deleting a book empties shelves; it does not delete them.** The books relation sets
+`CascadeDelete: false`, and that single field is the difference between the two behaviours: PocketBase
+deletes the referring record when a cascading relation would be left empty, so with `true`, deleting
+the last book on a shelf would delete the shelf. A test exists for exactly this, because it is one
+field option away from being wrong and nothing else would notice.
+
+**The browser sends changes, not lists.** Putting a book on a shelf sends `{"books+": id}` and taking
+it off sends `{"books-": id}`, so two open tabs cannot overwrite each other's shelf. Rearranging is
+the one exception and has to send the whole list, because there is no modifier for "third, not
+fifth".
+
+**An empty shelf is a plan, and where it shows depends on what the page is for.** The catalog leaves
+it out — `json_array_length(books) > 0`, the same rule that keeps an empty facet off the front page,
+because a dead link costs a visible page turn on e-ink. The collections page in the browser lists it,
+because that is where it gets filled.
+
+Names are unique per account (`idx_book_collections_owner_name`), a shelf holds at most 2000 books —
+the whole reference library is 192 — and the feed's value is the record id rather than the name,
+which is stable across a rename and needs no escaping.
+
+### 29.6 The ISBN lookup, and what limits it (deferred)
 
 Filling in what the file does not carry — subjects, series, publisher, a better cover — by asking an
 external catalogue (task #37). Three things bound it, and the first is the one that decides:

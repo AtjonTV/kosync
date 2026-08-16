@@ -95,6 +95,21 @@ export interface Book extends BaseRecord {
 }
 
 /**
+ * A shelf its owner put together by hand.
+ *
+ * `books` is a list of book ids in the order they were put there, and that order
+ * is kept: a reading list is a sequence, not a set. It is the one thing in the
+ * library nobody derived from a file — everything else here is what an EPUB said
+ * or what a device reported.
+ */
+export interface BookCollection extends BaseRecord {
+  owner: string
+  name: string
+  description: string
+  books: string[]
+}
+
+/**
  * A device that has pushed progress.
  *
  * `device_id` is KOReader's own identifier and is what everything groups by,

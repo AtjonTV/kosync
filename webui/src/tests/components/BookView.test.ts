@@ -4,13 +4,15 @@
 // Copyright:   © 2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
 //
 
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createTestingPinia } from '@pinia/testing'
 import PrimeVue from 'primevue/config'
+import ToastService from 'primevue/toastservice'
 import BookView from '@/views/BookView.vue'
 import { useBookStatsStore } from '@/stores/bookStats'
-import type { Book, Device, ReadingBookDay } from '@/models'
+import { useCollectionsStore } from '@/stores/collections'
+import type { Book, BookCollection, Device, ReadingBookDay } from '@/models'
 
 vi.mock('@/pb', async () => {
   const mock = await import('../mocks/pb')
@@ -27,8 +29,11 @@ vi.mock('@/pb', async () => {
   }
 })
 
+const push = vi.fn()
+
 vi.mock('vue-router', () => ({
   useRoute: () => ({ params: { id: 'book-a' } }),
+  useRouter: () => ({ push }),
 }))
 
 function book(overrides: Partial<Book> = {}): Book {
@@ -97,7 +102,26 @@ function device(overrides: Partial<Device> = {}): Device {
   }
 }
 
-function mountBook(entry: Book, days: ReadingBookDay[] = [], known: Device[] = [device()]) {
+function shelf(id: string, name: string, books: string[]): BookCollection {
+  return {
+    id,
+    collectionId: 'c',
+    collectionName: 'book_collections',
+    created: '',
+    updated: '',
+    owner: 'user-a',
+    name,
+    description: '',
+    books,
+  }
+}
+
+function mountBook(
+  entry: Book,
+  days: ReadingBookDay[] = [],
+  known: Device[] = [device()],
+  shelves: BookCollection[] = [],
+) {
   return mount(BookView, {
     global: {
       plugins: [
@@ -108,9 +132,11 @@ function mountBook(entry: Book, days: ReadingBookDay[] = [], known: Device[] = [
             bookStats: { days },
             documents: { documents: [], loaded: true },
             devices: { devices: known, loaded: true },
+            collections: { collections: shelves, loaded: true },
           },
         }),
         PrimeVue,
+        ToastService,
       ],
       stubs: { Chart: true, RouterLink: { template: '<a><slot /></a>' } },
     },
@@ -176,5 +202,51 @@ describe('BookView', () => {
     wrapper.unmount()
 
     expect(useBookStatsStore().clear).toHaveBeenCalled()
+  })
+
+  // A book's own page is where somebody decides it belongs on a shelf, so it
+  // has to say which shelves it is already on.
+  describe('collections', () => {
+    beforeEach(() => {
+      document.body.innerHTML = ''
+    })
+
+    it('names the shelves the book stands on', () => {
+      const wrapper = mountBook(
+        book(),
+        [],
+        [device()],
+        [shelf('shelf-a', 'Winter reading', ['book-a']), shelf('shelf-b', 'One day', ['book-b'])],
+      )
+
+      expect(wrapper.text()).toContain('Winter reading')
+      expect(wrapper.text()).not.toContain('One day')
+    })
+
+    it('takes the book off a shelf it is on', async () => {
+      const wrapper = mountBook(
+        book(),
+        [],
+        [device()],
+        [shelf('shelf-a', 'Winter reading', ['book-a'])],
+      )
+
+      await wrapper.find('[title="Take off Winter reading"]').trigger('click')
+
+      expect(useCollectionsStore().removeBook).toHaveBeenCalledWith('shelf-a', 'book-a')
+    })
+
+    it('offers the shelves it is not on yet', async () => {
+      const wrapper = mountBook(
+        book(),
+        [],
+        [device()],
+        [shelf('shelf-a', 'Winter reading', ['book-a']), shelf('shelf-b', 'One day', ['book-b'])],
+      )
+
+      await wrapper.find('[aria-controls="book-shelves"]').trigger('click')
+
+      expect(document.body.textContent).toContain('One day')
+    })
   })
 })

@@ -58,6 +58,14 @@ const (
 	// times from the moments pushes happened to arrive.
 	CollectionPageReads = "page_reads"
 
+	// CollectionBookCollections holds the shelves an account puts together by
+	// hand: a name, and the books that belong on it.
+	//
+	// It is not called "collections" because PocketBase calls its own tables
+	// that, and a KOsync collection named after the thing it is stored in would
+	// make every sentence about either of them ambiguous.
+	CollectionBookCollections = "book_collections"
+
 	// CollectionReadingBookDays holds the daily reading statistics of a single
 	// book. It is a separate collection rather than a grouping of reading_days
 	// because a day's reading time cannot be split across books without losing
@@ -268,6 +276,19 @@ const (
 	FieldMeasuredPages   = "measured_pages"
 	FieldMeasuredDevice  = "measured_device"
 	FieldMeasuredThrough = "measured_through"
+)
+
+// book_collections field names.
+//
+// The shelf's own name is FieldName, shared with the devices collection because
+// it means the same thing there: what its owner chose to call the thing.
+//
+// FieldBooks is what is on the shelf, in the order it was put there. A relation
+// field keeps the order of its ids, and that order is half the point of a
+// hand-made shelf: a reading list is a sequence, not a set.
+const (
+	FieldDescription = "description"
+	FieldBooks       = "books"
 )
 
 // OwnerRule restricts a collection to the records owned by the authenticated

@@ -82,9 +82,11 @@ function mountLibrary(
   books: Book[],
   props: Record<string, unknown> = {},
   documents: DocumentRecord[] = [],
+  slots: Record<string, string> = {},
 ) {
   return mount(BookLibrary, {
     props,
+    slots,
     global: {
       plugins: [
         createTestingPinia({
@@ -239,6 +241,63 @@ describe('BookLibrary', () => {
       )
 
       expect(wrapper.find('h2').exists()).toBe(false)
+    })
+  })
+
+  // A collection hands the grid its own books in its own order. That order is
+  // the entire content of a hand-made shelf, so nothing here may touch it.
+  describe('a given list', () => {
+    beforeEach(() => localStorage.clear())
+
+    const shelf = [
+      book('c', { title: 'Choice' }),
+      book('a', { title: 'Ambush' }),
+      book('b', { title: 'Betrayal' }),
+    ]
+
+    it('shows it in the order it was given', () => {
+      const wrapper = mountLibrary(shelf, { books: shelf })
+      const text = wrapper.text()
+
+      expect(text.indexOf('Choice')).toBeLessThan(text.indexOf('Ambush'))
+      expect(text.indexOf('Ambush')).toBeLessThan(text.indexOf('Betrayal'))
+    })
+
+    // Grouping would sort it, so the remembered choice is ignored here rather
+    // than quietly rearranging somebody's reading list.
+    it('ignores the remembered grouping', () => {
+      localStorage.setItem('library-grouping', 'authors')
+
+      const wrapper = mountLibrary(shelf, { books: shelf })
+
+      expect(wrapper.find('h2').exists()).toBe(false)
+      expect(wrapper.text()).not.toContain('Group by')
+    })
+
+    // Neither uploading nor deleting belongs on a page about one shelf: the
+    // first has nothing to do with it, and the second would take the file away
+    // rather than the book off the shelf.
+    it('offers neither uploading nor deleting', () => {
+      const wrapper = mountLibrary(shelf, { books: shelf })
+
+      expect(wrapper.findComponent({ name: 'FileUpload' }).exists()).toBe(false)
+      expect(wrapper.find('[title="Delete"]').exists()).toBe(false)
+      expect(wrapper.find('[title="Change title"]').exists()).toBe(true)
+    })
+
+    it('says what the page it is on means by empty', () => {
+      const wrapper = mountLibrary([], { books: [], empty: 'Nothing on this shelf yet.' })
+
+      expect(wrapper.text()).toContain('Nothing on this shelf yet.')
+      expect(wrapper.text()).not.toContain('Add an EPUB')
+    })
+
+    it('lets the page add its own action to every card', () => {
+      const wrapper = mountLibrary(shelf, { books: shelf }, [], {
+        actions: '<button class="take-off">Take off</button>',
+      })
+
+      expect(wrapper.findAll('.take-off')).toHaveLength(3)
     })
   })
 })

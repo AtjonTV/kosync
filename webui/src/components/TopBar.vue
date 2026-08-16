@@ -13,6 +13,7 @@ import { useKoreaderStore } from '@/stores/koreader'
 import { useBooksStore } from '@/stores/books'
 import { useBookStatsStore } from '@/stores/bookStats'
 import { useDevicesStore } from '@/stores/devices'
+import { useCollectionsStore } from '@/stores/collections'
 import type { MenuItem } from 'primevue/menuitem'
 
 const auth = useAuthStore()
@@ -22,6 +23,7 @@ const koreader = useKoreaderStore()
 const books = useBooksStore()
 const bookStats = useBookStatsStore()
 const devices = useDevicesStore()
+const collections = useCollectionsStore()
 const router = useRouter()
 
 const isDarkMode = ref(false)
@@ -63,14 +65,17 @@ const doLogout = async () => {
   books.clear()
   bookStats.clear()
   devices.clear()
+  collections.clear()
   await router.push({ name: 'home' })
 }
 
 // Navigation on the left, in the order things are reached for: the dashboard,
-// then the library, then the documents behind it.
+// then the library, then the shelves cut out of it, then the documents behind
+// it all.
 const navigation = [
   { label: 'Home', icon: 'pi pi-home', route: 'home' },
   { label: 'Library', icon: 'pi pi-book', route: 'library' },
+  { label: 'Collections', icon: 'pi pi-bookmark', route: 'collections' },
   { label: 'Documents', icon: 'pi pi-file', route: 'documents' },
 ]
 

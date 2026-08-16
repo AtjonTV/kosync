@@ -224,6 +224,39 @@ func CreateBook(t testing.TB, app core.App, owner *core.Record, id, title, hashB
 	return record
 }
 
+// CreateBookCollection stores a hand-made shelf holding the given books.
+//
+// The books are stored in the order they are passed, because that order is what
+// a shelf is: anything that only needs the set of books on it would be a filter
+// rather than a collection.
+func CreateBookCollection(t testing.TB, app core.App, owner *core.Record, id, name string, books ...*core.Record) *core.Record {
+	t.Helper()
+
+	collection, err := app.FindCollectionByNameOrId(schema.CollectionBookCollections)
+	if err != nil {
+		t.Fatalf("failed to find the %q collection: %v", schema.CollectionBookCollections, err)
+	}
+
+	ids := make([]string, 0, len(books))
+	for _, book := range books {
+		ids = append(ids, book.Id)
+	}
+
+	record := core.NewRecord(collection)
+	if id != "" {
+		record.Id = id
+	}
+	record.Set(schema.FieldOwner, owner.Id)
+	record.Set(schema.FieldName, name)
+	record.Set(schema.FieldBooks, ids)
+
+	if err := app.Save(record); err != nil {
+		t.Fatalf("failed to create the collection %q: %v", name, err)
+	}
+
+	return record
+}
+
 // UserToken returns a PocketBase auth token for the given user record.
 func UserToken(t testing.TB, user *core.Record) string {
 	t.Helper()

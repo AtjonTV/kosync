@@ -4,21 +4,27 @@
   Copyright:   © 2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
 -->
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import Chart from 'primevue/chart'
-import { fileUrl } from '@/pb'
+import { useToast } from 'primevue/usetoast'
+import { errorMessage, fileUrl } from '@/pb'
 import { authorName } from '@/lib/grouping'
 import { useBooksStore } from '@/stores/books'
 import { useBookStatsStore } from '@/stores/bookStats'
 import { useDocumentsStore } from '@/stores/documents'
 import { useDevicesStore } from '@/stores/devices'
+import { useCollectionsStore } from '@/stores/collections'
+import type { MenuItem } from 'primevue/menuitem'
 
 const route = useRoute()
+const router = useRouter()
 const books = useBooksStore()
 const stats = useBookStatsStore()
 const documents = useDocumentsStore()
 const devices = useDevicesStore()
+const collections = useCollectionsStore()
+const toast = useToast()
 
 const bookId = computed(() => String(route.params.id ?? ''))
 const book = computed(() => books.books.find((entry) => entry.id === bookId.value) ?? null)
@@ -145,6 +151,59 @@ const chartData = computed(() => {
   }
 })
 
+/** The shelves this book stands on. */
+const onShelves = computed(() => collections.byBook.get(bookId.value) ?? [])
+
+/**
+ * Where else it could go: the shelves it is not on yet, offered as a menu.
+ *
+ * An account with no shelves at all is sent to the page that makes them rather
+ * than being shown an empty menu, which would only look broken.
+ */
+const shelfMenu = useTemplateRef<{ toggle: (event: Event) => void }>('shelfMenu')
+
+const fileOn = async (id: string) => {
+  try {
+    await collections.addBook(id, bookId.value)
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Failed', detail: errorMessage(error), life: 5000 })
+  }
+}
+
+const takeOff = async (id: string) => {
+  try {
+    await collections.removeBook(id, bookId.value)
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Failed', detail: errorMessage(error), life: 5000 })
+  }
+}
+
+const shelfItems = computed<MenuItem[]>(() => {
+  const already = new Set(onShelves.value.map((shelf) => shelf.id))
+  const rest = collections.collections.filter((shelf) => !already.has(shelf.id))
+
+  if (!rest.length) {
+    return [
+      {
+        label: collections.collections.length
+          ? 'On every collection already'
+          : 'No collections yet',
+        icon: 'pi pi-bookmark',
+        command: () => {
+          void router.push({ name: 'collections' })
+        },
+      },
+    ]
+  }
+
+  return rest.map((shelf) => ({
+    label: shelf.name,
+    command: () => {
+      void fileOn(shelf.id)
+    },
+  }))
+})
+
 const load = async (id: string) => {
   if (!id) return
   await Promise.all([stats.load(id), stats.subscribe()])
@@ -156,6 +215,7 @@ onMounted(async () => {
   if (!books.loaded) await books.load()
   if (!documents.loaded) await documents.load()
   if (!devices.loaded) await devices.load()
+  if (!collections.loaded) await collections.load()
   await load(bookId.value)
 })
 
@@ -233,10 +293,49 @@ onUnmounted(() => stats.clear())
                 </template>
               </dl>
 
-              <div>
+              <!--
+                Not PrimeVue's own removable chip: that one hides itself the
+                moment it is clicked, so a request the server refuses would take
+                the shelf off the screen and nowhere else.
+              -->
+              <div v-if="onShelves.length" class="flex flex-wrap items-center gap-2">
+                <span
+                  v-for="shelf in onShelves"
+                  :key="shelf.id"
+                  class="inline-flex items-center gap-1 pl-3 pr-1 py-1 rounded-full text-sm bg-surface-100 dark:bg-surface-800"
+                >
+                  <RouterLink
+                    :to="{ name: 'collection', params: { id: shelf.id } }"
+                    class="hover:underline"
+                  >
+                    {{ shelf.name }}
+                  </RouterLink>
+                  <Button
+                    icon="pi pi-times"
+                    variant="text"
+                    rounded
+                    size="small"
+                    :title="`Take off ${shelf.name}`"
+                    :aria-label="`Take off ${shelf.name}`"
+                    @click="takeOff(shelf.id)"
+                  />
+                </span>
+              </div>
+
+              <div class="flex flex-wrap gap-2">
                 <a :href="downloadUrl" :download="`${book.title}.epub`">
                   <Button icon="pi pi-download" label="Download" variant="outlined" size="small" />
                 </a>
+                <Button
+                  icon="pi pi-bookmark"
+                  label="Add to collection"
+                  variant="outlined"
+                  size="small"
+                  aria-haspopup="true"
+                  aria-controls="book-shelves"
+                  @click="shelfMenu?.toggle($event)"
+                />
+                <Menu id="book-shelves" ref="shelfMenu" :model="shelfItems" :popup="true" />
               </div>
             </div>
           </div>

@@ -32,7 +32,9 @@ func asUser(t *testing.T, userId string, scenario tests.ApiScenario) {
 	}
 	scenario.Headers = headers
 
-	scenario.TestAppFactory = testutil.SeededApp
+	if scenario.TestAppFactory == nil {
+		scenario.TestAppFactory = testutil.SeededApp
+	}
 
 	if userId != "" {
 		scenario.BeforeTestFunc = func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
@@ -232,4 +234,143 @@ func TestAnalyticsCollectionsAreReadOnlyAndScoped(t *testing.T) {
 		ExpectedStatus:  http.StatusForbidden,
 		ExpectedContent: []string{`"data":{}`},
 	})
+}
+
+// idCollectionOfB is a shelf belonging to the other account, so that the tests
+// have something they are not allowed to touch.
+var idCollectionOfB = testutil.PadId("collb")
+
+// withACollectionOfUserB seeds the two user world and gives the second one a
+// shelf of its own.
+func withACollectionOfUserB(t testing.TB) *tests.TestApp {
+	t.Helper()
+
+	app := testutil.SeededApp(t)
+
+	userB, err := app.FindRecordById(schema.CollectionUsers, testutil.IdUserB)
+	if err != nil {
+		t.Fatalf("failed to load the fixture user: %v", err)
+	}
+	testutil.CreateBookCollection(t, app, userB, idCollectionOfB, "Bob's shelf")
+
+	return app
+}
+
+// A collection is the one thing here that is entirely its owner's own opinion,
+// so unlike everything else it is created and deleted through the ordinary
+// collection API rather than by the server. That makes the rules the whole of
+// the protection.
+func TestBookCollectionsAreScopedToTheirOwner(t *testing.T) {
+	const url = "/api/collections/" + schema.CollectionBookCollections + "/records"
+
+	asUser(t, testutil.IdUserA, tests.ApiScenario{
+		Name:            "a user makes a shelf of their own",
+		Method:          http.MethodPost,
+		URL:             url,
+		Body:            strings.NewReader(`{"owner":"` + testutil.IdUserA + `","name":"To read"}`),
+		ExpectedStatus:  http.StatusOK,
+		ExpectedContent: []string{`"name":"To read"`},
+	})
+
+	asUser(t, testutil.IdUserA, tests.ApiScenario{
+		Name:            "a user cannot make a shelf for somebody else",
+		Method:          http.MethodPost,
+		URL:             url,
+		Body:            strings.NewReader(`{"owner":"` + testutil.IdUserB + `","name":"Not mine"}`),
+		ExpectedStatus:  http.StatusBadRequest,
+		ExpectedContent: []string{`"data":{}`},
+	})
+
+	asUser(t, "", tests.ApiScenario{
+		Name:            "a guest makes nothing",
+		Method:          http.MethodPost,
+		URL:             url,
+		Body:            strings.NewReader(`{"owner":"` + testutil.IdUserA + `","name":"Anonymous"}`),
+		ExpectedStatus:  http.StatusBadRequest,
+		ExpectedContent: []string{`"data":{}`},
+	})
+
+	asUser(t, testutil.IdUserA, tests.ApiScenario{
+		Name:               "a user lists only their own shelves",
+		Method:             http.MethodGet,
+		URL:                url,
+		TestAppFactory:     withACollectionOfUserB,
+		ExpectedStatus:     http.StatusOK,
+		ExpectedContent:    []string{`"totalItems":0`},
+		NotExpectedContent: []string{`"id":"` + idCollectionOfB + `"`},
+	})
+
+	asUser(t, testutil.IdUserA, tests.ApiScenario{
+		Name:            "a user cannot read a foreign shelf",
+		Method:          http.MethodGet,
+		URL:             url + "/" + idCollectionOfB,
+		TestAppFactory:  withACollectionOfUserB,
+		ExpectedStatus:  http.StatusNotFound,
+		ExpectedContent: []string{`"data":{}`},
+	})
+
+	asUser(t, testutil.IdUserA, tests.ApiScenario{
+		Name:            "a user cannot rename a foreign shelf",
+		Method:          http.MethodPatch,
+		URL:             url + "/" + idCollectionOfB,
+		Body:            strings.NewReader(`{"name":"stolen"}`),
+		TestAppFactory:  withACollectionOfUserB,
+		ExpectedStatus:  http.StatusNotFound,
+		ExpectedContent: []string{`"data":{}`},
+	})
+
+	asUser(t, testutil.IdUserA, tests.ApiScenario{
+		Name:            "a user cannot throw away a foreign shelf",
+		Method:          http.MethodDelete,
+		URL:             url + "/" + idCollectionOfB,
+		TestAppFactory:  withACollectionOfUserB,
+		ExpectedStatus:  http.StatusNotFound,
+		ExpectedContent: []string{`"data":{}`},
+	})
+}
+
+// Two shelves of one name are two answers to the same question, and the index
+// that refuses the second one is what lets the browser say so on the field.
+func TestOneAccountCannotHaveTwoShelvesOfOneName(t *testing.T) {
+	const url = "/api/collections/" + schema.CollectionBookCollections + "/records"
+
+	asUser(t, testutil.IdUserA, tests.ApiScenario{
+		Name:           "the same name twice",
+		Method:         http.MethodPost,
+		URL:            url,
+		Body:           strings.NewReader(`{"owner":"` + testutil.IdUserA + `","name":"To read"}`),
+		TestAppFactory: withAShelfOfUserA,
+		ExpectedStatus: http.StatusBadRequest,
+		ExpectedContent: []string{
+			`"name"`,
+			`validation_not_unique`,
+		},
+	})
+
+	// The same name on another account is another account's business.
+	asUser(t, testutil.IdUserB, tests.ApiScenario{
+		Name:            "the same name on another account",
+		Method:          http.MethodPost,
+		URL:             url,
+		Body:            strings.NewReader(`{"owner":"` + testutil.IdUserB + `","name":"To read"}`),
+		TestAppFactory:  withAShelfOfUserA,
+		ExpectedStatus:  http.StatusOK,
+		ExpectedContent: []string{`"name":"To read"`},
+	})
+}
+
+// withAShelfOfUserA seeds the two user world with a shelf named "To read"
+// belonging to the first account.
+func withAShelfOfUserA(t testing.TB) *tests.TestApp {
+	t.Helper()
+
+	app := testutil.SeededApp(t)
+
+	userA, err := app.FindRecordById(schema.CollectionUsers, testutil.IdUserA)
+	if err != nil {
+		t.Fatalf("failed to load the fixture user: %v", err)
+	}
+	testutil.CreateBookCollection(t, app, userA, "", "To read")
+
+	return app
 }

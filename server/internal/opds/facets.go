@@ -57,12 +57,24 @@ type facet struct {
 
 // facets are the navigation feeds the catalog offers, in the order they appear.
 //
+// Collections come first because they are the only ones somebody decided on. The
+// other three are the library described back to itself, which is useful but is
+// nobody's opinion about anything.
+//
 // Subjects are deliberately not among them. The books carry them and the column
 // stores them, but on the reference library 143 of 202 distinct subjects belong
 // to exactly one book — a navigation feed of 202 entries, most of which lead to
 // a single title, is a worse way to find something than the flat list it would
 // be replacing. Hand-made collections are the answer to the same problem.
 var facets = []facet{
+	{
+		Slug:    "collections",
+		Title:   "Collections",
+		Summary: "The shelves you put together yourself.",
+		groups:  collectionGroups,
+		list:    listCollection,
+		heading: collectionHeading,
+	},
 	{
 		Slug:    "authors",
 		Title:   "By author",
