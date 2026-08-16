@@ -52,15 +52,21 @@ func describedBook(
 // an author who appears only as a translator on one book.
 //
 // The volumes are titled so that reading order and alphabetical order disagree,
-// which is the only way an ordering test proves anything.
+// which is the only way an ordering test proves anything. Three authors are
+// spelled more than one way, which is what the reference library does to its two
+// most read authors.
 func aBrowsableLibrary(t testing.TB, app *tests.TestApp, fixture *testutil.Fixture) {
 	describedBook(t, app, fixture.UserA, "Ambush", []string{"Lee Child"}, "en", "Jack Reacher", 3)
 	describedBook(t, app, fixture.UserA, "Betrayal", []string{"Lee Child"}, "en", "Jack Reacher", 1)
-	describedBook(t, app, fixture.UserA, "Choice", []string{"Lee Child"}, "en", "Jack Reacher", 2)
+	describedBook(t, app, fixture.UserA, "Choice", []string{"Child, Lee"}, "en", "Jack Reacher", 2)
 
 	describedBook(t, app, fixture.UserA, "Zeit des Sturms", []string{"Andrzej Sapkowski"}, "de-DE", "", 0)
 	describedBook(t, app, fixture.UserA, "Etwas endet", []string{"Andrzej Sapkowski"}, "de", "", 0)
-	describedBook(t, app, fixture.UserA, "Der Schwalbenturm", []string{"Andrzej Sapkowski"}, "DE", "", 0)
+	describedBook(t, app, fixture.UserA, "Der Schwalbenturm", []string{"Sapkowski, Andrzej"}, "DE", "", 0)
+
+	describedBook(t, app, fixture.UserA, "Fantastic Beasts", []string{"J.K. Rowling"}, "en", "", 0)
+	describedBook(t, app, fixture.UserA, "Quidditch durch die Zeiten", []string{"J.K. Rowling"}, "de", "", 0)
+	describedBook(t, app, fixture.UserA, "Die Märchen von Beedle", []string{"J. K. Rowling"}, "de", "", 0)
 
 	describedBook(t, app, fixture.UserA, "Der letzte Wunsch",
 		[]string{"Andrzej Sapkowski", "Erik Simon"}, "de", "Die Hexer-Saga", 1)
@@ -155,14 +161,25 @@ func TestTheAuthorFeedNamesEveryAuthorWithACount(t *testing.T) {
 			`"title":"Lee Child (3)"`,
 			// A book with two names on it appears under both of them.
 			`"title":"Erik Simon (1)"`,
-			`"numberOfItems":3`,
+			// Two spellings, three books, one author — and the name shown is
+			// the spelling the library uses most.
+			`"title":"J.K. Rowling (3)"`,
+			`"numberOfItems":4`,
 			`facet=authors`,
 		},
 		// A navigation feed lists names, not books, and it lists nobody else's.
-		NotExpectedContent: []string{`"publications"`, `Bob`},
+		// Neither of the two backwards spellings is shown as a name of its own.
+		NotExpectedContent: []string{
+			`"publications"`,
+			`Bob`,
+			`Child, Lee`,
+			`Sapkowski, Andrzej`,
+			`J. K. Rowling`,
+		},
 		AfterTestFunc: inOrder(
 			`"title":"Andrzej Sapkowski (5)"`,
 			`"title":"Erik Simon (1)"`,
+			`"title":"J.K. Rowling (3)"`,
 			`"title":"Lee Child (3)"`,
 		),
 	}
@@ -244,8 +261,8 @@ func TestTheLanguagesAreFoldedAndNamed(t *testing.T) {
 		TestAppFactory: newFactory(50, aBrowsableLibrary),
 		ExpectedStatus: http.StatusOK,
 		ExpectedContent: []string{
-			`"title":"German (5)"`,
-			`"title":"English (3)"`,
+			`"title":"German (7)"`,
+			`"title":"English (4)"`,
 			// "und" is not a language, it is the file declining to name one.
 			`"title":"Unknown (1)"`,
 			`"numberOfItems":3`,
@@ -255,7 +272,7 @@ func TestTheLanguagesAreFoldedAndNamed(t *testing.T) {
 		NotExpectedContent: []string{`"title":"de`, `"title":"DE`, `de-DE (`, `UND`},
 		// The most common language first: there are usually two or three of
 		// them, and the one somebody wants is the one most of their books is in.
-		AfterTestFunc: inOrder(`"title":"German (5)"`, `"title":"English (3)"`, `"title":"Unknown (1)"`),
+		AfterTestFunc: inOrder(`"title":"German (7)"`, `"title":"English (4)"`, `"title":"Unknown (1)"`),
 	}
 
 	scenario.Test(t)
@@ -275,7 +292,7 @@ func TestALanguageShelfHoldsEverySpellingOfIt(t *testing.T) {
 			`"title":"Zeit des Sturms"`,
 			`"title":"Der Schwalbenturm"`,
 			`"title":"Etwas endet"`,
-			`"numberOfItems":5`,
+			`"numberOfItems":7`,
 		},
 		NotExpectedContent: []string{`"title":"Ambush"`},
 	}
@@ -283,22 +300,67 @@ func TestALanguageShelfHoldsEverySpellingOfIt(t *testing.T) {
 	scenario.Test(t)
 }
 
+// "Choice" is the book filed under "Child, Lee". An author's shelf holds it
+// whichever spelling the address was built from — a link bookmarked before the
+// library settled on one spelling still arrives.
 func TestAnAuthorShelfHoldsWhatTheyWrote(t *testing.T) {
-	scenario := tests.ApiScenario{
-		Name:           "one author's books",
-		Method:         http.MethodGet,
-		URL:            "/opds/by?facet=authors&value=Lee+Child",
-		Headers:        basicAuth(testutil.KoUsernameA, testutil.KoPasswordA),
-		TestAppFactory: newFactory(50, aBrowsableLibrary),
-		ExpectedStatus: http.StatusOK,
-		ExpectedContent: []string{
+	scenarios := []tests.ApiScenario{
+		{
+			Name: "the name the catalog shows",
+			URL:  "/opds/by?facet=authors&value=Lee+Child",
+		},
+		{
+			Name: "the spelling on one of the books",
+			URL:  "/opds/by?facet=authors&value=Child%2C+Lee",
+		},
+		{
+			Name: "a spelling on none of them",
+			URL:  "/opds/by?facet=authors&value=CHILD%2C++LEE",
+		},
+	}
+
+	for _, scenario := range scenarios {
+		scenario.Method = http.MethodGet
+		scenario.Headers = basicAuth(testutil.KoUsernameA, testutil.KoPasswordA)
+		scenario.TestAppFactory = newFactory(50, aBrowsableLibrary)
+		scenario.ExpectedStatus = http.StatusOK
+		scenario.ExpectedContent = []string{
+			// However it was asked for, the shelf is headed with the name.
 			`"title":"Lee Child"`,
 			`"title":"Ambush"`,
 			`"title":"Betrayal"`,
 			`"title":"Choice"`,
 			`"numberOfItems":3`,
+		}
+		scenario.NotExpectedContent = []string{`"title":"Etwas endet"`}
+		scenario.Test(t)
+	}
+}
+
+// The two ways a name gets written are one author, and one book of theirs that
+// names them both ways is still one book.
+func TestOneAuthorIsOneShelfHoweverTheyAreSpelled(t *testing.T) {
+	seed := func(t testing.TB, app *tests.TestApp, fixture *testutil.Fixture) {
+		describedBook(t, app, fixture.UserA, "Doubled",
+			[]string{"George R.R. Martin", "Martin, George, R. R."}, "en", "", 0)
+		describedBook(t, app, fixture.UserA, "Single",
+			[]string{"George R. R. Martin"}, "en", "", 0)
+	}
+
+	scenario := tests.ApiScenario{
+		Name:           "one author under three spellings",
+		Method:         http.MethodGet,
+		URL:            "/opds/authors",
+		Headers:        basicAuth(testutil.KoUsernameA, testutil.KoPasswordA),
+		TestAppFactory: newFactory(50, seed),
+		ExpectedStatus: http.StatusOK,
+		ExpectedContent: []string{
+			// Two books, not three, though the name appears three times. And
+			// the longest spelling wins a tie, which is the one with the spaces
+			// between the initials.
+			`"title":"George R. R. Martin (2)"`,
+			`"numberOfItems":1`,
 		},
-		NotExpectedContent: []string{`"title":"Etwas endet"`},
 	}
 
 	scenario.Test(t)
@@ -347,7 +409,7 @@ func TestANavigationFeedIsPaginated(t *testing.T) {
 			ExpectedContent: []string{
 				`"title":"Andrzej Sapkowski (5)"`,
 				`"title":"Erik Simon (1)"`,
-				`"numberOfItems":3`,
+				`"numberOfItems":4`,
 				`"itemsPerPage":2`,
 				`"currentPage":1`,
 				`"rel":"next"`,
@@ -360,6 +422,7 @@ func TestANavigationFeedIsPaginated(t *testing.T) {
 			URL:            "/opds/authors?page=2",
 			ExpectedStatus: http.StatusOK,
 			ExpectedContent: []string{
+				`"title":"J.K. Rowling (3)"`,
 				`"title":"Lee Child (3)"`,
 				`"currentPage":2`,
 				`"rel":"previous"`,

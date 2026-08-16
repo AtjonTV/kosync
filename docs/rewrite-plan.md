@@ -1788,7 +1788,7 @@ First counted at 121 books, then recounted with the finished parser over all **1
 
 | | |
 | --- | --- |
-| Books with authors | **192 / 192**, 115 distinct authors |
+| Books with authors | **192 / 192**, 115 distinct spellings — 108 actual authors, see §29.3 |
 | Books with a language | **192 / 192** — 9 stored spellings, 5 actual languages |
 | Books with an ISBN | **28 / 121** at the time of measuring — the rest carry a Calibre UUID and nothing else |
 | Books with a series | **30 / 192**, in 9 series |
@@ -1835,14 +1835,35 @@ Three facets, at `/opds/authors`, `/opds/series` and `/opds/languages`, each ent
 
 | Feed | Entries | What it looks like |
 | --- | --- | --- |
-| By author | 115 | `Alfred Bekker (8)`, `William Shakespeare (39)` — three pages of 50 |
+| By author | 108 | `Lee Child (29)`, `William Shakespeare (39)` — three pages of 50 |
 | By series | 9 | `Jack Reacher (19)`, `A Song of Ice and Fire (3)` |
 | By language | 5 | `German (96)`, `English (92)`, `French (2)`, `Dutch (1)`, `Unknown (1)` |
 
-Four decisions are worth keeping written down.
+Five decisions are worth keeping written down.
 
 **No subject facet.** The column is stored and the web UI can show it, but 143 of 202 subjects lead
 to one book. Curated collections are the answer to that problem, not a feed.
+
+**One author is one shelf, however the name is spelled.** The 115 distinct strings in the author
+field are 108 people. Publisher metadata writes a name either way round and punctuates initials as it
+pleases, and the reference library holds both halves of five authors: `Lee Child` on 26 books and
+`Child, Lee` on 3, `George R.R. Martin` beside `George R. R. Martin`, `J.K. Rowling` beside
+`J. K. Rowling`, `Gabaldon, Diana`, `Publishing, Pottermore`. Split apart, the library's most-read
+author sits in two places in the catalog and neither one is the whole of him.
+
+`internal/books/authors.go` turns a name round at the *first* comma only, and refuses when what
+follows is not a given name: more than three words is a list of people, not one person written
+backwards (`Corinna Mieth, Simon Weber, Rainer Schäfer, Anna Schriefl` is four authors in one field
+and is left exactly as found), and a trailing `LLC`, `Jr.` or `PhD` is a suffix. What remains is
+lowercased down to its letters and digits, and that is the key. Nothing is transliterated and nothing
+is decomposed: it is unnecessary for every merge the real library needs, it keeps `golang.org/x/text`
+out of the build, and an ASCII-only key would reduce every name in a script without Latin letters to
+the empty string — folding all of them into one nameless shelf, which is the bug this decision
+exists to prevent. `Lincoln Child` stays separate from `Lee Child`. Ten further names simply stopped
+displaying backwards. The grouping runs in Go over one row per name per book (224 rows for 192
+books) because SQLite cannot say "the same letters ignoring punctuation" without a pile of nested
+`REPLACE`s, and the URL carries a readable spelling rather than the key, so an address bookmarked
+under the old spelling still resolves to the merged shelf.
 
 **Languages are folded, not listed.** The library spells German four ways — `de`, `de-DE`, `DE`, and
 English three — and shelving the spellings apart reproduces exactly the splitting the feature exists

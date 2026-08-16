@@ -266,7 +266,7 @@ func (h *Handler) byValue(e *core.RequestEvent) error {
 		return e.NotFoundError("No such part of the catalog.", nil)
 	}
 
-	feed := h.feed(at, entry.heading(value), records,
+	feed := h.feed(at, entry.heading(h.app, ownerFrom(e), value), records,
 		&Page{Number: page, Size: size, Total: total}, ownerFrom(e))
 	feed.Id = at.group(entry.Slug, value, 1)
 	feed.Links = append(feed.Links, pagination(func(number int) string {

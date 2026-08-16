@@ -8,8 +8,10 @@ package opds
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
+	"git.obth.eu/atjontv/kosync/internal/books"
 	"git.obth.eu/atjontv/kosync/internal/schema"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
@@ -45,7 +47,12 @@ type facet struct {
 	list func(app core.App, owner, value string, offset, limit int) ([]*core.Record, int, error)
 
 	// heading titles the feed of one entry.
-	heading func(value string) string
+	//
+	// It is given the library and not only the value because the value arrives
+	// from outside — out of a link a reader kept, or typed by hand — and for
+	// authors the name to show is the one the library settled on rather than
+	// the spelling that was asked for.
+	heading func(app core.App, owner, value string) string
 }
 
 // facets are the navigation feeds the catalog offers, in the order they appear.
@@ -62,7 +69,7 @@ var facets = []facet{
 		Summary: "Every author in the library.",
 		groups:  authorGroups,
 		list:    listByAuthor,
-		heading: func(value string) string { return value },
+		heading: authorHeading,
 	},
 	{
 		Slug:    "series",
@@ -70,7 +77,7 @@ var facets = []facet{
 		Summary: "Books that belong to a series, in reading order.",
 		groups:  seriesGroups,
 		list:    listBySeries,
-		heading: func(value string) string { return value },
+		heading: func(_ core.App, _, value string) string { return value },
 	},
 	{
 		Slug:    "languages",
@@ -78,7 +85,7 @@ var facets = []facet{
 		Summary: "Every language the library holds.",
 		groups:  languageGroups,
 		list:    listByLanguage,
-		heading: languageName,
+		heading: func(_ core.App, _, value string) string { return languageName(value) },
 	},
 }
 
@@ -103,27 +110,183 @@ const authorValues = `json_each(IIF(json_valid(` +
 	schema.CollectionBooks + `.` + schema.FieldAuthors + `), ` +
 	schema.CollectionBooks + `.` + schema.FieldAuthors + `, '[]'))`
 
+// authorPair is one book and one of the names written on it.
+type authorPair struct {
+	Book  string `db:"book"`
+	Value string `db:"value"`
+}
+
+// authorPairs reads every name on every book of one account.
+//
+// Grouped in Go rather than in SQL, which the other two facets do and this one
+// used to. Two spellings of one author are the same letters with different
+// punctuation between them, and the comparison that says so — drop the case and
+// the dots, turn "Child, Lee" back round — is not something SQLite can be talked
+// into without a pile of nested REPLACE calls. The cost is one row per name per
+// book: 224 rows for the 192 book reference library, which is a smaller query
+// than the page of books it leads to.
+func authorPairs(app core.App, owner string) ([]authorPair, error) {
+	pairs := []authorPair{}
+	err := app.ConcurrentDB().
+		NewQuery("SELECT {{" + schema.CollectionBooks + "}}.[[id]] AS book, [[value]] AS value" +
+			" FROM {{" + schema.CollectionBooks + "}}, " + authorValues +
+			" WHERE {{" + schema.CollectionBooks + "}}.[[" + schema.FieldOwner + "]] = {:owner}" +
+			" AND TRIM([[value]]) != ''").
+		Bind(dbx.Params{"owner": owner}).
+		All(&pairs)
+
+	return pairs, err
+}
+
+// foldedAuthors groups an account's authors by who they are rather than by how
+// they were typed, alphabetically by the name each one is shown under.
+func foldedAuthors(app core.App, owner string) ([]group, error) {
+	pairs, err := authorPairs(app, owner)
+	if err != nil {
+		return nil, err
+	}
+
+	type author struct {
+		books     map[string]bool
+		spellings map[string]int
+	}
+
+	folded := map[string]*author{}
+	for _, pair := range pairs {
+		key := books.AuthorKey(pair.Value)
+		if key == "" {
+			continue
+		}
+
+		one := folded[key]
+		if one == nil {
+			one = &author{books: map[string]bool{}, spellings: map[string]int{}}
+			folded[key] = one
+		}
+
+		// Counted by book and not by name: a book that names the same author
+		// twice, once each way round, is still one book on their shelf.
+		one.books[pair.Book] = true
+		one.spellings[strings.TrimSpace(pair.Value)]++
+	}
+
+	groups := make([]group, 0, len(folded))
+	for _, one := range folded {
+		name := books.AuthorName(commonestSpelling(one.spellings))
+		groups = append(groups, group{Value: name, Title: name, Count: len(one.books)})
+	}
+
+	slices.SortFunc(groups, func(a, b group) int {
+		if order := strings.Compare(strings.ToLower(a.Title), strings.ToLower(b.Title)); order != 0 {
+			return order
+		}
+
+		return strings.Compare(a.Title, b.Title)
+	})
+
+	return groups, nil
+}
+
+// commonestSpelling picks the name to show an author under.
+//
+// The one the library uses most, because that is the one its owner will
+// recognise. Two spellings used equally often are settled by taking the longer,
+// which is how "George R. R. Martin" wins over "George R.R. Martin" — and then by
+// the text itself, so that the answer never depends on map ordering.
+func commonestSpelling(spellings map[string]int) string {
+	var best string
+	var bestCount int
+	found := false
+
+	for spelling, count := range spellings {
+		if !found || betterSpelling(spelling, count, best, bestCount) {
+			best, bestCount, found = spelling, count, true
+		}
+	}
+
+	return best
+}
+
+// betterSpelling reports whether one spelling should be shown rather than
+// another: the commoner one, then the longer one, then the earlier one.
+func betterSpelling(spelling string, count int, than string, thanCount int) bool {
+	if count != thanCount {
+		return count > thanCount
+	}
+	if len(spelling) != len(than) {
+		return len(spelling) > len(than)
+	}
+
+	return spelling < than
+}
+
 // authorGroups lists the authors, alphabetically.
 func authorGroups(app core.App, owner string, offset, limit int) ([]group, int, error) {
-	return countedGroups(app, groupQuery{
-		owner:    owner,
-		selectAs: "[[value]]",
-		from:     "{{" + schema.CollectionBooks + "}}, " + authorValues,
-		where:    "TRIM([[value]]) != ''",
-		order:    "[[value]] COLLATE NOCASE ASC",
-		offset:   offset,
-		limit:    limit,
-	}, nil)
+	folded, err := foldedAuthors(app, owner)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	total := len(folded)
+	if limit <= 0 || offset >= total {
+		return nil, total, nil
+	}
+
+	return folded[offset:min(offset+limit, total)], total, nil
+}
+
+// authorHeading is the name to head an author's shelf with.
+//
+// The name the catalog shows them under, not the spelling the address happened
+// to carry: a link built from "CHILD, LEE" leads to Lee Child's books, and
+// saying "CHILD, LEE" over the top of them helps nobody. An author the library
+// no longer holds is shown as asked for, tidied up.
+func authorHeading(app core.App, owner, value string) string {
+	key := books.AuthorKey(value)
+
+	if folded, err := foldedAuthors(app, owner); err == nil {
+		for _, one := range folded {
+			if books.AuthorKey(one.Value) == key {
+				return one.Title
+			}
+		}
+	}
+
+	return books.AuthorName(value)
 }
 
 // listByAuthor returns the books one author wrote, by title.
+//
+// The link carries a name rather than a key, which means an address bookmarked
+// under one spelling still finds the author after the library has settled on
+// another: every spelling folds to the same key, and the key is what matches.
 func listByAuthor(app core.App, owner, value string, offset, limit int) ([]*core.Record, int, error) {
-	condition := dbx.NewExp(
-		"EXISTS (SELECT 1 FROM "+authorValues+" WHERE [[value]] = {:value})",
-		dbx.Params{"value": value},
-	)
+	key := books.AuthorKey(value)
+	if key == "" {
+		return nil, 0, nil
+	}
 
-	return listWhere(app, owner, condition,
+	pairs, err := authorPairs(app, owner)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	ids := []any{}
+	seen := map[string]bool{}
+	for _, pair := range pairs {
+		if seen[pair.Book] || books.AuthorKey(pair.Value) != key {
+			continue
+		}
+
+		seen[pair.Book] = true
+		ids = append(ids, pair.Book)
+	}
+
+	if len(ids) == 0 {
+		return nil, 0, nil
+	}
+
+	return listWhere(app, owner, dbx.In(schema.CollectionBooks+".id", ids...),
 		[]string{"[[books.title]] COLLATE NOCASE ASC", "[[books.created]] ASC"}, offset, limit)
 }
 
