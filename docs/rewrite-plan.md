@@ -1773,3 +1773,71 @@ page number is font-size dependent — which is why the plugin ships a view that
 cannot put a reader back on the right line on another device. The division is clean: **the sync
 protocol owns where you are, the statistics own what happened**, and where both describe a day the
 measurement wins, exactly as `measured_pages` already beats `page_count` (§19).
+
+---
+
+## 29. Browsing a library that got big (recorded, not built)
+
+Reported once the reference library passed about two hundred books: the OPDS catalog is three flat
+shelves, and skimming it on an e-reader stopped working. What follows is what was measured before
+anything was designed, so that the cost of each idea is known rather than assumed.
+
+### 29.1 What the library actually holds
+
+Counted on the reference instance (121 books at the time of measuring):
+
+| | |
+| --- | --- |
+| Books with authors | **121 / 121**, 87 distinct authors |
+| Books with a language | **121 / 121**, 6 languages |
+| Books with an ISBN | **28 / 121** — the rest carry a Calibre UUID and nothing else |
+| Series in the EPUB (`calibre:series`) | in 5 of 8 files sampled |
+| Subjects in the EPUB (`dc:subject`) | present, and of very mixed quality |
+
+Two of those change the design.
+
+**Series is the strongest facet and it is not stored.** The sampled files carry
+`calibre:series` with a `calibre:series_index` — "A Song of Ice and Fire" at 1, 2 and 4 — which is
+exactly the thing a reader wants to walk down, and `internal/epub` currently reads title, authors,
+language and identifiers only.
+
+**Subjects are present and mostly junk.** One sampled book declares six subjects that are all the
+same phrase rearranged: "dark fantasy romance", "dark romance books", "dark fantasy romance books",
+and so on. Others declare a clean single "Fantasy". A subject facet built straight from publisher
+metadata would be a long tail of near-duplicates, which is worse than no facet at all.
+
+### 29.2 The three pieces, in dependency order
+
+**Authors and languages can be browsed today.** Both are stored on every book, and SQLite's
+`json_each` groups the authors JSON without a schema change:
+
+```sql
+SELECT value AS author, COUNT(*) FROM books, json_each(books.authors) GROUP BY value
+```
+
+**Series and subjects need extracting first** (task #34): two more fields, a migration, and a backfill
+that re-reads the stored EPUBs the way `BackfillFileSizes` already does.
+
+**The catalog needs a second kind of feed** (task #35). `internal/opds/catalog.go` has a `shelf` with
+a `list` function returning books; a navigation feed returns groups. The routing, pagination,
+authentication and rendering are all already there.
+
+**Hand-made collections** (task #36) are independent of all of it and need no external data — an owned
+record with a relation to books, exposed as its own feed. They are also the honest answer to §29.1's
+subject problem: a shelf somebody curated beats a facet built from keyword spam.
+
+### 29.3 The ISBN lookup, and what limits it
+
+Filling in what the file does not carry — subjects, series, publisher, a better cover — by asking an
+external catalogue (task #37). Three things bound it, and the first is the one that decides:
+
+1. **Only 23% of the library has an ISBN.** An ISBN-keyed lookup reaches a quarter of these books.
+   The rest would need a title-and-author search, which is a guess with a confidence attached rather
+   than a lookup.
+2. **It tells somebody else what is in a private library.** That has to be opt-in, off by default, and
+   per-book rather than a sweep — and a self-hosted instance may have no outbound network at all.
+3. **Licensing differs by source.** Open Library needs no key and its data is CC0; Google Books
+   restricts what may be stored from its responses.
+
+Whatever it fills, it must fill only what is empty and record where each value came from — the same
+rule the upload already follows when publisher metadata meets a title the owner corrected.
