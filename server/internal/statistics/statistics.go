@@ -42,6 +42,12 @@ type Result struct {
 	// Dates are the local days the new rows fall on, which are the days whose
 	// statistics are now out of date.
 	Dates []string
+
+	// Pages is what the device says each of its documents runs to. It is read
+	// whether or not anything was added: a second sync of an unchanged database
+	// still states the page counts, and a book uploaded since the last one has
+	// not heard them yet.
+	Pages []Pagination
 }
 
 // pageRead is one row of the device's own record.
@@ -112,7 +118,14 @@ func Import(app core.App, ownerId, path string) (Result, error) {
 		return result, fmt.Errorf("read the page turns: %w", err)
 	}
 
+	counts, err := paginations(source)
+	if err != nil {
+		return result, err
+	}
+
 	result.Rows = len(reads)
+	result.Pages = counts
+
 	if len(reads) == 0 {
 		return result, nil
 	}

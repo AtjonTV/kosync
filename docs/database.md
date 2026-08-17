@@ -145,10 +145,16 @@ generated, it is small, and nobody chose to store it. Books uploaded before the 
 measured once by the migration that added it.
 
 `page_count` is a fallback, derived from the word count at `BOOKS_WORDS_PER_PAGE`. An EPUB is
-reflowable and has no pages of its own, so a count measured from a reader's own progress is better
-wherever one can be had — see [analytics.md](analytics.md). `measured_pages` holds that measurement
-when there is one, with `measured_device` naming where it came from and `measured_through` recording
-how far into the reading it looked, so a book nobody has read since is not measured again.
+reflowable and has no pages of its own, so a reader's own count is better wherever one can be had —
+see [analytics.md](analytics.md). `measured_pages` holds it when there is one, and `measured_source`
+says which of the two it is: `device` for the count a synced statistics database states outright,
+`progress` for the count recovered from the size of the steps a device's progress moved in. A stated
+count wins over an estimated one, and an empty source on a book that has a measurement is one taken
+before the column existed, which can only have been the estimator.
+
+`measured_device` names where an estimated count came from; a stated one leaves it empty, because
+which device wrote a statistics database is not in the database. `measured_through` records how far
+into the reading the measurement looked, so a book nobody has read since is not measured again.
 
 A `documents` row carries a `book` relation, set by the server when the document's hash matches an
 uploaded book. It is empty until such a book exists, and it is cleared rather than cascaded when the

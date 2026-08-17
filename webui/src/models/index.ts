@@ -86,12 +86,20 @@ export interface Book extends BaseRecord {
   content_hash: string
   hash_binary: string
   hash_filename: string
-  /** The page count recovered from the progress a device pushed, 0 if none. */
+  /** The page count a device paginates the book into, 0 if none is known. */
   measured_pages: number
-  /** Which device that measurement came from. */
+  /** Which device that measurement came from, where the measurement says. */
   measured_device: string
   /** How far into the reading the measurement looked. */
   measured_through: string
+  /**
+   * Where the measurement came from: `device` when the reader stated it in the
+   * statistics it synced, `progress` when it was recovered from the size of the
+   * steps a device's progress moved in. A stated count is the better of the
+   * two — the estimator cannot resolve books longer than about 1600 pages at
+   * all — and it does not say which device wrote it.
+   */
+  measured_source: string
 }
 
 /**

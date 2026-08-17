@@ -65,16 +65,30 @@ func RegisterMeasurements(app core.App, uploads Uploads) {
 	})
 }
 
-// ImportMeasurements reads an uploaded statistics database and queues every day
-// it has something new to say about.
+// ImportMeasurements reads an uploaded statistics database, records the page
+// counts it states and queues every day it has something new to say about.
 //
 // Queued rather than recomputed here: the days it names may be months old and
 // there may be hundreds of them, and the queue is what already knows how to work
 // through that a batch at a time without holding anything up.
+//
+// The page counts are stored before the days are queued, because a day's reading
+// is counted in pages and the count they should be reckoned in has just arrived.
+// A failure to store them is logged rather than returned: the reading is already
+// imported, and losing a day's worth of statistics over a page count would be the
+// wrong way round.
 func ImportMeasurements(app core.App, ownerId, path string) (statistics.Result, error) {
 	result, err := statistics.Import(app, ownerId, path)
 	if err != nil {
 		return result, err
+	}
+
+	if changed, err := StorePagination(app, ownerId, result.Pages); err != nil {
+		app.Logger().Warn("could not store the page counts a device stated",
+			"owner", ownerId, "error", err)
+	} else if changed > 0 {
+		app.Logger().Info("took the page count of some books from the device",
+			"owner", ownerId, "books", changed)
 	}
 
 	for _, date := range result.Dates {

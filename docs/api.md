@@ -130,10 +130,12 @@ Covers are served as PocketBase files, with thumbnails generated on request:
 /api/files/books/{id}/{cover}?thumb=200x300
 ```
 
-The page count is derived too, and in two ways: `measured_pages` is what the device's own progress
-reports imply, and `page_count` is the fallback from the word count. Both are read only — the
-measurement in particular refuses to be set by hand, because a number nobody measured would then sit
-in front of every statistic reckoned in pages. See [analytics.md](analytics.md).
+The page count is derived too, and in three ways: `measured_pages` is the device's own count, with
+`measured_source` saying whether the device stated it in the statistics it synced (`device`) or it was
+recovered from the progress it pushed (`progress`), and `page_count` is the fallback from the word
+count. All are read only — the measurement in particular refuses to be set by hand, because a number
+nobody measured would then sit in front of every statistic reckoned in pages. See
+[analytics.md](analytics.md).
 
 A third hash, `hash_catalog`, is derived from the title rather than from the file: it is the KOReader
 filename hash of the name the OPDS catalog serves the book under. It follows a rename, and like the

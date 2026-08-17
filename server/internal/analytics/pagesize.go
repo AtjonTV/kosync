@@ -73,6 +73,16 @@ type bookProgressRow struct {
 // measurement is left alone, so recomputing forty days of one book's reading
 // does not measure it forty times.
 func MeasurePageSize(app core.App, book *core.Record) (bool, error) {
+	// A book whose device has stated its page count is not a book to estimate
+	// one for. This is the whole of the precedence between the two measurements,
+	// and it is here rather than in the comparison below because the stated count
+	// wins even when it is older than the newest push: it is the number the
+	// reader paginated the book into, not a reconstruction of it, and it is right
+	// for lengths the estimator cannot reach at all.
+	if book.GetString(schema.FieldMeasuredSource) == schema.MeasuredByDevice {
+		return false, nil
+	}
+
 	rows := []bookProgressRow{}
 
 	err := app.DB().
@@ -109,6 +119,7 @@ func MeasurePageSize(app core.App, book *core.Record) (bool, error) {
 	book.Set(schema.FieldMeasuredPages, estimate.Pages)
 	book.Set(schema.FieldMeasuredDevice, device)
 	book.Set(schema.FieldMeasuredThrough, moment)
+	book.Set(schema.FieldMeasuredSource, schema.MeasuredByProgress)
 
 	if err := app.Save(book); err != nil {
 		return false, fmt.Errorf("store the measured page count of book %s: %w", book.Id, err)

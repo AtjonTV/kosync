@@ -117,13 +117,15 @@ func Register(app core.App, conf *config.Config) {
 			)
 		}
 
-		// The measurement is taken from the progress the devices pushed. Letting
-		// it be typed in would put a number nothing produced in front of every
-		// page count the statistics are reckoned in.
+		// The measurement is the device's own: stated by the statistics it
+		// synced, or recovered from the progress it pushed. Letting it be typed
+		// in would put a number nothing measured in front of every page count
+		// the statistics are reckoned in.
 		for _, field := range []string{
 			schema.FieldMeasuredPages,
 			schema.FieldMeasuredDevice,
 			schema.FieldMeasuredThrough,
+			schema.FieldMeasuredSource,
 		} {
 			if _, present := info.Body[field]; present {
 				return e.BadRequestError(

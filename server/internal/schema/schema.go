@@ -265,17 +265,40 @@ const (
 	FieldHashFilename = "hash_filename"
 	FieldHashCatalog  = "hash_catalog"
 
-	// FieldMeasuredPages and FieldMeasuredDevice hold the page count recovered
-	// from the progress a device pushed, and which device it came from. Zero
-	// pages means no measurement was possible and FieldPageCount is all there is.
+	// FieldMeasuredPages holds the page count a device paginates the book into,
+	// and FieldMeasuredDevice which device that was — when it is known, which it
+	// is only for the count recovered from progress pushes. Zero pages means no
+	// measurement was possible and FieldPageCount is all there is.
 	//
 	// FieldMeasuredThrough is how far into the reading that measurement looked —
-	// the newest push it saw, not the moment it ran. Reading timestamps come from
-	// the device and are always in the past, so a wall clock there would mean no
-	// book is ever measured a second time.
+	// the newest reading it saw, not the moment it ran. Reading timestamps come
+	// from the device and are always in the past, so a wall clock there would
+	// mean no book is ever measured a second time.
+	//
+	// FieldMeasuredSource says which of the two measurements it is, because they
+	// are not equally good — see MeasuredByDevice.
 	FieldMeasuredPages   = "measured_pages"
 	FieldMeasuredDevice  = "measured_device"
 	FieldMeasuredThrough = "measured_through"
+	FieldMeasuredSource  = "measured_source"
+)
+
+// Where a stored page measurement came from, held in FieldMeasuredSource.
+//
+// MeasuredByDevice is the number KOReader itself paginated the book into, read
+// out of the statistics database a device syncs here. MeasuredByProgress is the
+// same number reconstructed from the size of the steps a device's progress moved
+// in, which is an inference: it needs a dozen pushes and it cannot resolve a page
+// narrower than the four decimals progress is reported to, so it gives up at
+// roughly 1600 pages.
+//
+// The device's own count therefore wins wherever there is one, and the estimator
+// leaves such a book alone rather than replacing a fact with a reconstruction of
+// it. An empty source on a book that has a measurement is one measured before
+// this field existed, which can only have been the estimator.
+const (
+	MeasuredByDevice   = "device"
+	MeasuredByProgress = "progress"
 )
 
 // book_collections field names.

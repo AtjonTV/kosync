@@ -62,6 +62,7 @@ function book(overrides: Partial<Book> = {}): Book {
     measured_pages: 0,
     measured_device: '',
     measured_through: '',
+    measured_source: '',
     ...overrides,
   }
 }
@@ -153,17 +154,33 @@ describe('BookView', () => {
   // A count recovered from the reading is the device's own pagination, and
   // saying which device it came from is what makes it checkable.
   it('names the device a measured page count came from', () => {
-    const wrapper = mountBook(book({ measured_pages: 700, measured_device: 'go7' }))
+    const wrapper = mountBook(
+      book({ measured_pages: 700, measured_device: 'go7', measured_source: 'progress' }),
+    )
 
     expect(wrapper.text()).toContain('700')
     expect(wrapper.text()).toContain('measured on go7')
+  })
+
+  // A count the reader stated in the statistics it synced is the better of the
+  // two, and the only one a very long book can have — but the file does not say
+  // which reader wrote it, so it is not attributed to one.
+  it('says a stated page count was counted by the reader', () => {
+    const wrapper = mountBook(book({ measured_pages: 3543, measured_source: 'device' }))
+
+    expect(wrapper.text()).toContain('3,543')
+    expect(wrapper.text()).toContain('counted by your reader')
   })
 
   // The book stores the identifier, which is a hex string on a real device. What
   // belongs on screen is whatever its owner decided to call the thing.
   it('uses the name the owner gave the device', () => {
     const wrapper = mountBook(
-      book({ measured_pages: 700, measured_device: '865F46C0C0F4401D9A05768B6B0BF3AC' }),
+      book({
+        measured_pages: 700,
+        measured_device: '865F46C0C0F4401D9A05768B6B0BF3AC',
+        measured_source: 'progress',
+      }),
       [],
       [device({ device_id: '865F46C0C0F4401D9A05768B6B0BF3AC', name: 'Boox Go 7' })],
     )

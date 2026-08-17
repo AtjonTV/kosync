@@ -57,13 +57,20 @@ const percent = computed(() => Math.round((progress.value ?? 0) * 100))
  * The page count, and where it came from.
  *
  * A measured count is the number of pages the device itself paginated the book
- * into, recovered from the size of the steps its progress moved in. The fallback
- * is what the word count implies, which on the reference books was out by up to
- * a third, so the two are labelled rather than blended.
+ * into: either stated in the statistics it synced here, or recovered from the
+ * size of the steps its progress moved in. The fallback is what the word count
+ * implies, which on the reference books was out by up to a third, so all of them
+ * are labelled rather than blended.
  */
 const pages = computed(() => {
   if (!book.value) return null
   if (book.value.measured_pages > 0) {
+    // A count out of the statistics database is the reader's own number, and the
+    // file does not say which reader wrote it — so it is not attributed to one.
+    if (book.value.measured_source === 'device') {
+      return { count: book.value.measured_pages, note: 'counted by your reader' }
+    }
+
     // The book stores the device's identifier, because that is what survives a
     // rename; what belongs on screen is whatever the owner calls the thing.
     const device = devices.nameOf(book.value.measured_device)

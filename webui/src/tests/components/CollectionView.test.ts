@@ -59,6 +59,7 @@ function book(id: string, title: string): Book {
     measured_pages: 0,
     measured_device: '',
     measured_through: '',
+    measured_source: '',
   }
 }
 

@@ -30,12 +30,21 @@ import (
 const zeitDesSturms = "043f11771ef9d191364ac0ba08198d36"
 
 // page is one row of a device's own record.
+//
+// total is how many pages the book stood at when the turn was recorded, which
+// changes with the font and is therefore per row rather than per book. Zero means
+// defaultPages, so that a test about something else does not have to say; a
+// negative total writes the literal zero an older KOReader recorded.
 type page struct {
 	md5      string
 	page     int
 	start    time.Time
 	duration int
+	total    int
 }
+
+// defaultPages is the pagination a fixture is in unless it says otherwise.
+const defaultPages = 668
 
 // build writes a statistics database of the shape KOReader keeps, in WAL mode
 // as a real one is, and returns its path.
@@ -67,8 +76,8 @@ func build(t testing.TB, books map[string]string, pages []page) string {
 	ids := map[string]int{}
 	next := 1
 	for hash, title := range books {
-		if _, err := db.Exec(`INSERT INTO book (id, title, md5, pages) VALUES (?, ?, ?, 668)`,
-			next, title, hash); err != nil {
+		if _, err := db.Exec(`INSERT INTO book (id, title, md5, pages) VALUES (?, ?, ?, ?)`,
+			next, title, hash, defaultPages); err != nil {
 			t.Fatalf("insert book: %v", err)
 		}
 		ids[hash] = next
@@ -76,9 +85,17 @@ func build(t testing.TB, books map[string]string, pages []page) string {
 	}
 
 	for _, one := range pages {
+		total := one.total
+		switch {
+		case total == 0:
+			total = defaultPages
+		case total < 0:
+			total = 0
+		}
+
 		if _, err := db.Exec(
-			`INSERT INTO page_stat_data (id_book, page, start_time, duration, total_pages) VALUES (?, ?, ?, ?, 668)`,
-			ids[one.md5], one.page, one.start.Unix(), one.duration); err != nil {
+			`INSERT INTO page_stat_data (id_book, page, start_time, duration, total_pages) VALUES (?, ?, ?, ?, ?)`,
+			ids[one.md5], one.page, one.start.Unix(), one.duration, total); err != nil {
 			t.Fatalf("insert page: %v", err)
 		}
 	}
@@ -126,8 +143,8 @@ func TestThePageTurnsAreImported(t *testing.T) {
 	app, user := newApp(t)
 
 	path := build(t, map[string]string{zeitDesSturms: "Zeit des Sturms"}, []page{
-		{zeitDesSturms, 10, time.Date(2026, 8, 10, 20, 0, 0, 0, vienna), 60},
-		{zeitDesSturms, 11, time.Date(2026, 8, 10, 20, 1, 0, 0, vienna), 45},
+		{zeitDesSturms, 10, time.Date(2026, 8, 10, 20, 0, 0, 0, vienna), 60, 0},
+		{zeitDesSturms, 11, time.Date(2026, 8, 10, 20, 1, 0, 0, vienna), 45, 0},
 	})
 
 	result, err := statistics.Import(app, user.Id, path)
@@ -148,8 +165,8 @@ func TestImportingTheSameDatabaseTwiceAddsNothing(t *testing.T) {
 	app, user := newApp(t)
 
 	path := build(t, map[string]string{zeitDesSturms: "Zeit des Sturms"}, []page{
-		{zeitDesSturms, 10, time.Date(2026, 8, 10, 20, 0, 0, 0, vienna), 60},
-		{zeitDesSturms, 11, time.Date(2026, 8, 10, 20, 1, 0, 0, vienna), 45},
+		{zeitDesSturms, 10, time.Date(2026, 8, 10, 20, 0, 0, 0, vienna), 60, 0},
+		{zeitDesSturms, 11, time.Date(2026, 8, 10, 20, 1, 0, 0, vienna), 45, 0},
 	})
 
 	if _, err := statistics.Import(app, user.Id, path); err != nil {
@@ -187,9 +204,9 @@ func TestTheDayIsTheReadersOwn(t *testing.T) {
 
 	path := build(t, map[string]string{zeitDesSturms: "Zeit des Sturms"}, []page{
 		// 23:30 in Vienna on the 10th is 21:30 UTC on the 10th…
-		{zeitDesSturms, 10, time.Date(2026, 8, 10, 23, 30, 0, 0, vienna), 60},
+		{zeitDesSturms, 10, time.Date(2026, 8, 10, 23, 30, 0, 0, vienna), 60, 0},
 		// …and 00:30 on the 11th is 22:30 UTC on the 10th.
-		{zeitDesSturms, 11, time.Date(2026, 8, 11, 0, 30, 0, 0, vienna), 60},
+		{zeitDesSturms, 11, time.Date(2026, 8, 11, 0, 30, 0, 0, vienna), 60, 0},
 	})
 
 	result, err := statistics.Import(app, user.Id, path)
@@ -209,7 +226,7 @@ func TestBooksWithoutAHashAreSkipped(t *testing.T) {
 	app, user := newApp(t)
 
 	path := build(t, map[string]string{"": "Unknown"}, []page{
-		{"", 10, time.Date(2026, 8, 10, 20, 0, 0, 0, vienna), 60},
+		{"", 10, time.Date(2026, 8, 10, 20, 0, 0, 0, vienna), 60, 0},
 	})
 
 	result, err := statistics.Import(app, user.Id, path)
@@ -228,14 +245,14 @@ func TestTheMeasuredDayIsSummedAndCounted(t *testing.T) {
 	path := build(t,
 		map[string]string{zeitDesSturms: "Zeit des Sturms", other: "Der letzte Wunsch"},
 		[]page{
-			{zeitDesSturms, 10, time.Date(2026, 8, 10, 20, 0, 0, 0, vienna), 60},
-			{zeitDesSturms, 11, time.Date(2026, 8, 10, 20, 1, 0, 0, vienna), 45},
+			{zeitDesSturms, 10, time.Date(2026, 8, 10, 20, 0, 0, 0, vienna), 60, 0},
+			{zeitDesSturms, 11, time.Date(2026, 8, 10, 20, 1, 0, 0, vienna), 45, 0},
 			// The same page again in the evening: re-reading a paragraph is not
 			// another page.
-			{zeitDesSturms, 11, time.Date(2026, 8, 10, 22, 0, 0, 0, vienna), 30},
-			{other, 3, time.Date(2026, 8, 10, 23, 0, 0, 0, vienna), 120},
+			{zeitDesSturms, 11, time.Date(2026, 8, 10, 22, 0, 0, 0, vienna), 30, 0},
+			{other, 3, time.Date(2026, 8, 10, 23, 0, 0, 0, vienna), 120, 0},
 			// The next day, which must not be counted in this one.
-			{zeitDesSturms, 12, time.Date(2026, 8, 11, 9, 0, 0, 0, vienna), 999},
+			{zeitDesSturms, 12, time.Date(2026, 8, 11, 9, 0, 0, 0, vienna), 999, 0},
 		})
 
 	if _, err := statistics.Import(app, user.Id, path); err != nil {
@@ -267,8 +284,8 @@ func TestTheMeasuredBooksAreMatchedByHash(t *testing.T) {
 	book := storeBook(t, app, user.Id, "Zeit des Sturms", zeitDesSturms)
 
 	path := build(t, map[string]string{zeitDesSturms: "Zeit des Sturms"}, []page{
-		{zeitDesSturms, 10, time.Date(2026, 8, 10, 20, 0, 0, 0, vienna), 60},
-		{zeitDesSturms, 11, time.Date(2026, 8, 10, 20, 1, 0, 0, vienna), 45},
+		{zeitDesSturms, 10, time.Date(2026, 8, 10, 20, 0, 0, 0, vienna), 60, 0},
+		{zeitDesSturms, 11, time.Date(2026, 8, 10, 20, 1, 0, 0, vienna), 45, 0},
 	})
 
 	if _, err := statistics.Import(app, user.Id, path); err != nil {
@@ -298,7 +315,7 @@ func TestReadingWithoutABookCountsInTheDayOnly(t *testing.T) {
 	app, user := newApp(t)
 
 	path := build(t, map[string]string{zeitDesSturms: "Zeit des Sturms"}, []page{
-		{zeitDesSturms, 10, time.Date(2026, 8, 10, 20, 0, 0, 0, vienna), 60},
+		{zeitDesSturms, 10, time.Date(2026, 8, 10, 20, 0, 0, 0, vienna), 60, 0},
 	})
 
 	if _, err := statistics.Import(app, user.Id, path); err != nil {
@@ -330,7 +347,7 @@ func TestMeasurementsAreOwnedByOneAccount(t *testing.T) {
 	other := testutil.CreateUser(t, app, testutil.IdUserB, testutil.EmailUserB, testutil.PasswordUsers)
 
 	path := build(t, map[string]string{zeitDesSturms: "Zeit des Sturms"}, []page{
-		{zeitDesSturms, 10, time.Date(2026, 8, 10, 20, 0, 0, 0, vienna), 60},
+		{zeitDesSturms, 10, time.Date(2026, 8, 10, 20, 0, 0, 0, vienna), 60, 0},
 	})
 
 	if _, err := statistics.Import(app, user.Id, path); err != nil {
@@ -351,7 +368,7 @@ func TestImportingNeedsAnAccount(t *testing.T) {
 	app, _ := newApp(t)
 
 	path := build(t, map[string]string{zeitDesSturms: "Zeit des Sturms"}, []page{
-		{zeitDesSturms, 10, time.Date(2026, 8, 10, 20, 0, 0, 0, vienna), 60},
+		{zeitDesSturms, 10, time.Date(2026, 8, 10, 20, 0, 0, 0, vienna), 60, 0},
 	})
 
 	if _, err := statistics.Import(app, "", path); err == nil {

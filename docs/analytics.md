@@ -139,28 +139,42 @@ the inferred ones, and a book read entirely offline gets a row it would otherwis
 ## Pages
 
 An EPUB is reflowable: it has no pages, and KOReader's own count changes with the font and the
-screen. KOsync does not ask for one. It measures it.
+screen. KOsync does not ask for one. It takes the device's, in one of two ways, and records in
+`measured_source` which of them a number came from.
 
-KOReader syncs every N pages, so the progress values a device pushes move in near-exact multiples of
-one page. Recovering that unit gives the device's own page count directly — `1 / page_fraction`. On
-the reference books this reproduced the counts the device reports, 700 and 563, exactly.
+**The count the device states.** A synced statistics database carries `total_pages` on every page
+turn: the count the book stood at when that page was read. KOsync takes the pagination most of a
+document's forty most recent turns were recorded in. Forty because a device's count moves with the
+font, so only the recent end describes the book as it is now — and because three stray turns from
+reopening a finished book must not outvote a week of reading it. This is a fact, not an inference, and
+it has no upper limit. It is stored without a device: which reader wrote the file is not in the file.
 
-The measurement is taken per file and per device, from the recent end of the series first so that
-changing the font is followed rather than ignored, and the series with the most pushes behind it wins.
-It is stored on the book as `measured_pages`, along with the `device_id` it came from — see the
-`devices` collection in [database.md](database.md) for how that becomes a name worth reading.
+**The count recovered from the pushes.** KOReader syncs every N pages, so the progress values a device
+pushes move in near-exact multiples of one page. Recovering that unit gives the page count directly —
+`1 / page_fraction`. On the reference books this reproduced the counts the device reports, 700 and
+563, exactly. It is taken per file and per device, from the recent end of the series first so changing
+the font is followed rather than ignored, and the series with the most pushes behind it wins. This one
+is stored with the `device_id` it came from — see the `devices` collection in
+[database.md](database.md) for how that becomes a name worth reading.
 
-It does not always succeed, and when it cannot it says so instead of guessing:
+Where both are available the stated count wins and the estimator leaves the book alone, because the
+estimate is a reconstruction of exactly the number the other one states outright. The estimate is also
+the one that can fail, and when it cannot be had it says so instead of guessing:
 
 - **It needs pushes.** A book read before the server existed has nothing to measure.
 - **It stops at roughly 1600 pages.** Progress is reported to four decimals, and a page in a very long
   omnibus is narrower than that grid. Three of the five reference books fall outside for one of these
   two reasons.
 
-Those books fall back to `page_count`, which is the word count divided by `BOOKS_WORDS_PER_PAGE`
-(155 by default). That is a real fallback and not a second opinion: on the reference books the density
-ranged from 154 to 207 words per page **on the same device**, so the fallback can be a third out. The
-web interface labels which of the two a number came from for exactly that reason.
+A book with neither falls back to `page_count`, which is the word count divided by
+`BOOKS_WORDS_PER_PAGE` (155 by default). That is a real fallback and not a second opinion: on the
+reference books the density ranged from 154 to 207 words per page **on the same device**, so the
+fallback can be a third out. The web interface labels which of the three a number came from for
+exactly that reason.
+
+One consequence worth stating: a book uploaded after its reading was imported has no stated count
+until the next statistics sync, because the counts are read out of the file as it arrives. The next
+sync a device makes fills it in.
 
 ## Retention
 

@@ -13,8 +13,11 @@ import (
 
 // Where a book's page count came from.
 const (
-	// PageSourceMeasured means it was recovered from the progress a device
-	// pushed, and is that device's own count.
+	// PageSourceMeasured means it is a device's own count: either stated by the
+	// statistics database a device synced here, or recovered from the progress
+	// it pushed. Which of the two is on the record — see
+	// schema.FieldMeasuredSource — matters when deciding whether to measure
+	// again, and not at all when reckoning in the number.
 	PageSourceMeasured = "measured"
 
 	// PageSourceWords means it was derived from the word count at the configured

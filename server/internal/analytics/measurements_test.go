@@ -22,12 +22,20 @@ import (
 )
 
 // measuredPage is one row of a device's own record.
+//
+// total is the page count the book stood at when the turn was recorded — a
+// device's own number, which moves with the font. Zero means measuredPages, so
+// that a test about something else does not have to say.
 type measuredPage struct {
 	md5      string
 	page     int
 	start    time.Time
 	duration int
+	total    int
 }
+
+// measuredPages is the pagination a fixture is in unless it says otherwise.
+const measuredPages = 668
 
 // buildStatistics writes a KOReader statistics database and returns its path.
 func buildStatistics(t testing.TB, hash string, pages []measuredPage) string {
@@ -54,13 +62,19 @@ func buildStatistics(t testing.TB, hash string, pages []measuredPage) string {
 		}
 	}
 
-	if _, err := db.Exec(`INSERT INTO book (id, title, md5, pages) VALUES (1, 'Zeit des Sturms', ?, 668)`, hash); err != nil {
+	if _, err := db.Exec(`INSERT INTO book (id, title, md5, pages) VALUES (1, 'Zeit des Sturms', ?, ?)`,
+		hash, measuredPages); err != nil {
 		t.Fatalf("insert book: %v", err)
 	}
 	for _, one := range pages {
+		total := one.total
+		if total == 0 {
+			total = measuredPages
+		}
+
 		if _, err := db.Exec(
-			`INSERT INTO page_stat_data (id_book, page, start_time, duration, total_pages) VALUES (1, ?, ?, ?, 668)`,
-			one.page, one.start.Unix(), one.duration); err != nil {
+			`INSERT INTO page_stat_data (id_book, page, start_time, duration, total_pages) VALUES (1, ?, ?, ?, ?)`,
+			one.page, one.start.Unix(), one.duration, total); err != nil {
 			t.Fatalf("insert page: %v", err)
 		}
 	}
@@ -92,8 +106,8 @@ func TestADayWithNoPushesAtAllIsStillADayOfReading(t *testing.T) {
 	user := testutil.CreateUser(t, app, testutil.IdUserA, testutil.EmailUserA, testutil.PasswordUsers)
 
 	path := buildStatistics(t, testutil.DocumentHashA, []measuredPage{
-		{testutil.DocumentHashA, 10, time.Date(2026, 8, 10, 20, 0, 0, 0, time.UTC), 600},
-		{testutil.DocumentHashA, 11, time.Date(2026, 8, 10, 20, 10, 0, 0, time.UTC), 540},
+		{testutil.DocumentHashA, 10, time.Date(2026, 8, 10, 20, 0, 0, 0, time.UTC), 600, 0},
+		{testutil.DocumentHashA, 11, time.Date(2026, 8, 10, 20, 10, 0, 0, time.UTC), 540, 0},
 	})
 
 	if storedDay(t, app, user.Id, "2026-08-10") != nil {
@@ -149,8 +163,8 @@ func TestTheMeasurementBeatsTheInference(t *testing.T) {
 
 	// The device says that hour was really half an hour of reading.
 	path := buildStatistics(t, testutil.DocumentHashA, []measuredPage{
-		{testutil.DocumentHashA, 10, base, 900},
-		{testutil.DocumentHashA, 11, base.Add(15 * time.Minute), 900},
+		{testutil.DocumentHashA, 10, base, 900, 0},
+		{testutil.DocumentHashA, 11, base.Add(15 * time.Minute), 900, 0},
 	})
 	if _, err := analytics.ImportMeasurements(app, user.Id, path); err != nil {
 		t.Fatalf("import: %v", err)
@@ -193,8 +207,8 @@ func TestTheImportQueuesTheDaysItLearnedAbout(t *testing.T) {
 	user := testutil.CreateUser(t, app, testutil.IdUserA, testutil.EmailUserA, testutil.PasswordUsers)
 
 	path := buildStatistics(t, testutil.DocumentHashA, []measuredPage{
-		{testutil.DocumentHashA, 10, time.Date(2026, 8, 10, 20, 0, 0, 0, time.UTC), 60},
-		{testutil.DocumentHashA, 11, time.Date(2026, 6, 1, 9, 0, 0, 0, time.UTC), 60},
+		{testutil.DocumentHashA, 10, time.Date(2026, 8, 10, 20, 0, 0, 0, time.UTC), 60, 0},
+		{testutil.DocumentHashA, 11, time.Date(2026, 6, 1, 9, 0, 0, 0, time.UTC), 60, 0},
 	})
 
 	if _, err := analytics.ImportMeasurements(app, user.Id, path); err != nil {

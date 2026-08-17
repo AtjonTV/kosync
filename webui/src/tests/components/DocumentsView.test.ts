@@ -77,6 +77,7 @@ function book(): Book {
     measured_pages: 700,
     measured_device: 'go7',
     measured_through: '',
+    measured_source: '',
   }
 }
 

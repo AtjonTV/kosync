@@ -47,6 +47,18 @@ func TestARealStatisticsDatabaseImports(t *testing.T) {
 
 	t.Logf("%d page turns over %d days", result.Added, len(result.Dates))
 
+	// The page counts are the other half of what the file is read for, and a
+	// real one is the only place the pagination genuinely changes mid-book.
+	if len(result.Pages) == 0 {
+		t.Error("no page counts were stated for a database with reading in it")
+	}
+	for _, count := range result.Pages {
+		if count.Pages <= 0 || count.Turns <= 0 || count.Through <= 0 {
+			t.Errorf("document %s states %+v", count.Document, count)
+		}
+		t.Logf("%s runs to %d pages, from %d of its recent turns", count.Document, count.Pages, count.Turns)
+	}
+
 	// The second sync of a device that has not read since adds nothing at all.
 	again, err := statistics.Import(app, user.Id, path)
 	if err != nil {
