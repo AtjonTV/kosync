@@ -148,6 +148,11 @@ Vue 3 and PrimeVue, built with Bun and embedded into the server binary, so there
 separately: the dashboard, the library, the collections, the statistics and the account settings are
 all at `/`.
 
+<img src=".gitlab/assets/webui-dark.png" width="640px" alt="Screenshot of the WebUI in dark-mode showing the reading statistics and achievements"/>
+<details>
+<img src=".gitlab/assets/webui-light.png" width="640px" alt="Screenshot of the WebUI in light-mode showing the reading statistics and achievements"/>
+</details>
+
 ### Migrating from legacy KOsync
 
 See [docs/migration.md](docs/migration.md)
