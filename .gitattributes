@@ -1,0 +1,12 @@
+* text=auto eol=lf
+
+# Generated, and noisy in a diff.
+webui/bun.lock linguist-generated=true
+server/go.sum linguist-generated=true
+
+# Binary, never to be line-ending converted.
+*.png binary
+*.jpg binary
+*.epub binary
+*.sqlite3 binary
+*.db binary

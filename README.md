@@ -156,6 +156,15 @@ See [docs/migration.md](docs/migration.md)
 
 See [docs/rewrite-plan.md](docs/rewrite-plan.md) for what was built, in what order, and why.
 
+### Changes
+
+See [CHANGELOG.md](CHANGELOG.md), which covers both this version and legacy KOsync.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the layout, the conventions and what CI checks.
+Participation is governed by the [Code of Conduct](CODE_OF_CONDUCT.md).
+
 ## AI Usage
 
 Most of this version (26.08.0 and newer) was built and changed using AI Tools.  

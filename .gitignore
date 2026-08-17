@@ -1,0 +1,22 @@
+# Editors
+.idea/
+*.iml
+*.swp
+.DS_Store
+
+# Local docker files
+.docker
+
+# Go test coverage, written by the CI script and by hand
+coverage.out
+coverage.html
+
+# Anything an operator dropped next to the checkout for a local run: a data
+# directory, a config, a database to import. None of it belongs in the repo,
+# and a user database least of all.
+/data/
+kosync.env
+kosync.log
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
