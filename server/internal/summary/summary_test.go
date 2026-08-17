@@ -62,6 +62,36 @@ func TestTheWeekIsTheOneThatHasFinished(t *testing.T) {
 	}
 }
 
+func TestAWeekIsNamedByItsNumberAndItsDays(t *testing.T) {
+	cases := []struct {
+		name  string
+		local time.Time
+		title string
+	}{
+		// The ordinary case: one month, so it is named once.
+		{"within a month", time.Date(2026, 8, 17, 9, 0, 0, 0, vienna), "week 33 (10. - 16. August)"},
+		// A week that straddles two months has to name both.
+		{"across a month", time.Date(2026, 8, 3, 9, 0, 0, 0, vienna), "week 31 (27. July - 2. August)"},
+		// And one that straddles two years has to name those as well. Its ISO
+		// number is 53 of 2026, the year it started in, even though most of it
+		// is in 2027 — which is exactly why the days are spelled out.
+		{"across a year", time.Date(2027, 1, 4, 9, 0, 0, 0, vienna),
+			"week 53 (28. December 2026 - 3. January 2027)"},
+	}
+
+	for _, one := range cases {
+		t.Run(one.name, func(t *testing.T) {
+			period, ok := summary.LastCompleted(schema.SummaryWeekly, one.local)
+			if !ok {
+				t.Fatal("expected a completed week")
+			}
+			if period.Title != one.title {
+				t.Errorf("title is %q, want %q", period.Title, one.title)
+			}
+		})
+	}
+}
+
 func TestTheMonthIsTheOneThatHasFinished(t *testing.T) {
 	period, ok := summary.LastCompleted(schema.SummaryMonthly, time.Date(2026, 8, 1, 8, 0, 0, 0, vienna))
 	if !ok {

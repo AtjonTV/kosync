@@ -131,7 +131,11 @@ func TestAWeeklySummaryLeadsWithThePages(t *testing.T) {
 	if len(message.To) != 1 || message.To[0].Address != testutil.EmailUserA {
 		t.Errorf("the summary went to %v", message.To)
 	}
-	for _, want := range []string{"Zeit des Sturms", "160 pages", "one day"} {
+	// The week is named by number and by days, so that two summaries arriving
+	// close together are visibly about two different weeks.
+	for _, want := range []string{
+		"week 33 (10. - 16. August)", "Zeit des Sturms", "160 pages", "one day",
+	} {
 		if !strings.Contains(message.Text, want) {
 			t.Errorf("expected %q in the body, got %q", want, message.Text)
 		}

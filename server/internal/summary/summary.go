@@ -38,7 +38,8 @@ const SendHour = 8
 // From and To are inclusive local dates, which is what the daily statistics are
 // keyed by. Key is what gets written down once the summary has been sent, and is
 // the reason a server that was switched off all weekend still sends the right
-// thing on Monday.
+// thing on Monday. Title is how the period is named to a reader: "week 32
+// (3. - 9. August)" or "July 2026".
 type Period struct {
 	Kind  string
 	Key   string
@@ -79,7 +80,7 @@ func LastCompleted(kind string, local time.Time) (Period, bool) {
 			Key:   fmt.Sprintf(weekKey, year, week),
 			From:  start.Format(dayLayout),
 			To:    end.Format(dayLayout),
-			Title: "the week of " + start.Format("2 January"),
+			Title: weekTitle(week, start, end),
 		}, true
 
 	case schema.SummaryMonthly:
@@ -97,6 +98,32 @@ func LastCompleted(kind string, local time.Time) (Period, bool) {
 	}
 
 	return Period{}, false
+}
+
+// weekTitle names a week both ways somebody might think of one: by its ISO
+// number, and by the days it covers.
+//
+// Either half alone is a poor name. "Week 33" assumes the reader counts weeks,
+// which most do not; "the week of 10 August" and "the week of 3 August" are the
+// same sentence twice, and two of them arriving close together read as the same
+// mail sent twice. Together they say which week this is and prove it.
+//
+// The month is written once when both ends share one, and the year only when
+// they do not — a week that runs from December into January is the one place
+// where leaving the year out would be genuinely ambiguous.
+func weekTitle(week int, start, end time.Time) string {
+	switch {
+	case start.Year() != end.Year():
+		return fmt.Sprintf("week %d (%d. %s %d - %d. %s %d)", week,
+			start.Day(), start.Month(), start.Year(), end.Day(), end.Month(), end.Year())
+
+	case start.Month() != end.Month():
+		return fmt.Sprintf("week %d (%d. %s - %d. %s)", week,
+			start.Day(), start.Month(), end.Day(), end.Month())
+
+	default:
+		return fmt.Sprintf("week %d (%d. - %d. %s)", week, start.Day(), end.Day(), end.Month())
+	}
 }
 
 // Due returns the period an account is owed a summary for, if it is owed one.
