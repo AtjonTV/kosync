@@ -402,10 +402,22 @@ func TestImportGeneratesDistinctAddressesForSimilarUsernames(t *testing.T) {
 		t.Fatalf("expected three accounts, got %d", len(report.Accounts))
 	}
 
+	// The exact addresses, not merely three different ones: the numbering walks
+	// a candidate at a time and every step of it has to be one that was actually
+	// asked about, or two legacy users end up sharing an account.
+	want := map[string]bool{
+		"alice@invalid.local":   true,
+		"alice-2@invalid.local": true,
+		"a-lice@invalid.local":  true,
+	}
+
 	seen := map[string]bool{}
 	for _, account := range report.Accounts {
 		if seen[account.Email] {
 			t.Errorf("the address %q was handed out twice", account.Email)
+		}
+		if !want[account.Email] {
+			t.Errorf("unexpected address %q", account.Email)
 		}
 		seen[account.Email] = true
 	}

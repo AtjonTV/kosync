@@ -99,33 +99,57 @@ func (w *Worker) loop(stop <-chan struct{}, stopped chan<- struct{}) {
 // It is exported so that the tests and the importer can run the queue to
 // completion without waiting for a tick.
 func (w *Worker) DrainOnce() (int, error) {
+	_, handled, err := w.drainOnce()
+
+	return handled, err
+}
+
+// drainOnce processes one batch and reports both how many items it took off the
+// queue and how many of those it actually recomputed.
+//
+// The two numbers differ whenever something failed, and DrainAll needs the first
+// one: a batch that failed in its entirety has handled nothing and yet is not the
+// end of the queue, and stopping there would be the very head-of-line block the
+// retry backoff exists to prevent.
+func (w *Worker) drainOnce() (claimed, handled int, err error) {
 	items, err := claim(w.app, w.conf.AnalyticsWorkerBatchSize)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 	if len(items) == 0 {
-		return 0, nil
+		return 0, 0, nil
 	}
 
 	done := make([]string, 0, len(items))
+	recomputed := make([]queueItem, 0, len(items))
 	for _, item := range items {
 		if err := RecomputeDay(w.app, item.Owner, item.Date, w.conf.SessionGap()); err != nil {
-			// Leave the item queued so the next pass retries it, but keep
-			// working on the rest of the batch.
+			// Keep working on the rest of the batch, and put this one down for
+			// a while so it cannot take a place in every batch from now on.
 			w.app.Logger().Error("failed to recompute a statistics day",
-				"owner", item.Owner, "date", item.Date, "error", err)
+				"owner", item.Owner, "date", item.Date, "attempts", item.Attempts+1, "error", err)
+
+			if err := postpone(w.app, item); err != nil {
+				w.app.Logger().Error("failed to postpone a statistics day",
+					"owner", item.Owner, "date", item.Date, "error", err)
+			}
+
 			continue
 		}
 		done = append(done, item.Id)
+		recomputed = append(recomputed, item)
 	}
 
 	if err := release(w.app, done); err != nil {
-		return len(done), err
+		return len(items), len(done), err
 	}
 
-	w.recognise(items)
+	// Only the days that were actually recomputed: an achievement measured
+	// against a day that failed is measured against numbers that have not
+	// finished moving, which is the one thing this must not do.
+	w.recognise(recomputed)
 
-	return len(done), nil
+	return len(items), len(done), nil
 }
 
 // recognise checks what the recomputed days have earned.
@@ -200,17 +224,22 @@ func (w *Worker) announce(ownerId string, earned []achievements.Awarded) {
 	}()
 }
 
-// DrainAll processes the queue until it is empty.
+// DrainAll processes the queue until nothing is due, and returns how many days
+// it recomputed.
+//
+// "Nothing is due" rather than "nothing is queued": a day that keeps failing is
+// still on the queue, waiting for its backoff to run out, and waiting for it here
+// would mean never returning at all.
 func (w *Worker) DrainAll() (int, error) {
 	total := 0
 
 	for {
-		handled, err := w.DrainOnce()
+		claimed, handled, err := w.drainOnce()
 		total += handled
 		if err != nil {
 			return total, err
 		}
-		if handled == 0 {
+		if claimed == 0 {
 			return total, nil
 		}
 	}

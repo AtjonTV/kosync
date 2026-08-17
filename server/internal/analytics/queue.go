@@ -58,25 +58,78 @@ func EnqueueTime(app core.App, ownerId string, moment time.Time) error {
 	return Enqueue(app, ownerId, timezone.DayOf(timezone.Of(app, ownerId), moment))
 }
 
+// Retry pacing for a day that could not be recomputed.
+//
+// The first failure is worth trying again almost at once — a locked database
+// clears in seconds — and each one after that is worth waiting longer for. The
+// cap is what keeps a permanently broken day down to a line in the log every
+// hour instead of one every tick.
+const (
+	retryBackoffBase = time.Minute
+	retryBackoffMax  = time.Hour
+)
+
 // queueItem is one pending recomputation.
 type queueItem struct {
-	Id    string `db:"id"`
-	Owner string `db:"owner"`
-	Date  string `db:"date"`
+	Id       string `db:"id"`
+	Owner    string `db:"owner"`
+	Date     string `db:"date"`
+	Attempts int    `db:"attempts"`
 }
 
-// claim returns up to limit pending items, oldest first.
+// claim returns up to limit items that are due, oldest first.
+//
+// An item that has failed carries the moment it may be tried again, and until
+// then it is not a candidate. That is the whole reason this is a filter and not
+// a plain read: the queue is drained oldest first, so without it the day that
+// always fails is also the day that is always tried, and a batch's worth of them
+// hides everything behind them forever.
 func claim(app core.App, limit int) ([]queueItem, error) {
 	items := []queueItem{}
 
 	err := app.DB().
-		Select("id", "owner", "date").
+		Select("id", "owner", "date", "attempts").
 		From(schema.CollectionAnalyticsQueue).
+		// PocketBase writes an unset date as the empty string rather than NULL,
+		// which is also what every row created before the column existed holds.
+		AndWhere(dbx.NewExp(
+			"[[retry_after]] = '' OR [[retry_after]] <= {:now}",
+			dbx.Params{"now": time.Now().UTC().Format(dateTimeLayout)},
+		)).
 		OrderBy("created ASC").
 		Limit(int64(limit)).
 		All(&items)
 
 	return items, err
+}
+
+// postpone records a failed attempt and puts the item down until it is worth
+// another one.
+//
+// The item is deliberately not deleted however often it fails. What stopped the
+// recomputation is usually not the day itself, and the reading it describes is
+// still on the server waiting to be counted.
+func postpone(app core.App, item queueItem) error {
+	attempts := item.Attempts + 1
+
+	// One, two, four ... thirty-two minutes, and an hour from then on.
+	backoff := retryBackoffMax
+	if attempts >= 1 && attempts <= 6 {
+		backoff = retryBackoffBase << (attempts - 1)
+	}
+
+	_, err := app.DB().
+		NewQuery("UPDATE {{" + schema.CollectionAnalyticsQueue + "}}" +
+			" SET [[attempts]] = {:attempts}, [[retry_after]] = {:retryAfter}" +
+			" WHERE [[id]] = {:id}").
+		Bind(dbx.Params{
+			"attempts":   attempts,
+			"retryAfter": time.Now().UTC().Add(backoff).Format(dateTimeLayout),
+			"id":         item.Id,
+		}).
+		Execute()
+
+	return err
 }
 
 // release removes processed items from the queue.

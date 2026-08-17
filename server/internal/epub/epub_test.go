@@ -466,3 +466,69 @@ func TestAnUnparseableSeriesIndexIsZero(t *testing.T) {
 		t.Errorf("series index is %v, want 0", meta.SeriesIndex)
 	}
 }
+
+// hugeSpine builds an archive whose spine names the given number of documents,
+// all of them the same short file.
+//
+// That is the shape of the problem: the spine costs a line each, so an archive
+// small enough to upload can ask for as much reading as it likes. The manifest
+// entries all point at one document because what is being counted here is how
+// many times the word count is asked to open something, not what is in it.
+func hugeSpine(t testing.TB, items int) *bytes.Reader {
+	t.Helper()
+
+	var manifest, spine strings.Builder
+	for index := range items {
+		fmt.Fprintf(&manifest, `<item id="c%d" href="text/one.xhtml" media-type="application/xhtml+xml"/>`, index)
+		fmt.Fprintf(&spine, `<itemref idref="c%d"/>`, index)
+	}
+
+	opf := `<?xml version="1.0"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>Endless</dc:title></metadata>
+  <manifest>` + manifest.String() + `</manifest>
+  <spine>` + spine.String() + `</spine>
+</package>`
+
+	return build(t, []entry{
+		{name: "mimetype", content: "application/epub+zip"},
+		{name: "META-INF/container.xml", content: container},
+		{name: "OEBPS/content.opf", content: opf},
+		{name: "OEBPS/text/one.xhtml", content: chapter(10)},
+	})
+}
+
+// A spine longer than any book refuses to be counted, instead of decompressing
+// and tokenising its way through however much work the file asked for. The
+// upload is rejected with a reason rather than the request taking the server
+// down with it.
+func TestWordCountRefusesAnEndlessSpine(t *testing.T) {
+	book := hugeSpine(t, 10001)
+	reader, err := epub.Open(book, int64(book.Len()))
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+
+	words, err := reader.WordCount()
+	if !errors.Is(err, epub.ErrTooLarge) {
+		t.Fatalf("WordCount returned %d, %v; want ErrTooLarge", words, err)
+	}
+}
+
+// And a spine that is merely long is still counted, because the cap is there to
+// exclude what is not a book rather than to have an opinion about long ones.
+func TestWordCountAcceptsALongSpine(t *testing.T) {
+	book := hugeSpine(t, 500)
+	reader, err := epub.Open(book, int64(book.Len()))
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+
+	words, err := reader.WordCount()
+	if err != nil {
+		t.Fatalf("WordCount: %v", err)
+	}
+	if words != 5000 {
+		t.Errorf("counted %d words, want 5000", words)
+	}
+}

@@ -235,6 +235,10 @@ func describe(record *core.Record, conf *config.Config) error {
 	metadata := book.Metadata()
 	words, err := book.WordCount()
 	if err != nil {
+		if errors.Is(err, epub.ErrTooLarge) {
+			return errors.New("that EPUB holds more text than this server will read")
+		}
+
 		return fmt.Errorf("cannot read the EPUB: %w", err)
 	}
 

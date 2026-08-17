@@ -26,6 +26,8 @@ import (
 	"git.obth.eu/atjontv/kosync/internal/kosyncapi"
 	"git.obth.eu/atjontv/kosync/internal/mail"
 	"git.obth.eu/atjontv/kosync/internal/opds"
+	"git.obth.eu/atjontv/kosync/internal/ownership"
+	"git.obth.eu/atjontv/kosync/internal/schema"
 	"git.obth.eu/atjontv/kosync/internal/webdav"
 	"git.obth.eu/atjontv/kosync/internal/webui"
 	"github.com/pocketbase/pocketbase"
@@ -65,6 +67,14 @@ func main() {
 	books.Register(app, conf)
 	collections.Register(app)
 	devices.Register(app)
+	// The owner rule decides whether a record may be written, not whose it is
+	// once it has been. These three collections say nothing else about it; the
+	// two above state it themselves, for the reasons given in the package.
+	ownership.Freeze(app,
+		schema.CollectionKoreaderAccounts,
+		schema.CollectionDocuments,
+		schema.CollectionBooks,
+	)
 	opds.Register(app, conf, sync)
 	// The same credential again: a device that can push progress can leave its
 	// statistics here, without anybody typing anything into an e-ink browser.

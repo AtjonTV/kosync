@@ -153,13 +153,27 @@ func listReading(app core.App, owner string, offset, limit int) ([]*core.Record,
 	return records, total, err
 }
 
+// likeEscape neutralises the characters LIKE reads as a pattern.
+//
+// All three of them: the escape character itself, the wildcard for any run and
+// the one for any single character. The last is easy to forget and is the one a
+// reader is most likely to type by accident, because a file name carried over
+// from a download is full of underscores — searching "vol_1" should find the
+// book called that rather than every "vol" followed by anything.
+var likeEscape = strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`)
+
+// escapeLike turns what somebody typed into a literal to search for.
+func escapeLike(query string) string {
+	return likeEscape.Replace(query)
+}
+
 // listSearch returns the books whose title or author matches.
 //
 // Title and author are what a person searching a catalog of their own books has
 // in mind; the full text of the books is not indexed and searching it is not
 // what this is for.
 func listSearch(app core.App, owner, query string, offset, limit int) ([]*core.Record, int, error) {
-	pattern := "%" + strings.ReplaceAll(strings.ReplaceAll(query, "\\", "\\\\"), "%", "\\%") + "%"
+	pattern := "%" + escapeLike(query) + "%"
 	condition := dbx.NewExp(
 		"(books.title LIKE {:pattern} ESCAPE '\\' OR books.authors LIKE {:pattern} ESCAPE '\\')",
 		dbx.Params{"pattern": pattern},

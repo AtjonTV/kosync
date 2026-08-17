@@ -37,6 +37,12 @@ const legacyTimeUnit = 10
 // this purpose so no mail can accidentally leave the server.
 const generatedEmailDomain = "invalid.local"
 
+// maxEmailAttempts is how many legacy users may reduce to the same local part
+// before the import gives up on finding an address for the next one. Two or
+// three is already unusual; a hundred means the names differ only in characters
+// the address cannot carry, and inventing a hundred and first would not help.
+const maxEmailAttempts = 100
+
 // unsafeEmailChars matches everything that may not appear in the local part of
 // a generated address.
 var unsafeEmailChars = regexp.MustCompile(`[^a-z0-9._-]`)
@@ -258,16 +264,26 @@ func uniqueEmail(txApp core.App, username string) (string, error) {
 		local = "reader"
 	}
 
+	// The bare name first, then the numbered forms. The loop tests the candidate
+	// it is holding and only then builds the next one, so every address it can
+	// name is one it has actually asked about.
 	candidate := local + "@" + generatedEmailDomain
-	for attempt := 2; attempt < 100; attempt++ {
+	for attempt := 2; ; attempt++ {
 		_, err := txApp.FindAuthRecordByEmail(schema.CollectionUsers, candidate)
-		if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
 			return candidate, nil // free
 		}
+		if err != nil {
+			// Anything else is the database failing to answer, and reading that
+			// as "the address is free" would hand two legacy users the same one.
+			return "", fmt.Errorf("check whether %q is free: %w", candidate, err)
+		}
+		if attempt > maxEmailAttempts {
+			return "", fmt.Errorf("could not find a free address for the legacy user %q", username)
+		}
+
 		candidate = fmt.Sprintf("%s-%d@%s", local, attempt, generatedEmailDomain)
 	}
-
-	return "", fmt.Errorf("could not find a free address for the legacy user %q", username)
 }
 
 // findCredential looks up an already imported KOReader credential.

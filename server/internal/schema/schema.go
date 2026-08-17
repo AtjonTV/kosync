@@ -291,6 +291,19 @@ const (
 	FieldBooks       = "books"
 )
 
+// analytics_queue field names.
+//
+// FieldAttempts counts how often a queued day has been tried and failed, and
+// FieldRetryAfter is the moment it may be tried again. A day that cannot be
+// recomputed is not an error to give up on — the data behind it is still there
+// and the next attempt may well succeed — but it must not be retried on every
+// tick either, because the queue is drained oldest first and a row that always
+// fails would otherwise be the only row ever looked at.
+const (
+	FieldAttempts   = "attempts"
+	FieldRetryAfter = "retry_after"
+)
+
 // OwnerRule restricts a collection to the records owned by the authenticated
 // WebUI user. It is deliberately also used for realtime subscriptions, which
 // PocketBase filters with the very same list rule.

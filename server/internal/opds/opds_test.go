@@ -396,6 +396,11 @@ func TestSearchLooksAtTitlesAndAuthors(t *testing.T) {
 		addBook(t, app, fixture.UserA, "", "Zeit des Sturms", []string{"Andrzej Sapkowski"}, false)
 		addBook(t, app, fixture.UserA, "", "Nineteen Eighty-Four", []string{"George Orwell"}, false)
 		addBook(t, app, fixture.UserB, "", "Sapkowski For Bob", []string{"Andrzej Sapkowski"}, false)
+		// A pair only an escaped search can tell apart. Underscores in a title
+		// are not contrived: they are what a download leaves behind when the
+		// site it came from could not put spaces in a file name.
+		addBook(t, app, fixture.UserA, "", "Vol_1 Beginnings", []string{"Anon"}, false)
+		addBook(t, app, fixture.UserA, "", "Vol 1 Endings", []string{"Anon"}, false)
 	}
 
 	scenarios := []tests.ApiScenario{
@@ -424,6 +429,16 @@ func TestSearchLooksAtTitlesAndAuthors(t *testing.T) {
 			URL:                "/opds/search?query=%25",
 			ExpectedContent:    []string{`"numberOfItems":0`},
 			NotExpectedContent: []string{`"publications"`},
+		},
+		{
+			// The other wildcard, and the one a reader types by accident: an
+			// underscore stands for any single character unless it is escaped,
+			// which would quietly turn a search for a file name into a search
+			// for everything shaped like it.
+			Name:               "an underscore is a character, not a wildcard",
+			URL:                "/opds/search?query=vol_1",
+			ExpectedContent:    []string{`"title":"Vol_1 Beginnings"`, `"numberOfItems":1`},
+			NotExpectedContent: []string{"Vol 1 Endings"},
 		},
 		{
 			Name:            "nothing matches",

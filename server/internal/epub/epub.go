@@ -8,6 +8,7 @@ package epub
 
 import (
 	"archive/zip"
+	"bytes"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -25,6 +26,28 @@ const containerPath = "META-INF/container.xml"
 // maxDocumentBytes caps a single spine document while counting words, so a
 // malformed or hostile archive cannot exhaust memory.
 const maxDocumentBytes = 32 << 20
+
+// maxSpineBytes caps everything the word count reads across the whole spine, and
+// maxSpineItems caps how many documents it will open at all.
+//
+// The per-document cap alone bounds memory but not work. Zip compresses
+// repetitive markup at something like a thousand to one, and the spine may name
+// as many documents as it likes, so an archive well inside the upload limit can
+// ask for hundreds of gigabytes of decompression and XML tokenising — in the
+// upload handler, on one request, as often as anybody cares to send it.
+//
+// The budget is far past any real book. A quarter of a gigabyte of text is on
+// the order of forty million words, and the largest thing in the reference
+// library is under two hundred thousand; a file that runs into either of these
+// is not a book that counts wrong, it is a file with something else in mind.
+const (
+	maxSpineBytes = 256 << 20
+	maxSpineItems = 10000
+)
+
+// ErrTooLarge is returned when an archive's text runs past what the word count
+// will read.
+var ErrTooLarge = errors.New("epub: the archive holds more text than this server will read")
 
 // ErrNotEPUB is returned when the archive has no EPUB container.
 var ErrNotEPUB = errors.New("epub: not an EPUB archive")
@@ -389,7 +412,12 @@ func (r *Reader) coverPath() string {
 // them makes the words-per-page estimate wrong in a way that is very hard to
 // notice.
 func (r *Reader) WordCount() (int, error) {
+	if len(r.pkg.Spine.Items) > maxSpineItems {
+		return 0, ErrTooLarge
+	}
+
 	total := 0
+	read := 0
 	for _, ref := range r.pkg.Spine.Items {
 		href, found := r.hrefIDs[ref.IDRef]
 		if !found {
@@ -402,6 +430,15 @@ func (r *Reader) WordCount() (int, error) {
 			// reason to refuse the upload.
 			continue
 		}
+
+		// Counted after the read rather than before it, because what a zip entry
+		// costs is only known once it has been decompressed — and the per
+		// document cap is what keeps that one read affordable.
+		read += len(raw)
+		if read > maxSpineBytes {
+			return 0, ErrTooLarge
+		}
+
 		total += countWords(raw)
 	}
 
@@ -441,7 +478,7 @@ func (r *Reader) readFile(name string) ([]byte, error) {
 // unmarshal parses XML leniently. EPUBs in the wild carry HTML entities and
 // occasional namespace sloppiness that a strict parser rejects.
 func unmarshal(raw []byte, into any) error {
-	decoder := xml.NewDecoder(strings.NewReader(string(raw)))
+	decoder := xml.NewDecoder(bytes.NewReader(raw))
 	decoder.Strict = false
 	decoder.Entity = xml.HTMLEntity
 
@@ -451,7 +488,7 @@ func unmarshal(raw []byte, into any) error {
 // countWords extracts the text of an XHTML document and counts whitespace-
 // separated tokens, skipping the parts a reader never renders.
 func countWords(raw []byte) int {
-	decoder := xml.NewDecoder(strings.NewReader(string(raw)))
+	decoder := xml.NewDecoder(bytes.NewReader(raw))
 	decoder.Strict = false
 	decoder.Entity = xml.HTMLEntity
 
