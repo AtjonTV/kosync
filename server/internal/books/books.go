@@ -56,6 +56,10 @@ func Register(app core.App, conf *config.Config) {
 		}
 	})
 
+	// The covers of books uploaded before the reader could find them, which is
+	// otherwise a delete-and-upload away and takes the reading progress with it.
+	registerCovers(app)
+
 	app.OnRecordCreateRequest(schema.CollectionBooks).BindFunc(func(e *core.RecordRequestEvent) error {
 		if err := describe(e.Record, conf); err != nil {
 			return e.BadRequestError(sentence(err.Error()), nil)

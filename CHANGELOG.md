@@ -19,6 +19,11 @@ over, see [docs/migration.md](docs/migration.md).
 - Sorting on the library page, by title, by when a book was added, by when it was last read or by
   how far the reading got. The choice is remembered between visits, as the grouping already was,
   and it carries into the shelves a grouping makes rather than applying only to the ungrouped view
+- A nightly pass over the books that have no cover, which reads their stored file again and keeps
+  whatever it finds. Books uploaded before the reader learned a cover shape get their cover without
+  being downloaded, deleted and uploaded again, which would take the reading progress with it; a
+  book whose file genuinely holds no cover is looked at and left alone. The pass also runs shortly
+  after startup, so an upgrade shows on the shelves the same evening
 
 ### Changed
 - The reading time on the dashboard is broken into hours and minutes ("33 h 30 min") rather than
@@ -36,7 +41,8 @@ over, see [docs/migration.md](docs/migration.md).
   entry, a guide pointing at the cover, a cover page holding the picture, an image the manifest
   itself calls a cover, and failing all of that the page the book opens on: on a shelf of 273 real
   books this fills in 15 that showed a placeholder, three of which had been pointing at a chapter
-  or a stylesheet. Books already in the library keep the cover they were uploaded with
+  or a stylesheet. Books already in the library are picked up by the new backfill pass, so they
+  gain their covers without being uploaded again
 
 ### Security
 
