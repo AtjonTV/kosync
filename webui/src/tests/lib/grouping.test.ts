@@ -236,4 +236,93 @@ describe('groupBooks', () => {
   it('shows a language nothing here knows as the tag itself', () => {
     expect(languageName('sw')).toBe('SW')
   })
+
+  // The shelves are not exempt from the order the library was asked for: an
+  // author's shelf shown while sorting by something else has to be in that
+  // order too, or the sort has only appeared to have been applied.
+  describe('with an order of its own', () => {
+    /** Longest book first, which no shelf would ever choose by itself. */
+    const byLength = (a: Book, b: Book) => b.page_count - a.page_count
+
+    it("orders an author's shelf by it", () => {
+      const shelves = groupBooks(
+        [
+          book('a', { title: 'Alpha', authors: ['Lee Child'], page_count: 100 }),
+          book('b', { title: 'Bravo', authors: ['Lee Child'], page_count: 300 }),
+        ],
+        'authors',
+        byLength,
+      )
+
+      expect(shelves[0]!.books.map((one) => one.id)).toEqual(['b', 'a'])
+    })
+
+    it('orders a language shelf by it', () => {
+      const shelves = groupBooks(
+        [
+          book('a', { title: 'Alpha', language: 'en', page_count: 100 }),
+          book('b', { title: 'Bravo', language: 'en', page_count: 300 }),
+        ],
+        'languages',
+        byLength,
+      )
+
+      expect(shelves[0]!.books.map((one) => one.id)).toEqual(['b', 'a'])
+    })
+
+    // Reading order is what the number on a volume is for, so it is what a
+    // series shelf does when nobody has asked for anything else.
+    it('leaves a series in reading order when none was given', () => {
+      const shelves = groupBooks(
+        [
+          book('a', { title: 'Alpha', series: 'Jack Reacher', series_index: 2 }),
+          book('b', { title: 'Bravo', series: 'Jack Reacher', series_index: 1 }),
+        ],
+        'series',
+      )
+
+      expect(shelves[0]!.books.map((one) => one.id)).toEqual(['b', 'a'])
+    })
+
+    // Somebody who asked for the longest first asked about the whole library,
+    // series and all.
+    it('overrides even the reading order of a series', () => {
+      const shelves = groupBooks(
+        [
+          book('a', { title: 'Alpha', series: 'Jack Reacher', series_index: 1, page_count: 100 }),
+          book('b', { title: 'Bravo', series: 'Jack Reacher', series_index: 2, page_count: 300 }),
+        ],
+        'series',
+        byLength,
+      )
+
+      expect(shelves[0]!.books.map((one) => one.id)).toEqual(['b', 'a'])
+    })
+
+    // The shelf the books a grouping has no place for stand on is a shelf like
+    // any other, and follows the same order.
+    it('orders the books it has no shelf for by it as well', () => {
+      const shelves = groupBooks(
+        [
+          book('a', { title: 'Alpha', page_count: 100 }),
+          book('b', { title: 'Bravo', page_count: 300 }),
+        ],
+        'series',
+        byLength,
+      )
+
+      expect(shelves[0]!.title).toBe('Without a series')
+      expect(shelves[0]!.books.map((one) => one.id)).toEqual(['b', 'a'])
+    })
+
+    // An ungrouped list is already in the order its caller put it in.
+    it('hands an ungrouped list back untouched', () => {
+      const shelf = [
+        book('a', { title: 'Bravo', page_count: 100 }),
+        book('b', { title: 'Alpha', page_count: 300 }),
+      ]
+
+      expect(groupBooks(shelf, 'none', byLength)[0]!.books.map((one) => one.id)).toEqual(['a', 'b'])
+    })
+  })
 })

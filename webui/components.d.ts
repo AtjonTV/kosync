@@ -29,6 +29,8 @@ declare module 'vue' {
     DocumentsList: typeof import('./src/components/DocumentsList.vue')['default']
     FileUpload: typeof import('primevue/fileupload')['default']
     HistoryList: typeof import('./src/components/HistoryList.vue')['default']
+    IconField: typeof import('primevue/iconfield')['default']
+    InputIcon: typeof import('primevue/inputicon')['default']
     InputText: typeof import('primevue/inputtext')['default']
     KoreaderAccounts: typeof import('./src/components/KoreaderAccounts.vue')['default']
     Listbox: typeof import('primevue/listbox')['default']

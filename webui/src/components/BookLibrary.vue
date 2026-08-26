@@ -10,6 +10,7 @@ import { useToast } from 'primevue/usetoast'
 import { useBooksStore } from '@/stores/books'
 import { useDocumentsStore } from '@/stores/documents'
 import { authorName, groupBooks, type Grouping } from '@/lib/grouping'
+import { bookOrder, searchBooks, type Sorting } from '@/lib/browsing'
 import type { Book } from '@/models'
 import type { FileUploadUploaderEvent } from 'primevue/fileupload'
 import { errorMessage, fileUrl } from '@/pb'
@@ -17,9 +18,10 @@ import { errorMessage, fileUrl } from '@/pb'
 const props = withDefaults(
   defineProps<{
     /**
-     * How many books to show. Unset means all of them, by title, which is what
-     * the library page wants. Set, the dashboard gets the ones most recently
-     * read and a link to the rest — a shelf, not a catalogue.
+     * How many books to show. Unset means all of them, in whatever order and
+     * grouping the page is being read with, which is what the library page
+     * wants. Set, the dashboard gets the ones most recently read and a link to
+     * the rest — a shelf, not a catalogue, and so not something to look through.
      */
     limit?: number
     /**
@@ -32,8 +34,8 @@ const props = withDefaults(
      * whole library, which is what the library page and the dashboard want.
      *
      * A collection passes its own books and its own order, and gets a grid
-     * without the upload button or the grouping: neither belongs on a page whose
-     * order is the point of it.
+     * without the upload button and without anything that would search, sort or
+     * group them: none of it belongs on a page whose order is the point of it.
      */
     books?: Book[]
     /** What to say when there is nothing to show. */
@@ -70,7 +72,63 @@ const lastReadByBook = computed(() => {
   return latest
 })
 
-const byTitle = computed(() => [...library.books].sort((a, b) => a.title.localeCompare(b.title)))
+/**
+ * How far the reading has got in each book, keyed by book id.
+ *
+ * The link is made by the server: a device pushes a document hash, and a book
+ * carrying that hash claims it. Nothing here needs to know how that is done.
+ */
+const progressByBook = computed(() => {
+  const furthest = new Map<string, number>()
+
+  for (const document of documents.documents) {
+    if (!document.book) continue
+
+    const best = furthest.get(document.book) ?? 0
+    if (document.progress > best) furthest.set(document.book, document.progress)
+  }
+
+  return furthest
+})
+
+/** The two things about the reading that the library can be ordered by. */
+const reading = computed(() => ({
+  lastRead: lastReadByBook.value,
+  progress: progressByBook.value,
+}))
+
+/**
+ * What is being looked for, if anything.
+ *
+ * Not remembered between visits, unlike the grouping and the sort: those are
+ * ways of reading a library, and this is a question about one book. Coming back
+ * to the page tomorrow and finding four of your books is a fault, not a favour.
+ */
+const query = ref('')
+
+/**
+ * The order the library comes out in, remembered between visits for the same
+ * reason the grouping is: it is a preference about reading, not a place.
+ */
+const sortKey = 'library-sort'
+const sortings: Sorting[] = ['title', 'added', 'last-read', 'progress']
+
+const savedSorting = localStorage.getItem(sortKey) as Sorting | null
+const sorting = ref<Sorting>(
+  savedSorting && sortings.includes(savedSorting) ? savedSorting : 'title',
+)
+
+watch(sorting, (chosen) => localStorage.setItem(sortKey, chosen))
+
+const sortOptions = [
+  { label: 'Title', value: 'title' },
+  { label: 'Recently added', value: 'added' },
+  { label: 'Recently read', value: 'last-read' },
+  { label: 'Progress', value: 'progress' },
+]
+
+/** The whole library, or as much of it as the search left. */
+const matches = computed(() => searchBooks(library.books, query.value))
 
 const byRecency = computed(() =>
   [...library.books].sort((a, b) => {
@@ -86,9 +144,9 @@ const sorted = computed(() => {
   // A given list is already in the order it is meant to be read in — a shelf is
   // a sequence somebody decided on — so it is passed through untouched.
   if (props.books) return props.books
-  if (!props.limit) return byTitle.value
+  if (props.limit) return byRecency.value.slice(0, props.limit)
 
-  return byRecency.value.slice(0, props.limit)
+  return [...matches.value].sort(bookOrder(sorting.value, reading.value))
 })
 
 /** How many books the limit is hiding. */
@@ -131,26 +189,34 @@ const groupingOptions = [
  */
 const groupedBy = computed<Grouping>(() => (props.limit || props.books ? 'none' : grouping.value))
 
-const shelves = computed(() => groupBooks(sorted.value, groupedBy.value))
+/**
+ * The order to impose inside each shelf, when one has been asked for.
+ *
+ * Nothing for the default: by title is what the shelves already do, and a series
+ * shelf's own reading order is worth more than saying that again.
+ */
+const shelfOrder = computed(() =>
+  sorting.value === 'title' ? undefined : bookOrder(sorting.value, reading.value),
+)
+
+const shelves = computed(() => groupBooks(sorted.value, groupedBy.value, shelfOrder.value))
+
+/** Whether this grid is the library itself, and so something to look through. */
+const browsable = computed(() => !props.limit && !props.books)
+
+/** Whether a search is narrowing what is on the screen. */
+const searching = computed(() => browsable.value && query.value.trim().length > 0)
 
 /**
- * How far the reading has got in each book, keyed by book id.
+ * What to say when there is nothing to show.
  *
- * The link is made by the server: a device pushes a document hash, and a book
- * carrying that hash claims it. Nothing here needs to know how that is done.
+ * A library a search has emptied is not an empty library, and telling somebody
+ * to upload an EPUB when they have just mistyped an author's name answers a
+ * question they did not ask.
  */
-const progressByBook = computed(() => {
-  const furthest = new Map<string, number>()
-
-  for (const document of documents.documents) {
-    if (!document.book) continue
-
-    const best = furthest.get(document.book) ?? 0
-    if (document.progress > best) furthest.set(document.book, document.progress)
-  }
-
-  return furthest
-})
+const nothing = computed(() =>
+  searching.value ? `No books match "${query.value.trim()}".` : props.empty,
+)
 
 const progressOf = (book: Book) => progressByBook.value.get(book.id)
 const percentOf = (book: Book) => Math.round((progressOf(book) ?? 0) * 100)
@@ -267,23 +333,6 @@ onMounted(() => {
         <span v-if="props.heading" class="text-xl font-semibold">{{ props.heading }}</span>
         <span v-else></span>
         <div class="flex items-center gap-3">
-          <div
-            v-if="!limit && !props.books && library.books.length"
-            class="flex items-center gap-2"
-          >
-            <label for="library-grouping" class="text-sm text-surface-600 dark:text-surface-400">
-              Group by
-            </label>
-            <Select
-              id="library-grouping"
-              v-model="grouping"
-              :options="groupingOptions"
-              option-label="label"
-              option-value="value"
-              size="small"
-              aria-label="Group the library by"
-            />
-          </div>
           <slot name="header" />
           <FileUpload
             v-if="!props.books"
@@ -307,6 +356,78 @@ onMounted(() => {
         reporting progress for. Upload the very file you read on the device: the match is made on
         the file's contents, so another copy of the same title will not do.
       </p>
+
+      <!--
+        Only where there is a library to look through. On the dashboard shelf and
+        on a collection the order is the page's own, and offering to change it
+        would be offering something the grid then ignores.
+      -->
+      <div v-if="browsable && library.books.length" class="flex flex-wrap items-end gap-3 mb-6">
+        <div class="flex flex-col gap-2 grow min-w-56 max-w-96">
+          <label for="library-search" class="text-sm text-surface-600 dark:text-surface-400">
+            Search
+          </label>
+          <IconField>
+            <InputIcon class="pi pi-search" />
+            <!--
+              A search input rather than a text one, so that clearing it is the
+              browser's own control: an icon of ours inside the field would come
+              out of InputIcon marked aria-hidden, and a focusable control nobody
+              using a screen reader can see is worse than no control at all.
+            -->
+            <InputText
+              id="library-search"
+              v-model="query"
+              type="search"
+              placeholder="Title, author or series"
+              size="small"
+              fluid
+            />
+          </IconField>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <label for="library-sort" class="text-sm text-surface-600 dark:text-surface-400">
+            Sort by
+          </label>
+          <Select
+            id="library-sort"
+            v-model="sorting"
+            :options="sortOptions"
+            option-label="label"
+            option-value="value"
+            size="small"
+            aria-label="Sort the library by"
+          />
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <label for="library-grouping" class="text-sm text-surface-600 dark:text-surface-400">
+            Group by
+          </label>
+          <Select
+            id="library-grouping"
+            v-model="grouping"
+            :options="groupingOptions"
+            option-label="label"
+            option-value="value"
+            size="small"
+            aria-label="Group the library by"
+          />
+        </div>
+
+        <!--
+          Only while a search is on. Without one the count is the library's own,
+          which the page above already prints.
+        -->
+        <span
+          v-if="searching"
+          class="text-sm text-surface-500 dark:text-surface-400 tabular-nums pb-2"
+          aria-live="polite"
+        >
+          {{ matches.length }} of {{ library.books.length }}
+        </span>
+      </div>
 
       <Message v-if="uploading" severity="info" class="mb-4">Uploading…</Message>
 
@@ -418,7 +539,7 @@ onMounted(() => {
       </div>
 
       <div v-else class="p-8 text-center text-surface-500 dark:text-surface-400">
-        {{ props.empty }}
+        {{ nothing }}
       </div>
 
       <div v-if="hidden" class="mt-6 text-center">

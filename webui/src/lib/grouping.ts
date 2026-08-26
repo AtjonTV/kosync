@@ -155,11 +155,21 @@ export function languageName(tag: string): string {
   return languageNames[languageTag(tag)] ?? tag.toUpperCase()
 }
 
+/**
+ * How two books on the same shelf are put in order.
+ *
+ * Passed in rather than decided here, because the order a library is read in is
+ * a choice its owner makes and the shelves are not exempt from it: browsing by
+ * author while sorting by what was read last has to give each author's shelf in
+ * that order too, or the sort only appears to have been applied.
+ */
+export type Order = (a: Book, b: Book) => number
+
 /** Titles, the way this interface sorts them everywhere else. */
-const byTitle = (a: Book, b: Book) => a.title.localeCompare(b.title)
+const byTitle: Order = (a, b) => a.title.localeCompare(b.title)
 
 /** Reading order: the number first, the title only to break ties. */
-const byReadingOrder = (a: Book, b: Book) =>
+const byReadingOrder: Order = (a, b) =>
   a.series_index !== b.series_index ? a.series_index - b.series_index : byTitle(a, b)
 
 /** Shelf names, case insensitively, the way the catalog orders them. */
@@ -199,7 +209,7 @@ function commonestSpelling(spellings: Map<string, number>): string {
  * A book with two authors stands on both their shelves, which is why the counts
  * add up to more than the library holds.
  */
-function byAuthor(books: Book[]): BookGroup[] {
+function byAuthor(books: Book[], order?: Order): BookGroup[] {
   const folded = new Map<string, { books: Book[]; spellings: Map<string, number> }>()
   const anonymous: Book[] = []
 
@@ -235,20 +245,26 @@ function byAuthor(books: Book[]): BookGroup[] {
     groups.push({
       key,
       title: authorName(commonestSpelling(one.spellings)),
-      books: one.books.sort(byTitle),
+      books: one.books.sort(order ?? byTitle),
     })
   }
   groups.sort(byName)
 
   if (anonymous.length) {
-    groups.push({ key: '', title: 'Without an author', books: anonymous.sort(byTitle) })
+    groups.push({ key: '', title: 'Without an author', books: anonymous.sort(order ?? byTitle) })
   }
 
   return groups
 }
 
-/** The series' shelves, each in reading order. */
-function bySeries(books: Book[]): BookGroup[] {
+/**
+ * The series' shelves, each in reading order unless another was chosen.
+ *
+ * Reading order is the default here and nowhere else, because it is the only
+ * thing the number on a volume is for. An explicit sort still wins: somebody who
+ * asked for the furthest read first asked about the whole library.
+ */
+function bySeries(books: Book[], order?: Order): BookGroup[] {
   const folded = new Map<string, Book[]>()
   const loose: Book[] = []
 
@@ -266,12 +282,12 @@ function bySeries(books: Book[]): BookGroup[] {
 
   const groups: BookGroup[] = []
   for (const [series, shelf] of folded) {
-    groups.push({ key: series, title: series, books: shelf.sort(byReadingOrder) })
+    groups.push({ key: series, title: series, books: shelf.sort(order ?? byReadingOrder) })
   }
   groups.sort(byName)
 
   if (loose.length) {
-    groups.push({ key: '', title: 'Without a series', books: loose.sort(byTitle) })
+    groups.push({ key: '', title: 'Without a series', books: loose.sort(order ?? byTitle) })
   }
 
   return groups
@@ -285,7 +301,7 @@ function bySeries(books: Book[]): BookGroup[] {
  * no language at all is shelved with the ones whose file said "und": both mean
  * nobody knows, and one shelf of those is easier to look through than two.
  */
-function byLanguage(books: Book[]): BookGroup[] {
+function byLanguage(books: Book[], order?: Order): BookGroup[] {
   const folded = new Map<string, Book[]>()
 
   for (const book of books) {
@@ -297,7 +313,11 @@ function byLanguage(books: Book[]): BookGroup[] {
   }
 
   return [...folded]
-    .map(([tag, shelf]) => ({ key: tag, title: languageName(tag), books: shelf.sort(byTitle) }))
+    .map(([tag, shelf]) => ({
+      key: tag,
+      title: languageName(tag),
+      books: shelf.sort(order ?? byTitle),
+    }))
     .sort((a, b) => b.books.length - a.books.length || a.key.localeCompare(b.key))
 }
 
@@ -306,15 +326,17 @@ function byLanguage(books: Book[]): BookGroup[] {
  *
  * Ungrouped is one nameless shelf rather than an empty answer, so that the grid
  * that draws the result does not need to know which of the two it is looking at.
+ * That shelf is handed back untouched: an ungrouped list is already in the order
+ * its caller put it in, and there is nothing here to add to that.
  */
-export function groupBooks(books: Book[], by: Grouping): BookGroup[] {
+export function groupBooks(books: Book[], by: Grouping, order?: Order): BookGroup[] {
   switch (by) {
     case 'authors':
-      return byAuthor(books)
+      return byAuthor(books, order)
     case 'series':
-      return bySeries(books)
+      return bySeries(books, order)
     case 'languages':
-      return byLanguage(books)
+      return byLanguage(books, order)
     default:
       return books.length ? [{ key: '', title: '', books }] : []
   }

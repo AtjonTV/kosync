@@ -12,6 +12,13 @@ over, see [docs/migration.md](docs/migration.md).
 ## [Unreleased]
 
 ### Added
+- Search on the library page, over titles, series and author names. Every word has to appear
+  somewhere but they need not appear together, so "child killing" finds Lee Child's "Killing
+  Floor"; accents and case are ignored on both sides, and an author is found under the spelling
+  in the file as well as the one on the shelves
+- Sorting on the library page, by title, by when a book was added, by when it was last read or by
+  how far the reading got. The choice is remembered between visits, as the grouping already was,
+  and it carries into the shelves a grouping makes rather than applying only to the ungrouped view
 
 ### Changed
 

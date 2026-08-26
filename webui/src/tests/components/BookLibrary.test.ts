@@ -245,6 +245,201 @@ describe('BookLibrary', () => {
     })
   })
 
+  describe('searching', () => {
+    beforeEach(() => localStorage.clear())
+
+    const library = [
+      book('a', { title: 'Killing Floor', authors: ['Child, Lee'], series: 'Jack Reacher' }),
+      book('b', { title: 'Der Schwalbenturm', authors: ['Andrzej Sapkowski'], series: 'Hexer' }),
+    ]
+
+    it('offers a search on the library page', () => {
+      expect(mountLibrary(library).find('#library-search').exists()).toBe(true)
+    })
+
+    // The dashboard is a shelf of six, and a collection is a list somebody put
+    // together by hand. Neither is something to search through.
+    it('offers none on the dashboard shelf or on a given list', () => {
+      expect(mountLibrary(library, { limit: 6 }).find('#library-search').exists()).toBe(false)
+      expect(mountLibrary(library, { books: library }).find('#library-search').exists()).toBe(false)
+    })
+
+    it('offers none in an empty library', () => {
+      expect(mountLibrary([]).find('#library-search').exists()).toBe(false)
+    })
+
+    it('shows only what was asked for', async () => {
+      const wrapper = mountLibrary(library)
+      await wrapper.find('#library-search').setValue('sapkowski')
+
+      expect(wrapper.text()).toContain('Der Schwalbenturm')
+      expect(wrapper.text()).not.toContain('Killing Floor')
+    })
+
+    it('says how much of the library is left', async () => {
+      const wrapper = mountLibrary(library)
+      await wrapper.find('#library-search').setValue('sapkowski')
+
+      expect(wrapper.text()).toContain('1 of 2')
+    })
+
+    // A library a search has emptied is not an empty library, and telling
+    // somebody to upload an EPUB answers a question they did not ask.
+    it('does not call an emptied library empty', async () => {
+      const wrapper = mountLibrary(library)
+      await wrapper.find('#library-search').setValue('tolkien')
+
+      expect(wrapper.text()).toContain('No books match "tolkien".')
+      expect(wrapper.text()).not.toContain('Add an EPUB to keep a copy here')
+    })
+
+    // The search narrows the library; the grouping decides how what is left is
+    // laid out. Both at once has to mean both.
+    it('groups what the search left', async () => {
+      localStorage.setItem('library-grouping', 'series')
+
+      const wrapper = mountLibrary(library)
+      await wrapper.find('#library-search').setValue('sapkowski')
+
+      expect(wrapper.text()).toContain('Hexer')
+      expect(wrapper.text()).not.toContain('Jack Reacher')
+    })
+  })
+
+  describe('sorting', () => {
+    beforeEach(() => localStorage.clear())
+
+    it('offers the sorts on the library page, and nowhere else', () => {
+      expect(
+        mountLibrary([book('a')])
+          .find('#library-sort')
+          .exists(),
+      ).toBe(true)
+      expect(
+        mountLibrary([book('a')], { limit: 6 })
+          .find('#library-sort')
+          .exists(),
+      ).toBe(false)
+    })
+
+    it('sorts by title until it is told otherwise', () => {
+      const wrapper = mountLibrary([book('a', { title: 'Bravo' }), book('b', { title: 'Alpha' })])
+      const text = wrapper.text()
+
+      expect(text.indexOf('Alpha')).toBeLessThan(text.indexOf('Bravo'))
+    })
+
+    // Remembered for the same reason the grouping is: it is a way of reading a
+    // library, and making the choice again every visit is worth more than it.
+    it('starts out the way it was last left', () => {
+      localStorage.setItem('library-sort', 'added')
+
+      const wrapper = mountLibrary([
+        book('a', { title: 'Alpha', created: '2026-01-01 00:00:00.000Z' }),
+        book('b', { title: 'Bravo', created: '2026-06-01 00:00:00.000Z' }),
+      ])
+      const text = wrapper.text()
+
+      expect(text.indexOf('Bravo')).toBeLessThan(text.indexOf('Alpha'))
+    })
+
+    it('ignores a stored sort it cannot make sense of', () => {
+      localStorage.setItem('library-sort', 'by-the-weight-of-the-paper')
+
+      const wrapper = mountLibrary([
+        book('a', { title: 'Bravo', created: '2026-06-01 00:00:00.000Z' }),
+        book('b', { title: 'Alpha', created: '2026-01-01 00:00:00.000Z' }),
+      ])
+      const text = wrapper.text()
+
+      expect(text.indexOf('Alpha')).toBeLessThan(text.indexOf('Bravo'))
+    })
+
+    it('puts the most recently read first when asked', () => {
+      localStorage.setItem('library-sort', 'last-read')
+
+      const wrapper = mountLibrary(
+        [book('a', { title: 'Alpha' }), book('b', { title: 'Bravo' })],
+        {},
+        [read('a', '2026-03-01 10:00:00.000Z'), read('b', '2026-05-01 10:00:00.000Z')],
+      )
+      const text = wrapper.text()
+
+      expect(text.indexOf('Bravo')).toBeLessThan(text.indexOf('Alpha'))
+    })
+
+    it('puts the furthest read first when asked', () => {
+      localStorage.setItem('library-sort', 'progress')
+
+      const wrapper = mountLibrary(
+        [book('a', { title: 'Alpha' }), book('b', { title: 'Bravo' })],
+        {},
+        [
+          { ...read('a', '2026-03-01 10:00:00.000Z'), progress: 0.1 },
+          { ...read('b', '2026-05-01 10:00:00.000Z'), progress: 0.9 },
+        ],
+      )
+      const text = wrapper.text()
+
+      expect(text.indexOf('Bravo')).toBeLessThan(text.indexOf('Alpha'))
+    })
+
+    // The sort is about the library, not about the ungrouped view of it: the
+    // shelves have to come out in it too, or it has only appeared to apply.
+    it('carries into the shelves a grouping makes', () => {
+      localStorage.setItem('library-sort', 'added')
+      localStorage.setItem('library-grouping', 'series')
+
+      const wrapper = mountLibrary([
+        book('a', {
+          title: 'Alpha',
+          series: 'Jack Reacher',
+          series_index: 1,
+          created: '2026-01-01 00:00:00.000Z',
+        }),
+        book('b', {
+          title: 'Bravo',
+          series: 'Jack Reacher',
+          series_index: 2,
+          created: '2026-06-01 00:00:00.000Z',
+        }),
+      ])
+      const text = wrapper.text()
+
+      expect(text).toContain('Jack Reacher')
+      expect(text.indexOf('Bravo')).toBeLessThan(text.indexOf('Alpha'))
+    })
+
+    // Which the reading order of a series otherwise wins, and must keep winning
+    // for somebody who has not asked for anything else.
+    it('leaves a series in reading order while sorting by title', () => {
+      localStorage.setItem('library-grouping', 'series')
+
+      const wrapper = mountLibrary([
+        book('a', { title: 'Alpha', series: 'Jack Reacher', series_index: 2 }),
+        book('b', { title: 'Bravo', series: 'Jack Reacher', series_index: 1 }),
+      ])
+      const text = wrapper.text()
+
+      expect(text.indexOf('Bravo')).toBeLessThan(text.indexOf('Alpha'))
+    })
+
+    // The dashboard shelf is the recently read, whatever the library page was
+    // last left sorted by.
+    it('never reorders the dashboard shelf', () => {
+      localStorage.setItem('library-sort', 'title')
+
+      const wrapper = mountLibrary(
+        [book('a', { title: 'Alpha' }), book('b', { title: 'Bravo' })],
+        { limit: 6 },
+        [read('a', '2026-03-01 10:00:00.000Z'), read('b', '2026-05-01 10:00:00.000Z')],
+      )
+      const text = wrapper.text()
+
+      expect(text.indexOf('Bravo')).toBeLessThan(text.indexOf('Alpha'))
+    })
+  })
+
   // A collection hands the grid its own books in its own order. That order is
   // the entire content of a hand-made shelf, so nothing here may touch it.
   describe('a given list', () => {
