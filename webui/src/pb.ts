@@ -4,7 +4,8 @@
 // Copyright:   © 2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
 //
 
-import PocketBase from 'pocketbase'
+import { ref } from 'vue'
+import PocketBase, { isTokenExpired } from 'pocketbase'
 
 // The WebUI is served by the KOsync server itself, so the API lives on the same
 // origin. During "bun run dev" Vite proxies /api to a local server.
@@ -49,10 +50,76 @@ export const KosyncApi = {
 } as const
 
 /**
+ * The token that opens the library's files.
+ *
+ * A book and its cover are protected files: the server hands them over only to
+ * a request carrying a short lived token, and checks the same rule against it
+ * that decides who may see the record. An <img> cannot send an Authorization
+ * header, so the token rides in the address instead.
+ *
+ * It is kept until it actually runs out rather than being renewed on a timer,
+ * because every new token rewrites the address of every cover on the page and
+ * the browser then fetches all of them again.
+ */
+const fileToken = ref('')
+
+/** The account the held token belongs to, so a different one drops it. */
+let fileTokenOwner = ''
+
+/** The request in flight, so a page full of covers only asks once. */
+let fileTokenRequest: Promise<void> | null = null
+
+/** When another attempt may be made, after one failed. */
+let fileTokenRetryAt = 0
+
+/** How long to wait before asking again after a failure. */
+const fileTokenRetryMs = 5000
+
+/** How close to running out a token may be before it is replaced. */
+const fileTokenMarginSeconds = 60
+
+/**
+ * Asks for a file token, unless one is already on its way.
+ *
+ * A failure leaves the held token alone — it may well still work — and holds
+ * off the next attempt, so a server that is refusing does not collect one
+ * request per rendered cover.
+ */
+function requestFileToken(): void {
+  if (fileTokenRequest || Date.now() < fileTokenRetryAt) return
+
+  fileTokenRequest = pb.files
+    .getToken()
+    .then((token) => {
+      fileToken.value = token
+    })
+    .catch(() => {
+      fileTokenRetryAt = Date.now() + fileTokenRetryMs
+    })
+    .finally(() => {
+      fileTokenRequest = null
+    })
+}
+
+// A token belongs to the account it was issued to, so signing out or signing in
+// as somebody else drops it. A plain token refresh is not a change of account
+// and must not, or every cover on screen would be fetched twice over.
+pb.authStore.onChange(() => {
+  const owner = pb.authStore.record?.id ?? ''
+  if (owner === fileTokenOwner) return
+
+  fileTokenOwner = owner
+  fileToken.value = ''
+  fileTokenRetryAt = 0
+})
+
+/**
  * The URL of a file stored on a record, optionally as a generated thumbnail.
  *
- * Returns an empty string when the field is unset, so a book without a cover
- * simply renders no image instead of a broken one.
+ * Returns an empty string when the field is unset and when no token has arrived
+ * yet, so a book without a cover and a page that is still asking both render no
+ * image rather than a broken one. The token is a reactive value: whatever read
+ * it renders again, with a real address, as soon as it is there.
  */
 export function fileUrl(
   record: { id: string; collectionId: string; collectionName: string },
@@ -61,7 +128,14 @@ export function fileUrl(
 ): string {
   if (!filename) return ''
 
-  return pb.files.getURL(record, filename, thumb ? { thumb } : undefined)
+  const token = fileToken.value
+  if (pb.authStore.isValid && (!token || isTokenExpired(token, fileTokenMarginSeconds))) {
+    requestFileToken()
+  }
+
+  if (!token) return ''
+
+  return pb.files.getURL(record, filename, thumb ? { thumb, token } : { token })
 }
 
 /**

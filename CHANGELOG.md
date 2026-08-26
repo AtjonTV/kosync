@@ -45,6 +45,18 @@ over, see [docs/migration.md](docs/migration.md).
   gain their covers without being uploaded again
 
 ### Security
+- **BREAKING.** Books and their covers are no longer served to anyone holding the address. They are
+  stored as protected files now, which means the server checks the same rule against a request for
+  the file that it checks against a request for the book: it belongs to one account and nobody else
+  may read it. Until this release the address was merely unguessable, which is not the same thing —
+  it never expired, it outlived the account, and it sat in every browser history and proxy log it
+  had passed through. Nothing needs to be done on upgrade and no address in the web interface has
+  to be touched by hand; the migration protects the two fields and the interface asks for the token
+  it now needs. A book address saved outside KOsync — a bookmark, a script, an `<img>` in something
+  else — stops working, and the catalog at `/opds` is the supported way to fetch a book from a
+  program. The token lasts half an hour rather than PocketBase's own three minutes, because its
+  renewal rewrites the address of every cover on a page and the browser then fetches all of them
+  again
 
 ---
 

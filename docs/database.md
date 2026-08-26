@@ -138,6 +138,15 @@ name is derived from the title — so a reader that downloaded from the catalog 
 documents by name needs its own column to be found by. It follows a rename, which does leave a device
 that downloaded the book earlier holding the old name; the binary hash still covers that device.
 
+`file` and `cover` are **protected** file fields. PocketBase hands a protected file over only to a
+request carrying a short lived file token, and evaluates the collection's view rule against the
+account that token was issued to; an unprotected file, which is what these were until the field was
+changed, is served to anyone who has ever seen its address. The address is unguessable, but that is
+not the same as private: it never expires, it outlives the account, and it sits in every browser
+history and proxy log it has passed through. The catalog is unaffected — it serves its files itself,
+behind the device authentication the feed already requires — and so is `import-legacy`, which writes
+files rather than reading them. See [api.md](api.md) for how a client asks for a token.
+
 `file_size` is how many bytes the uploaded file takes. It is stored rather than read from the
 filesystem because the per-account quota needs a sum over the whole library on every upload, and a
 stat call per book would get slower with every book added. The extracted cover is not counted: it is

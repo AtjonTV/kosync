@@ -124,11 +124,21 @@ form.append('file', epubFile)
 await pb.collection('books').create(form)
 ```
 
-Covers are served as PocketBase files, with thumbnails generated on request:
+Both the book and its cover are **protected files**: PocketBase serves them only to a request that
+carries a file token, and checks the collection's own view rule against it, so a stored EPUB is no
+more public than the record it belongs to. The token is obtained from `POST /api/files/token` and
+goes in the address, because an `<img>` cannot send an `Authorization` header:
 
+```js
+const token = await pb.files.getToken()
+
+pb.files.getURL(book, book.cover, { thumb: '200x300', token })
+// /api/files/books/{id}/{cover}?thumb=200x300&token=...
 ```
-/api/files/books/{id}/{cover}?thumb=200x300
-```
+
+The token lasts half an hour. It is deliberately longer than PocketBase's own three minutes: the
+address of a protected file carries the token, so each renewal changes the address of every cover on
+a page and the browser fetches all of them again. Thumbnails are still generated on first request.
 
 The page count is derived too, and in three ways: `measured_pages` is the device's own count, with
 `measured_source` saying whether the device stated it in the statistics it synced (`device`) or it was

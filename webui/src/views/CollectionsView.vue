@@ -184,7 +184,7 @@ onUnmounted(() => collections.unsubscribe())
                 :title="book.title"
               >
                 <img
-                  v-if="book.cover"
+                  v-if="coverUrl(book)"
                   :src="coverUrl(book)"
                   :alt="`Cover of ${book.title}`"
                   class="w-full h-full object-cover"

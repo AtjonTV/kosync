@@ -250,7 +250,7 @@ onUnmounted(() => stats.clear())
               class="w-40 shrink-0 aspect-[2/3] rounded-lg overflow-hidden bg-surface-100 dark:bg-surface-800 border border-surface-200 dark:border-surface-700"
             >
               <img
-                v-if="book.cover"
+                v-if="coverUrl"
                 :src="coverUrl"
                 :alt="`Cover of ${book.title}`"
                 class="w-full h-full object-cover"
@@ -323,7 +323,7 @@ onUnmounted(() => stats.clear())
               </div>
 
               <div class="flex flex-wrap gap-2">
-                <a :href="downloadUrl" :download="`${book.title}.epub`">
+                <a :href="downloadUrl || undefined" :download="`${book.title}.epub`">
                   <Button icon="pi pi-download" label="Download" variant="outlined" size="small" />
                 </a>
                 <Button

@@ -461,7 +461,7 @@ onMounted(() => {
                 :title="`Statistics for ${book.title}`"
               >
                 <img
-                  v-if="book.cover"
+                  v-if="coverUrl(book)"
                   :src="coverUrl(book)"
                   :alt="`Cover of ${book.title}`"
                   class="w-full h-full object-cover"
@@ -507,7 +507,7 @@ onMounted(() => {
               </div>
 
               <div class="flex gap-1 mt-auto">
-                <a :href="downloadUrl(book)" :download="`${book.title}.epub`">
+                <a :href="downloadUrl(book) || undefined" :download="`${book.title}.epub`">
                   <Button icon="pi pi-download" variant="text" rounded title="Download" />
                 </a>
                 <Button
