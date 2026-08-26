@@ -99,9 +99,15 @@ export const useStatsStore = defineStore('stats', () => {
     return result
   })
 
-  /** Total reading time of the loaded range, in minutes. */
-  const readingMinutes = computed(() =>
-    Math.round(days.value.reduce((sum, day) => sum + (day.reading_time || 0), 0) / 60),
+  /**
+   * Total reading time of the loaded range, in seconds.
+   *
+   * Seconds because that is how every day of it is stored and how the page that
+   * shows it wants it: writing the total as hours and minutes is one rounding,
+   * and doing it here as well would be a second one.
+   */
+  const readingSeconds = computed(() =>
+    days.value.reduce((sum, day) => sum + (day.reading_time || 0), 0),
   )
 
   function clear(): void {
@@ -110,5 +116,5 @@ export const useStatsStore = defineStore('stats', () => {
     loadedDays.value = 0
   }
 
-  return { days, loading, loadedDays, series, readingMinutes, load, subscribe, stop, clear }
+  return { days, loading, loadedDays, series, readingSeconds, load, subscribe, stop, clear }
 })

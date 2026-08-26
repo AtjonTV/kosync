@@ -21,6 +21,10 @@ over, see [docs/migration.md](docs/migration.md).
   and it carries into the shelves a grouping makes rather than applying only to the ungrouped view
 
 ### Changed
+- The reading time on the dashboard is broken into hours and minutes ("33 h 30 min") rather than
+  written as a number of minutes: a month of reading runs to four figures of them, and "2010 min"
+  has to be divided in the head before it means anything. This is the form the book page has always
+  used for "Time spent", and both now share one formatter
 
 ### Deprecated
 

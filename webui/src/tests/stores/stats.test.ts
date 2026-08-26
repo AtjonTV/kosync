@@ -83,7 +83,7 @@ describe('stats store', () => {
     expect(store.series[1]!.updates).toBe(4)
   })
 
-  it('sums the reading time of the loaded range in minutes', async () => {
+  it('sums the reading time of the loaded range in seconds', async () => {
     pbMockModule
       .collection('reading_days')
       .getFullList.mockResolvedValue([
@@ -94,7 +94,7 @@ describe('stats store', () => {
     const store = useStatsStore()
     await store.load(14)
 
-    expect(store.readingMinutes).toBe(15)
+    expect(store.readingSeconds).toBe(900)
   })
 
   it('applies a recomputed day that arrives while subscribed', async () => {

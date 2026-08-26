@@ -10,6 +10,7 @@ import Chart from 'primevue/chart'
 import { useToast } from 'primevue/usetoast'
 import { errorMessage, fileUrl } from '@/pb'
 import { authorName } from '@/lib/grouping'
+import { formatDuration } from '@/lib/duration'
 import { useBooksStore } from '@/stores/books'
 import { useBookStatsStore } from '@/stores/bookStats'
 import { useDocumentsStore } from '@/stores/documents'
@@ -89,14 +90,6 @@ const pages = computed(() => {
 
 const numberFormat = new Intl.NumberFormat()
 const formatCount = (value: number) => numberFormat.format(value ?? 0)
-
-/** Reading time as hours and minutes, because a book runs to hours. */
-function formatDuration(seconds: number): string {
-  const minutes = Math.round((seconds ?? 0) / 60)
-  if (minutes < 60) return `${minutes} min`
-
-  return `${Math.floor(minutes / 60)} h ${minutes % 60} min`
-}
 
 const chartOptions = ref()
 

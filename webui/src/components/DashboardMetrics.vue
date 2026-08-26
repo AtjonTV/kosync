@@ -7,6 +7,7 @@
 import { computed } from 'vue'
 import { useDocumentsStore } from '@/stores/documents'
 import { useStatsStore } from '@/stores/stats'
+import { formatDuration } from '@/lib/duration'
 
 const documents = useDocumentsStore()
 const stats = useStatsStore()
@@ -21,7 +22,12 @@ const averageProgress = computed(() => {
   return ((total / list.length) * 100).toFixed(1)
 })
 
-const readingMinutes = computed(() => stats.readingMinutes)
+/**
+ * The reading of the loaded range, written the way the book page writes it.
+ * A month of it runs to thousands of minutes, which nobody reads as an amount
+ * of time.
+ */
+const readingTime = computed(() => formatDuration(stats.readingSeconds))
 </script>
 
 <template>
@@ -78,9 +84,9 @@ const readingMinutes = computed(() => stats.readingMinutes)
             <span class="block text-surface-500 dark:text-surface-400 text-sm font-medium mb-1"
               >Recent Read Time</span
             >
-            <span class="text-2xl font-bold text-surface-900 dark:text-surface-0"
-              >{{ readingMinutes }} min</span
-            >
+            <span class="text-2xl font-bold text-surface-900 dark:text-surface-0">{{
+              readingTime
+            }}</span>
           </div>
         </div>
       </template>

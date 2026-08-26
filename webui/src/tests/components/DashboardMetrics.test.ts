@@ -58,7 +58,16 @@ describe('DashboardMetrics', () => {
     expect(wrapper.text()).toContain('0.0%')
   })
 
-  it('reports the reading time in whole minutes', async () => {
+  // "2010 min" is the same number and unreadable, and the book page has said
+  // this the readable way all along.
+  it('breaks the reading time into hours and minutes', async () => {
+    const wrapper = mountMetrics([], [{ reading_time: 7200 }, { reading_time: 1800 }])
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.text()).toContain('2 h 30 min')
+  })
+
+  it('rounds to the nearest minute, as it always did', async () => {
     const wrapper = mountMetrics([], [{ reading_time: 600 }, { reading_time: 330 }])
     await wrapper.vm.$nextTick()
 
