@@ -1,4 +1,4 @@
-## Multi-stage build: 1. compile the webui and a static binary, 2. run it against a /pb_data volume
+## Multi-stage build: 1. compile the webui and a static binary, 2. run it against a /data volume
 
 # 1) Build stage
 FROM golang:1.26.6-alpine3.23 AS builder
@@ -50,8 +50,8 @@ EXPOSE 8080
 USER 1000:1000
 
 # PocketBase keeps the database, the uploads and its backups in here.
-VOLUME /pb_data
-WORKDIR /pb_data
+VOLUME /data
+WORKDIR /data
 
 ENTRYPOINT ["/app/kosync"]
-CMD ["serve", "--http=0.0.0.0:8080", "--dir=/pb_data"]
+CMD ["serve", "--http=0.0.0.0:8080", "--dir=/data"]
