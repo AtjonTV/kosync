@@ -1,0 +1,16 @@
+name: kosync
+environments:
+- name: default
+  values:
+    BOOKS_QUOTA_MEGABYTES: "512"
+    ENABLE_WEBUI: "true"
+commands:
+- name: start
+  environment: default
+  shell:
+  - command: go
+    args:
+    - run
+    - build.go
+    - -run
+    cwd: ./server
