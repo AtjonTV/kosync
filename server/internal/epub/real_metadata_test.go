@@ -10,6 +10,7 @@ import (
 	"archive/zip"
 	"html"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -40,7 +41,7 @@ func TestARealLibraryParses(t *testing.T) {
 		t.Skipf("set %s to a directory of EPUBs to run this", realLibraryEnv)
 	}
 
-	var books, withSeries, withSubjects, subjects int
+	var books, withSeries, withSubjects, subjects, withCover int
 
 	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
 		if err != nil || entry.IsDir() || !strings.EqualFold(filepath.Ext(path), ".epub") {
@@ -85,6 +86,19 @@ func TestARealLibraryParses(t *testing.T) {
 			}
 		}
 
+		// The cover is guessed at through several fallbacks, and the guesses
+		// are only worth having if they land on a picture: the field the bytes
+		// go into takes bitmaps and nothing else, so a stylesheet or a page of
+		// markup arriving here is the failure this is watching for.
+		if _, cover, err := reader.Cover(); err != nil {
+			t.Errorf("%s: cover: %v", filepath.Base(path), err)
+		} else if len(cover) > 0 {
+			withCover++
+			if kind := http.DetectContentType(cover); !strings.HasPrefix(kind, "image/") {
+				t.Errorf("%s: the cover is %s", filepath.Base(path), kind)
+			}
+		}
+
 		return nil
 	})
 	if err != nil {
@@ -95,8 +109,8 @@ func TestARealLibraryParses(t *testing.T) {
 		t.Fatalf("no EPUBs under %s", root)
 	}
 
-	t.Logf("%d books: %d with a series, %d with subjects (%d subjects in all)",
-		books, withSeries, withSubjects, subjects)
+	t.Logf("%d books: %d with a series, %d with subjects (%d subjects in all), %d with a cover",
+		books, withSeries, withSubjects, subjects, withCover)
 }
 
 // packageDocumentOf returns the raw text of a book's package document.

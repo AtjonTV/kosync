@@ -16,6 +16,7 @@ import (
 	"math"
 	"net/url"
 	"path"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -118,6 +119,12 @@ type opfPackage struct {
 			IDRef string `xml:"idref,attr"`
 		} `xml:"itemref"`
 	} `xml:"spine"`
+	Guide struct {
+		References []struct {
+			Type string `xml:"type,attr"`
+			Href string `xml:"href,attr"`
+		} `xml:"reference"`
+	} `xml:"guide"`
 }
 
 type containerXML struct {
@@ -384,25 +391,207 @@ func (r *Reader) Cover() (string, []byte, error) {
 	return name, data, nil
 }
 
-// coverPath resolves the cover image the way readers do: the EPUB 3 manifest
-// property first, then the EPUB 2 <meta name="cover"> pointer.
+// coverPath resolves the cover image the way readers do: each place a book
+// might say where its cover is, in the order in which that saying is worth
+// believing, and the first one that lands on an image in the archive wins.
+//
+// Only the first two of those places are standards. The rest are here because
+// on a real shelf the standards miss a tenth of the books: a <meta name="cover">
+// whose content is the href rather than the id it is supposed to be, or an id
+// that names a stylesheet, or nothing at all where the guide has said it all
+// along. Every one of those files shows a cover in every other reader, which
+// is what makes a blank in the library look like our bug rather than theirs.
 func (r *Reader) coverPath() string {
-	for _, item := range r.pkg.Manifest.Items {
-		if strings.Contains(item.Properties, "cover-image") {
-			return r.resolve(item.Href)
+	hrefs := r.coverHrefs()
+
+	// Twice over the same list, because a pointer that lands on an image is
+	// better evidence than one that lands on a page. Project Gutenberg's books
+	// name a chapter as their cover and then name the real cover in the guide;
+	// taking the pages in the first pass would file an illustration from the
+	// middle of the book as the cover of it.
+	for _, href := range hrefs {
+		if name := r.imageFile(r.opfDir, href); name != "" {
+			return name
+		}
+	}
+	for _, href := range hrefs {
+		if name := r.imageInDocument(r.opfDir, href); name != "" {
+			return name
 		}
 	}
 
+	return ""
+}
+
+// coverHrefs lists the hrefs that might name the cover, best first.
+//
+// Nothing here checks whether an href leads anywhere; a pointer that names a
+// missing file, or a stylesheet, simply loses to the next one. That is what
+// keeps the guesses at the end safe to make.
+func (r *Reader) coverHrefs() []string {
+	var hrefs []string
+
+	// EPUB 3 says it in the manifest.
+	for _, item := range r.pkg.Manifest.Items {
+		if strings.Contains(item.Properties, "cover-image") {
+			hrefs = append(hrefs, item.Href)
+		}
+	}
+
+	// EPUB 2 says it in a meta whose content is a manifest id — or, often
+	// enough to be worth trying second, the href itself.
 	for _, meta := range r.pkg.Metadata.Metas {
 		if !strings.EqualFold(meta.Name, "cover") || meta.Content == "" {
 			continue
 		}
 		if href, found := r.hrefIDs[meta.Content]; found {
-			return r.resolve(href)
+			hrefs = append(hrefs, href)
+		}
+		hrefs = append(hrefs, meta.Content)
+	}
+
+	// The guide, which names either the image or the page showing it.
+	for _, reference := range r.pkg.Guide.References {
+		if strings.EqualFold(reference.Type, "cover") && reference.Href != "" {
+			hrefs = append(hrefs, reference.Href)
+		}
+	}
+
+	// Nothing declared it. An image the book itself calls a cover is a guess,
+	// but it is the guess the file is asking for.
+	for _, item := range r.pkg.Manifest.Items {
+		if !strings.HasPrefix(item.MediaType, "image/") {
+			continue
+		}
+		if mentionsCover(item.ID) || mentionsCover(path.Base(item.Href)) {
+			hrefs = append(hrefs, item.Href)
+		}
+	}
+
+	// Last, the page the book opens on: what a reader shows first is what a
+	// person recognises as the cover, whether or not the file ever labelled it.
+	if len(r.pkg.Spine.Items) > 0 {
+		if href, found := r.hrefIDs[r.pkg.Spine.Items[0].IDRef]; found {
+			hrefs = append(hrefs, href)
+		}
+	}
+
+	return hrefs
+}
+
+// imageFile returns the archive path an href names, when that is an image the
+// archive actually holds.
+func (r *Reader) imageFile(dir, href string) string {
+	name := r.resolveFrom(dir, href)
+	if name == "" || !isImage(name) {
+		return ""
+	}
+	if _, found := r.byName[name]; !found {
+		return ""
+	}
+
+	return name
+}
+
+// imageInDocument returns the first image drawn by the document an href names.
+//
+// A cover pointer very often does not point at an image. It points at the page
+// that shows it: an XHTML wrapper holding a single <img>, or the <svg><image>
+// form Calibre writes. Following that one hop is most of the difference between
+// a shelf of covers and a shelf of placeholders. Only one hop, because a page
+// that leads to another page is not a cover, it is a book.
+func (r *Reader) imageInDocument(dir, href string) string {
+	name := r.resolveFrom(dir, href)
+	if name == "" || !isDocument(name) {
+		return ""
+	}
+
+	raw, err := r.readFile(name)
+	if err != nil {
+		return ""
+	}
+
+	for _, source := range documentImages(raw) {
+		// Relative to the document, which is not always where the package is.
+		if found := r.imageFile(path.Dir(name), source); found != "" {
+			return found
 		}
 	}
 
 	return ""
+}
+
+// documentImages lists what an XHTML document draws, in the order it draws it.
+func documentImages(raw []byte) []string {
+	decoder := xml.NewDecoder(bytes.NewReader(raw))
+	decoder.Strict = false
+	decoder.Entity = xml.HTMLEntity
+
+	var sources []string
+
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			break
+		}
+
+		element, ok := token.(xml.StartElement)
+		if !ok {
+			continue
+		}
+
+		// <img src> is the HTML form and <image href> the SVG one; the latter
+		// arrives as either href or xlink:href, and the decoder gives the local
+		// name of both as "href".
+		wanted := ""
+		switch strings.ToLower(element.Name.Local) {
+		case "img":
+			wanted = "src"
+		case "image":
+			wanted = "href"
+		default:
+			continue
+		}
+
+		for _, attribute := range element.Attr {
+			if strings.EqualFold(attribute.Name.Local, wanted) && attribute.Value != "" {
+				sources = append(sources, attribute.Value)
+
+				break
+			}
+		}
+	}
+
+	return sources
+}
+
+// coverImageExtensions are the images a cover may be stored as.
+//
+// SVG is missing on purpose: the field it ends up in only takes bitmaps, and an
+// SVG candidate winning here would mean discarding a perfectly good JPEG later
+// in the list. A cover drawn as an <svg><image> still works — what that names
+// is a bitmap.
+var coverImageExtensions = map[string]bool{
+	".jpg": true, ".jpeg": true, ".png": true, ".gif": true, ".webp": true,
+}
+
+// documentExtensions are the documents a cover pointer may lead through.
+var documentExtensions = map[string]bool{
+	".xhtml": true, ".html": true, ".htm": true, ".xml": true, ".svg": true,
+}
+
+func isImage(name string) bool {
+	return coverImageExtensions[strings.ToLower(path.Ext(name))]
+}
+
+func isDocument(name string) bool {
+	return documentExtensions[strings.ToLower(path.Ext(name))]
+}
+
+// mentionsCover reports whether a name says, in the only way a file name can,
+// that it is the cover.
+func mentionsCover(name string) bool {
+	return strings.Contains(strings.ToLower(name), "cover")
 }
 
 // WordCount counts the words in the spine documents, in spine order.
@@ -447,17 +636,33 @@ func (r *Reader) WordCount() (int, error) {
 
 // resolve turns a manifest href into an archive path.
 func (r *Reader) resolve(href string) string {
+	return r.resolveFrom(r.opfDir, href)
+}
+
+// remoteHref matches an href that names something outside the archive: an http
+// URL, or the data: URI a generator inlines a placeholder image as.
+var remoteHref = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9+.-]*:`)
+
+// resolveFrom turns an href into an archive path, relative to the directory of
+// whatever document it was written in — the package for a manifest href, the
+// page itself for an image inside one.
+func (r *Reader) resolveFrom(dir, href string) string {
 	if index := strings.IndexAny(href, "#?"); index >= 0 {
 		href = href[:index]
 	}
 	if decoded, err := url.PathUnescape(href); err == nil {
 		href = decoded
 	}
-	if r.opfDir == "." || r.opfDir == "/" {
+
+	href = strings.TrimSpace(href)
+	if href == "" || remoteHref.MatchString(href) {
+		return ""
+	}
+	if dir == "." || dir == "/" || dir == "" {
 		return path.Clean(href)
 	}
 
-	return path.Join(r.opfDir, href)
+	return path.Join(dir, href)
 }
 
 func (r *Reader) readFile(name string) ([]byte, error) {

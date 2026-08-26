@@ -255,6 +255,210 @@ func TestCoverIsOptional(t *testing.T) {
 	}
 }
 
+// The cover tests below are shapes taken from a real shelf. Every one of them
+// is a book that shows a cover in every other reader, and showed a blank here.
+
+// coverPackage assembles a package document out of the pieces the cover
+// fallbacks care about.
+func coverPackage(metadata, manifest, spine, guide string) string {
+	return `<?xml version="1.0"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="2.0">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:title>Zeit des Sturms</dc:title>
+` + metadata + `
+  </metadata>
+  <manifest>
+` + manifest + `
+  </manifest>
+  <spine>
+` + spine + `
+  </spine>
+` + guide + `
+</package>`
+}
+
+// coverOf builds a book from a package document and whatever files it names,
+// and returns what the reader makes of its cover.
+func coverOf(t testing.TB, pkg string, files ...entry) (string, string) {
+	t.Helper()
+
+	entries := append([]entry{
+		{name: "META-INF/container.xml", content: container},
+		{name: "OEBPS/content.opf", content: pkg},
+	}, files...)
+
+	book := build(t, entries)
+	reader, err := epub.Open(book, int64(book.Len()))
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+
+	name, data, err := reader.Cover()
+	if err != nil {
+		t.Fatalf("Cover: %v", err)
+	}
+
+	return name, string(data)
+}
+
+// The content of <meta name="cover"> is supposed to be a manifest id. A good
+// number of books put the href there instead, and every reader takes it.
+func TestCoverFromAMetaHref(t *testing.T) {
+	pkg := coverPackage(
+		`<meta name="cover" content="images/cover.jpg"/>`,
+		`<item id="cover.jpg" href="images/cover.jpg" media-type="image/jpeg"/>`,
+		`<itemref idref="cover.jpg"/>`, "")
+
+	name, data := coverOf(t, pkg, entry{name: "OEBPS/images/cover.jpg", content: "jpeg bytes"})
+	if name != "OEBPS/images/cover.jpg" || data != "jpeg bytes" {
+		t.Errorf("cover is %q / %q", name, data)
+	}
+}
+
+// The pointer names the page that shows the cover rather than the image, which
+// is what a reader displays anyway.
+func TestCoverThroughACoverPage(t *testing.T) {
+	pkg := coverPackage(
+		`<meta name="cover" content="titlepage"/>`,
+		`<item id="titlepage" href="Text/titlepage.xhtml" media-type="application/xhtml+xml"/>
+     <item id="cover0001" href="Images/cover0001.jpeg" media-type="image/jpeg"/>`,
+		`<itemref idref="titlepage"/>`, "")
+
+	page := `<?xml version="1.0"?>
+<html xmlns="http://www.w3.org/1999/xhtml"><body>
+  <p><img src="../Images/cover0001.jpeg" alt="Cover"/></p>
+</body></html>`
+
+	name, data := coverOf(t, pkg,
+		entry{name: "OEBPS/Text/titlepage.xhtml", content: page},
+		entry{name: "OEBPS/Images/cover0001.jpeg", content: "jpeg bytes"})
+	if name != "OEBPS/Images/cover0001.jpeg" || data != "jpeg bytes" {
+		t.Errorf("cover is %q / %q", name, data)
+	}
+}
+
+// Calibre draws its cover page as an SVG, where the image is an <image> with an
+// xlink:href rather than an <img> with a src.
+func TestCoverThroughAnSVGCoverPage(t *testing.T) {
+	pkg := coverPackage("",
+		`<item id="cover" href="cover.xhtml" media-type="application/xhtml+xml"/>
+     <item id="art" href="images/front.png" media-type="image/png"/>`,
+		`<itemref idref="cover"/>`,
+		`<guide><reference type="cover" title="Cover" href="cover.xhtml"/></guide>`)
+
+	page := `<?xml version="1.0"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:svg="http://www.w3.org/2000/svg"><body>
+  <svg:svg viewBox="0 0 600 900"><svg:image width="600" height="900"
+    xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="images/front.png"/></svg:svg>
+</body></html>`
+
+	name, data := coverOf(t, pkg,
+		entry{name: "OEBPS/cover.xhtml", content: page},
+		entry{name: "OEBPS/images/front.png", content: "png bytes"})
+	if name != "OEBPS/images/front.png" || data != "png bytes" {
+		t.Errorf("cover is %q / %q", name, data)
+	}
+}
+
+// Nothing declares the cover, but the manifest calls an image one. Project
+// Gutenberg and a good many Calibre exports look like this.
+func TestCoverFromANamedManifestImage(t *testing.T) {
+	pkg := coverPackage("",
+		`<item id="b1_cover" href="b1/001.xhtml" media-type="application/xhtml+xml"/>
+     <item id="b1_cover-image" href="b1/images/cover.jpeg" media-type="image/jpeg"/>
+     <item id="b1_logo" href="b1/images/logo.jpeg" media-type="image/jpeg"/>`,
+		`<itemref idref="b1_cover"/>`, "")
+
+	name, _ := coverOf(t, pkg,
+		entry{name: "OEBPS/b1/001.xhtml", content: chapter(3)},
+		entry{name: "OEBPS/b1/images/cover.jpeg", content: "jpeg bytes"},
+		entry{name: "OEBPS/b1/images/logo.jpeg", content: "not the cover"})
+	if name != "OEBPS/b1/images/cover.jpeg" {
+		t.Errorf("cover is %q", name)
+	}
+}
+
+// Nothing says anything, so the page the book opens on has to answer for it.
+func TestCoverFromTheFirstPage(t *testing.T) {
+	pkg := coverPackage("",
+		`<item id="first" href="content/page1.xhtml" media-type="application/xhtml+xml"/>
+     <item id="art" href="content/resources/index-1_1_0.jpg" media-type="image/jpeg"/>`,
+		`<itemref idref="first"/>`, "")
+
+	page := `<?xml version="1.0"?>
+<html xmlns="http://www.w3.org/1999/xhtml"><body>
+  <div><img src="resources/index-1_1_0.jpg"/></div>
+</body></html>`
+
+	name, data := coverOf(t, pkg,
+		entry{name: "OEBPS/content/page1.xhtml", content: page},
+		entry{name: "OEBPS/content/resources/index-1_1_0.jpg", content: "jpeg bytes"})
+	if name != "OEBPS/content/resources/index-1_1_0.jpg" || data != "jpeg bytes" {
+		t.Errorf("cover is %q / %q", name, data)
+	}
+}
+
+// Project Gutenberg names a chapter as its cover and the real cover in the
+// guide. Following the pointers in order would hang an illustration from the
+// middle of the book on the shelf.
+func TestCoverPrefersADeclaredImageToAPage(t *testing.T) {
+	pkg := coverPackage(
+		`<meta name="cover" content="item78"/>`,
+		`<item id="item78" href="chapter-2.htm" media-type="application/xhtml+xml"/>
+     <item id="item1" href="images/icover.jpg" media-type="image/jpeg"/>
+     <item id="item9" href="images/i295.jpg" media-type="image/jpeg"/>`,
+		`<itemref idref="item78"/>`,
+		`<guide><reference type="cover" title="Cover Image" href="images/icover.jpg"/></guide>`)
+
+	page := `<?xml version="1.0"?>
+<html xmlns="http://www.w3.org/1999/xhtml"><body><img src="images/i295.jpg"/></body></html>`
+
+	name, data := coverOf(t, pkg,
+		entry{name: "OEBPS/chapter-2.htm", content: page},
+		entry{name: "OEBPS/images/icover.jpg", content: "the cover"},
+		entry{name: "OEBPS/images/i295.jpg", content: "an illustration"})
+	if name != "OEBPS/images/icover.jpg" || data != "the cover" {
+		t.Errorf("cover is %q / %q", name, data)
+	}
+}
+
+// A pointer at something that is not a picture is not a cover. One book in the
+// reference library names its stylesheet.
+func TestCoverIgnoresAPointerAtSomethingElse(t *testing.T) {
+	pkg := coverPackage(
+		`<meta name="cover" content="item60"/>`,
+		`<item id="item60" href="1.css" media-type="text/css"/>
+     <item id="one" href="text/one.xhtml" media-type="application/xhtml+xml"/>`,
+		`<itemref idref="one"/>`, "")
+
+	name, _ := coverOf(t, pkg,
+		entry{name: "OEBPS/1.css", content: "body { margin: 0 }"},
+		entry{name: "OEBPS/text/one.xhtml", content: chapter(10)})
+	if name != "" {
+		t.Errorf("cover is %q, want none", name)
+	}
+}
+
+// A cover page may point out of the archive entirely. Whatever that is, it is
+// not something this server can store.
+func TestCoverIgnoresAnImageFromElsewhere(t *testing.T) {
+	pkg := coverPackage("",
+		`<item id="cover" href="cover.xhtml" media-type="application/xhtml+xml"/>`,
+		`<itemref idref="cover"/>`,
+		`<guide><reference type="cover" href="cover.xhtml"/></guide>`)
+
+	page := `<?xml version="1.0"?>
+<html xmlns="http://www.w3.org/1999/xhtml"><body>
+  <img src="https://example.invalid/cover.jpg"/>
+  <img src="data:image/gif;base64,R0lGODlhAQABAAAAACw="/>
+</body></html>`
+
+	name, _ := coverOf(t, pkg, entry{name: "OEBPS/cover.xhtml", content: page})
+	if name != "" {
+		t.Errorf("cover is %q, want none", name)
+	}
+}
+
 func TestOpenRejectsNonEPUB(t *testing.T) {
 	book := build(t, []entry{{name: "readme.txt", content: "just a zip"}})
 

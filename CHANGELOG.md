@@ -31,6 +31,12 @@ over, see [docs/migration.md](docs/migration.md).
 ### Removed
 
 ### Fixed
+- Covers are found in books that declare them the way books actually do, rather than only the two
+  ways the standards describe. A `<meta name="cover">` naming the file instead of the manifest
+  entry, a guide pointing at the cover, a cover page holding the picture, an image the manifest
+  itself calls a cover, and failing all of that the page the book opens on: on a shelf of 273 real
+  books this fills in 15 that showed a placeholder, three of which had been pointing at a chapter
+  or a stylesheet. Books already in the library keep the cover they were uploaded with
 
 ### Security
 
