@@ -25,6 +25,11 @@ over, see [docs/migration.md](docs/migration.md).
 
 ---
 
+## [26.08.1] - 2026-08-26
+
+### Fixed
+- Docker Container used `/pb_data` instead of `/data` as mountable data directory
+
 ## [26.08.0] - 2026-08-17
 
 A rewrite on top of [PocketBase](https://pocketbase.io). Everything a device does is unchanged, so
@@ -236,7 +241,8 @@ Do **NOT** update from before `2026.05.0` to this version (`2026.06.0`), otherwi
 
 Initial Release
 
-[Unreleased]: https://git.obth.eu/atjontv/kosync/compare/v26.08.0...main
+[Unreleased]: https://git.obth.eu/atjontv/kosync/compare/v26.08.1...development
+[26.08.1]: https://git.obth.eu/atjontv/kosync/compare/v26.08.0...v26.08.1
 [26.08.0]: https://git.obth.eu/atjontv/kosync/compare/v26.05.0...v26.08.0
 [26.05.0]: https://git.obth.eu/atjontv/kosync/compare/v2026.05.0...v26.05.0
 [2026.06.0]: https://git.obth.eu/atjontv/kosync/compare/v2026.05.0...v2026.06.0

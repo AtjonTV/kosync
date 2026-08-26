@@ -42,7 +42,7 @@ import (
 )
 
 // Version of the server.
-const Version = "26.08.0"
+const Version = "26.08.1"
 
 //go:generate go generate ./internal/webui
 
