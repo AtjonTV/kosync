@@ -1,0 +1,199 @@
+stages:
+  - validate
+  - test
+  - audit
+  - build
+  - analyze
+
+variables:
+  GO_VERSION: 1.26.6-alpine3.23
+  BEARER_VERSION: 2.0.1
+  WWHRD_VERSION: 9ccc2ff
+  STATICCHECK_VERSION: 2026.1
+  ALPINE_VERSION: 3.23
+  BUN_VERSION: 1.3.13
+  SONARSOURCE_VERSION: 12.1.0.3225_8.0.1
+  GOVULNCHECK_VERSION: v1.3.0
+  GOPATH: ${CI_PROJECT_DIR}/.go
+
+image: golang:${GO_VERSION}
+
+# Go module and Bun caches, keyed on the lock files so a dependency bump
+# invalidates them.
+.go-cache: &go-cache
+  cache:
+    key:
+      files:
+        - server/go.sum
+    paths:
+      - .go/pkg/mod
+
+.bun-cache: &bun-cache
+  cache:
+    key:
+      files:
+        - webui/bun.lock
+    paths:
+      - webui/node_modules
+
+gofmt:
+  stage: validate
+  script:
+    - cd server
+    - test -z "$(gofmt -l .)" || (gofmt -l . && echo "run 'gofmt -w .'" && exit 1)
+
+govet:
+  stage: validate
+  <<: *go-cache
+  script:
+    - cd server && go vet ./...
+
+staticcheck:
+  stage: validate
+  <<: *go-cache
+  allow_failure: true # Allow failure so other stages also run, but issues are still shown in the pipeline overview.
+  before_script:
+    - go install honnef.co/go/tools/cmd/staticcheck@${STATICCHECK_VERSION}
+  script:
+    - cd server && ${GOPATH}/bin/staticcheck ./...
+
+bearer:
+  stage: validate
+  image:
+    name: bearer/bearer:${BEARER_VERSION}
+    entrypoint: [""]
+  allow_failure: true # Allow failure so other stages also run, but a "high" severity is still shown in the pipeline overview.
+  script: bearer scan . --format html --output bearer-report.html --fail-on-severity high
+  artifacts:
+    when: always
+    paths:
+      - bearer-report.html
+
+wwhrd:
+  stage: validate
+  <<: *go-cache
+  allow_failure: true # Allow failure so other stages also run, but issues are still shown in the pipeline overview.
+  before_script:
+    - go install github.com/frapposelli/wwhrd@${WWHRD_VERSION}
+    - cd server && go mod vendor
+  script:
+    - ${GOPATH}/bin/wwhrd check
+
+webui-lint:
+  stage: validate
+  image: oven/bun:${BUN_VERSION}-alpine
+  <<: *bun-cache
+  before_script:
+    # vue-tsc type checks .vue files by patching the TypeScript compiler as it
+    # is required, through fs.readFileSync. Bun's module loader does not read
+    # modules through that API, so under Bun the patch never applies, vue-tsc
+    # silently degrades to plain tsc and every ".vue" import fails to resolve.
+    # Node is therefore needed for the type check, and only for the type check:
+    # vitest, oxlint, eslint and the vite build all run fine under Bun.
+    - apk add --no-cache nodejs
+    - cd webui && bun install --frozen-lockfile
+  script:
+    - node --version
+    - bun run type-check
+    - bun run lint:oxlint --deny-warnings
+    - bun run lint:eslint --max-warnings 0
+
+tests:
+  stage: test
+  <<: *go-cache
+  script:
+    - cd server
+    - go test -coverprofile=coverage.out -json ./... > test-report.json
+    - go tool cover -func coverage.out
+  coverage: '/total:\s+\(statements\)\s+\d+.\d+%/'
+  artifacts:
+    when: always
+    paths:
+      - server/coverage.out
+      - server/test-report.json
+
+webui-tests:
+  stage: test
+  image: oven/bun:${BUN_VERSION}-alpine
+  <<: *bun-cache
+  before_script:
+    - cd webui && bun install --frozen-lockfile
+  script:
+    - bun run test --coverage
+  coverage: '/^All files\s*\|\s*([\d.]+)/'
+  artifacts:
+    when: always
+    paths:
+      - webui/coverage/
+
+govulncheck:
+  stage: audit
+  <<: *go-cache
+  allow_failure: true # Allow failure so other stages also run, but issues are still shown in the pipeline overview.
+  before_script:
+    - go install golang.org/x/vuln/cmd/govulncheck@${GOVULNCHECK_VERSION}
+  script:
+    - cd server && ${GOPATH}/bin/govulncheck ./...
+
+bun-audit:
+  stage: audit
+  image: oven/bun:${BUN_VERSION}-alpine
+  <<: *bun-cache
+  allow_failure: true # Allow failure so other stages also run, but issues are still shown in the pipeline overview.
+  before_script:
+    - cd webui && bun install --frozen-lockfile
+  script:
+    - bun audit
+
+compile:
+  stage: build
+  <<: *go-cache
+  before_script:
+    - echo -e "https://lsus.obth.eu/alpine/v${ALPINE_VERSION}/main\nhttps://lsus.obth.eu/alpine/v${ALPINE_VERSION}/community" > /etc/apk/repositories
+    - apk add --cache=no nodejs npm && npm install -g bun@${BUN_VERSION}
+  script:
+    - cd server && go run build.go
+  artifacts:
+    paths:
+      - server/kosync
+
+build-image:
+  stage: build
+  rules: # always build on tags, otherwise don't
+    - if: $CI_COMMIT_TAG
+      when: always
+    - when: never
+  image: docker:cli
+  services:
+    - docker:dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker context create tls-environment
+    - docker buildx create --use --driver docker-container --name builder tls-environment
+    - docker buildx inspect --bootstrap
+  script:
+    - docker buildx build -f deployment/ci.Dockerfile --platform linux/amd64 --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG --load .
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG
+  after_script:
+    - docker buildx rm builder
+
+# Run sonarqube after compile
+sonarqube:
+  stage: analyze
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  image:
+    name: sonarsource/sonar-scanner-cli:${SONARSOURCE_VERSION}
+    entrypoint: [""]
+  allow_failure: true
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar" # Defines the location of the analysis task cache
+    GIT_DEPTH: "0" # Tells git to fetch all the branches of the project, required by the analysis task
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+      - .sonar/cache
+  script:
+    - sonar-scanner -Dsonar.host.url="${SONAR_HOST_URL}"

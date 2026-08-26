@@ -1,0 +1,28 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.go]
+indent_style = tab
+indent_size = 4
+
+[*.{js,jsx,mjs,cjs,ts,tsx,mts,cts,vue,css,scss,sass,less,styl}]
+max_line_length = 100
+
+# Markdown gives a hard line break to two trailing spaces, so they are content
+# here and must survive a save.
+[*.md]
+max_line_length = 100
+trim_trailing_whitespace = false
+
+[Dockerfile*]
+indent_size = 4
+
+[*.{lock,lockb}]
+insert_final_newline = false

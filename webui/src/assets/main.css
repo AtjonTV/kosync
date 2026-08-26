@@ -1,0 +1,10 @@
+/*
+ * File:        webui/src/assets/main.css
+ * Project:     https://git.obth.eu/atjontv/kosync
+ * Copyright:   © 2025-2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
+ */
+
+@import 'tailwindcss';
+@import 'tailwindcss-primeui';
+
+@custom-variant dark (&:where(.p-dark, .p-dark *));

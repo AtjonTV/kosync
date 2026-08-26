@@ -1,0 +1,395 @@
+//
+// File:        internal/opds/opds.go
+// Project:     https://git.obth.eu/atjontv/kosync
+// Copyright:   © 2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
+//
+
+// Package opds serves the library as an OPDS 2.0 catalog.
+//
+// OPDS is how a reading device browses and downloads from a library it does not
+// hold, and KOReader speaks it. Serving one turns the library from something to
+// look at in a browser into somewhere a device gets its books — and, because a
+// book downloaded from here is the very file the server holds, into the way to
+// make a device's progress pushes recognisable before the first one arrives.
+//
+// The route group is "/opds" rather than "/koreader/opds": the "/koreader"
+// prefix exists to isolate that reader's own header protocol, while this is a
+// standard other readers speak too, and the path should not claim otherwise.
+package opds
+
+import (
+	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
+
+	"git.obth.eu/atjontv/kosync/internal/config"
+	"git.obth.eu/atjontv/kosync/internal/schema"
+	"github.com/pocketbase/pocketbase/core"
+)
+
+// RoutePrefix is where the catalog lives.
+const RoutePrefix = "/opds"
+
+// Query parameters the catalog understands.
+const (
+	pageParam  = "page"
+	queryParam = "query"
+	facetParam = "facet"
+	valueParam = "value"
+)
+
+// CatalogTitle is the name of the whole catalog.
+const CatalogTitle = "KOsync library"
+
+// Handler serves the catalog.
+type Handler struct {
+	app      core.App
+	conf     *config.Config
+	auth     Authenticator
+	renderer Renderer
+}
+
+// NewHandler creates the catalog handler.
+func NewHandler(app core.App, conf *config.Config, auth Authenticator) *Handler {
+	return &Handler{
+		app:      app,
+		conf:     conf,
+		auth:     auth,
+		renderer: JSONRenderer{},
+	}
+}
+
+// Register mounts the catalog, unless it is turned off.
+func Register(app core.App, conf *config.Config, auth Authenticator) *Handler {
+	if !conf.EnableOpds {
+		return nil
+	}
+
+	handler := NewHandler(app, conf, auth)
+
+	app.OnServe().BindFunc(func(se *core.ServeEvent) error {
+		handler.Mount(se)
+		return se.Next()
+	})
+
+	return handler
+}
+
+// Mount registers the routes on the given serve event.
+func (h *Handler) Mount(se *core.ServeEvent) {
+	group := se.Router.Group(RoutePrefix)
+	group.BindFunc(h.requireDevice)
+
+	group.GET("", h.root)
+	// A catalog address is typed into a device by hand or pasted from
+	// somewhere, and it arrives with a trailing slash about as often as not.
+	group.GET("/", h.rootOrNotFound)
+	group.GET("/search", h.search)
+	group.GET("/by", h.byValue)
+	// Shelves and navigation feeds share one pattern rather than having one
+	// each. Two patterns that differ only in the name of their wildcard are the
+	// same pattern to the router, and registering both is a panic at start up.
+	group.GET("/{shelf}", h.section)
+	group.GET("/books/{id}/download/{filename}", h.download)
+	group.GET("/books/{id}/cover", h.cover)
+	group.GET("/books/{id}/thumbnail", h.thumbnail)
+}
+
+// root is the catalog's entry point: the shelves, and how to search them.
+func (h *Handler) root(e *core.RequestEvent) error {
+	at := urls{base: baseURL(e)}
+
+	feed := &Feed{
+		Id:    at.root(),
+		Title: CatalogTitle,
+		Links: []Link{
+			{Rel: RelSelf, Href: at.root(), Type: MediaFeed},
+			{Rel: RelStart, Href: at.root(), Type: MediaFeed},
+			{Rel: RelSearch, Href: at.searchTemplate(), Type: MediaFeed, Templated: true},
+		},
+	}
+
+	for _, entry := range shelves {
+		feed.Navigation = append(feed.Navigation, Link{
+			Rel:   RelSubsection,
+			Href:  at.shelf(entry.Slug, 1),
+			Type:  MediaFeed,
+			Title: entry.Title,
+		})
+	}
+
+	// A facet with nothing in it is left off rather than offered and then found
+	// empty: a library with no series in it should not have a series shelf, and
+	// finding that out costs a reader two round trips on a device where each one
+	// is a visible pause.
+	for _, entry := range facets {
+		_, total, err := entry.groups(h.app, ownerFrom(e), 0, 0)
+		if err != nil {
+			return e.InternalServerError("Failed to read the library.", err)
+		}
+		if total == 0 {
+			continue
+		}
+
+		feed.Navigation = append(feed.Navigation, Link{
+			Rel:   RelSubsection,
+			Href:  at.facet(entry.Slug, 1),
+			Type:  MediaFeed,
+			Title: entry.Title,
+		})
+	}
+
+	return h.write(e, feed)
+}
+
+// rootOrNotFound answers the trailing slash form of the catalog address.
+//
+// The router treats "/opds/" as a subtree, so anything deeper that matched no
+// more specific route lands here as well and is refused rather than being
+// quietly answered with the front page.
+func (h *Handler) rootOrNotFound(e *core.RequestEvent) error {
+	if strings.TrimSuffix(e.Request.URL.Path, "/") != RoutePrefix {
+		return e.NotFoundError("No such part of the catalog.", nil)
+	}
+
+	return h.root(e)
+}
+
+// section serves whatever lives under one name: a shelf of books, or a
+// navigation feed of the values the library can be broken up by.
+func (h *Handler) section(e *core.RequestEvent) error {
+	slug := e.Request.PathValue("shelf")
+
+	if entry, found := findShelf(slug); found {
+		return h.shelf(e, entry)
+	}
+	if entry, found := findFacet(slug); found {
+		return h.facet(e, entry)
+	}
+
+	return e.NotFoundError("No such part of the catalog.", nil)
+}
+
+// shelf serves one page of one list of books.
+func (h *Handler) shelf(e *core.RequestEvent, entry shelf) error {
+	at := urls{base: baseURL(e)}
+	page := pageNumber(e)
+	size := h.conf.OpdsPageSize
+
+	records, total, err := entry.list(h.app, ownerFrom(e), (page-1)*size, size)
+	if err != nil {
+		return e.InternalServerError("Failed to read the library.", err)
+	}
+
+	feed := h.feed(at, entry.Title, records, &Page{Number: page, Size: size, Total: total}, ownerFrom(e))
+	feed.Id = at.shelf(entry.Slug, 1)
+	feed.Links = append(feed.Links, pagination(func(number int) string {
+		return at.shelf(entry.Slug, number)
+	}, feed.Page)...)
+
+	return h.write(e, feed)
+}
+
+// facet serves one page of a navigation feed: the authors, the series or the
+// languages, each pointing at the books under it.
+func (h *Handler) facet(e *core.RequestEvent, entry facet) error {
+	at := urls{base: baseURL(e)}
+	page := pageNumber(e)
+	size := h.conf.OpdsPageSize
+
+	groups, total, err := entry.groups(h.app, ownerFrom(e), (page-1)*size, size)
+	if err != nil {
+		return e.InternalServerError("Failed to read the library.", err)
+	}
+
+	feed := &Feed{
+		Id:    at.facet(entry.Slug, 1),
+		Title: entry.Title,
+		Page:  &Page{Number: page, Size: size, Total: total},
+		Links: []Link{
+			{Rel: RelStart, Href: at.root(), Type: MediaFeed},
+			{Rel: RelSearch, Href: at.searchTemplate(), Type: MediaFeed, Templated: true},
+		},
+	}
+
+	for _, one := range groups {
+		feed.Navigation = append(feed.Navigation, Link{
+			Rel:  RelSubsection,
+			Href: at.group(entry.Slug, one.Value, 1),
+			Type: MediaFeed,
+			// The count is in the title because that is the only place a reader
+			// is certain to show it. OPDS 2.0 has a properties field for it that
+			// the clients this serves ignore, and a list of a hundred names is
+			// far easier to skim when the long ones stand out.
+			Title: fmt.Sprintf("%s (%d)", one.Title, one.Count),
+		})
+	}
+
+	feed.Links = append(feed.Links, pagination(func(number int) string {
+		return at.facet(entry.Slug, number)
+	}, feed.Page)...)
+
+	return h.write(e, feed)
+}
+
+// byValue serves the books under one entry of a navigation feed.
+//
+// The value is in the query string rather than the path because it is somebody
+// else's text: author names carry slashes, dots and every kind of punctuation,
+// and a path segment that has to survive a reader, a proxy and a router without
+// any of them normalising it away is a much narrower target than a parameter.
+func (h *Handler) byValue(e *core.RequestEvent) error {
+	query := e.Request.URL.Query()
+
+	entry, found := findFacet(query.Get(facetParam))
+	if !found {
+		return e.NotFoundError("No such part of the catalog.", nil)
+	}
+
+	value := query.Get(valueParam)
+	if value == "" {
+		return e.NotFoundError("No such part of the catalog.", nil)
+	}
+
+	at := urls{base: baseURL(e)}
+	page := pageNumber(e)
+	size := h.conf.OpdsPageSize
+
+	records, total, err := entry.list(h.app, ownerFrom(e), value, (page-1)*size, size)
+	if err != nil {
+		return e.InternalServerError("Failed to read the library.", err)
+	}
+	if total == 0 {
+		// Nothing is under this value, which for a link that came out of a
+		// navigation feed means it no longer exists.
+		return e.NotFoundError("No such part of the catalog.", nil)
+	}
+
+	feed := h.feed(at, entry.heading(h.app, ownerFrom(e), value), records,
+		&Page{Number: page, Size: size, Total: total}, ownerFrom(e))
+	feed.Id = at.group(entry.Slug, value, 1)
+	feed.Links = append(feed.Links, pagination(func(number int) string {
+		return at.group(entry.Slug, value, number)
+	}, feed.Page)...)
+
+	return h.write(e, feed)
+}
+
+// search serves the result of a title and author search.
+func (h *Handler) search(e *core.RequestEvent) error {
+	query := strings.TrimSpace(e.Request.URL.Query().Get(queryParam))
+	at := urls{base: baseURL(e)}
+
+	if query == "" {
+		// An empty search is not an error: a client that follows the template
+		// without filling it in gets the catalog's entry point back.
+		return e.Redirect(http.StatusFound, at.root())
+	}
+
+	page := pageNumber(e)
+	size := h.conf.OpdsPageSize
+
+	records, total, err := listSearch(h.app, ownerFrom(e), query, (page-1)*size, size)
+	if err != nil {
+		return e.InternalServerError("Failed to search the library.", err)
+	}
+
+	feed := h.feed(at, "Search: "+query, records, &Page{Number: page, Size: size, Total: total}, ownerFrom(e))
+	feed.Id = at.search(query, 1)
+	feed.Links = append(feed.Links, pagination(func(number int) string {
+		return at.search(query, number)
+	}, feed.Page)...)
+
+	return h.write(e, feed)
+}
+
+// feed builds the common part of every list of books.
+func (h *Handler) feed(at urls, title string, records []*core.Record, page *Page, owner string) *Feed {
+	feed := &Feed{
+		Title: title,
+		Page:  page,
+		Links: []Link{
+			{Rel: RelStart, Href: at.root(), Type: MediaFeed},
+			{Rel: RelSearch, Href: at.searchTemplate(), Type: MediaFeed, Templated: true},
+		},
+	}
+
+	if len(records) == 0 {
+		return feed
+	}
+
+	with := loadDetails(h.app, owner, at)
+	for _, record := range records {
+		feed.Publications = append(feed.Publications, publicationOf(record, with))
+	}
+
+	return feed
+}
+
+// pagination returns the self and neighbour links of one page.
+//
+// The first and last links are always there, and next and previous only where
+// there is somewhere to go, which is how a client knows it has reached an end
+// without counting.
+func pagination(address func(page int) string, page *Page) []Link {
+	count := page.Count()
+
+	links := []Link{{Rel: RelSelf, Href: address(page.Number), Type: MediaFeed}}
+	if count < 2 {
+		return links
+	}
+
+	links = append(links,
+		Link{Rel: RelFirst, Href: address(1), Type: MediaFeed},
+		Link{Rel: RelLast, Href: address(count), Type: MediaFeed},
+	)
+	if page.Number > 1 {
+		links = append(links, Link{Rel: RelPrevious, Href: address(page.Number - 1), Type: MediaFeed})
+	}
+	if page.Number < count {
+		links = append(links, Link{Rel: RelNext, Href: address(page.Number + 1), Type: MediaFeed})
+	}
+
+	return links
+}
+
+// pageNumber reads the requested page, which is one based and defaults to the
+// first. Anything unreadable is the first page rather than an error: a catalog
+// should not refuse to open over a mistyped query string.
+func pageNumber(e *core.RequestEvent) int {
+	page, err := strconv.Atoi(e.Request.URL.Query().Get(pageParam))
+	if err != nil || page < 1 {
+		return 1
+	}
+
+	return page
+}
+
+// write renders a feed with the configured renderer.
+func (h *Handler) write(e *core.RequestEvent, feed *Feed) error {
+	body, err := h.renderer.Render(feed)
+	if err != nil {
+		return e.InternalServerError("Failed to build the catalog feed.", err)
+	}
+
+	return e.Blob(http.StatusOK, h.renderer.ContentType(), body)
+}
+
+// findBook loads a book of the authenticated account.
+//
+// A book belonging to somebody else answers 404, the same as one that does not
+// exist, so the catalog cannot be used to find out what other people own.
+func (h *Handler) findBook(e *core.RequestEvent) (*core.Record, error) {
+	id := e.Request.PathValue("id")
+	if id == "" {
+		return nil, e.NotFoundError("No book requested.", nil)
+	}
+
+	record, err := h.app.FindRecordById(schema.CollectionBooks, id)
+	if err != nil || record.GetString(schema.FieldOwner) != ownerFrom(e) {
+		return nil, e.NotFoundError("No such book.", nil)
+	}
+
+	return record, nil
+}

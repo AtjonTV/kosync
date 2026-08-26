@@ -1,0 +1,45 @@
+{
+  "note": "The author folding rule, as cases both implementations must agree on. Read by server/internal/books/authors_test.go and webui/src/tests/lib/grouping.test.ts. The rule is written twice — once in Go for the OPDS catalog, once in TypeScript for the web library — and this file is what makes a change to one of them fail the other one's tests.",
+
+  "display": {
+    "Child, Lee": "Lee Child",
+    "Gabaldon, Diana": "Diana Gabaldon",
+    "Rowling, J.K.": "J.K. Rowling",
+    "Sigurðardóttir, Lilja": "Lilja Sigurðardóttir",
+    "O'Leary, Anabel": "Anabel O'Leary",
+    "de la Cruz, Melissa": "Melissa de la Cruz",
+    "Martin, George, R. R.": "George R. R. Martin",
+    "  Child ,  Lee  ": "Lee Child",
+
+    "Lee Child": "Lee Child",
+    "J.K. Rowling": "J.K. Rowling",
+    "村上春樹": "村上春樹",
+    "": "",
+
+    "Corinna Mieth, Simon Weber, Rainer Schäfer, Anna Schriefl": "Corinna Mieth, Simon Weber, Rainer Schäfer, Anna Schriefl",
+    "Penguin Random House, LLC": "Penguin Random House, LLC",
+    "Smith, Jr.": "Smith, Jr.",
+    "King, PhD": "King, PhD",
+    "Child,": "Child,",
+    ", Lee": ", Lee"
+  },
+
+  "sameAuthor": [
+    ["Lee Child", "Child, Lee", "CHILD, LEE", "Lee  Child"],
+    ["George R. R. Martin", "George R.R. Martin", "Martin, George, R. R."],
+    ["J. K. Rowling", "J.K. Rowling", "Rowling, J.K."],
+    ["Diana Gabaldon", "Gabaldon, Diana"],
+    ["Pottermore Publishing", "Publishing, Pottermore"]
+  ],
+
+  "differentAuthors": [
+    ["Lee Child", "Lee Childs"],
+    ["Lee Child", "Lincoln Child"],
+    ["George R. R. Martin", "George Martin"],
+    ["Andrzej Sapkowski", "Andrew Sapkowski"],
+    ["村上春樹", "東野圭吾"],
+    ["Александр Пушкин", "Лев Толстой"]
+  ],
+
+  "noKey": ["", "   ", "---", ".,.", ","]
+}
