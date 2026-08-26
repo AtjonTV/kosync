@@ -306,6 +306,10 @@ const (
 // The shelf's own name is FieldName, shared with the devices collection because
 // it means the same thing there: what its owner chose to call the thing.
 //
+// FieldDescription is shared with the books collection in the same way. On a
+// shelf it is what its owner wrote about it; on a book it is the publisher's
+// blurb, read out of the file. Both are prose about the thing they hang off.
+//
 // FieldBooks is what is on the shelf, in the order it was put there. A relation
 // field keeps the order of its ids, and that order is half the point of a
 // hand-made shelf: a reading list is a sequence, not a set.

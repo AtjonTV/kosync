@@ -24,8 +24,21 @@ over, see [docs/migration.md](docs/migration.md).
   being downloaded, deleted and uploaded again, which would take the reading progress with it; a
   book whose file genuinely holds no cover is looked at and left alone. The pass also runs shortly
   after startup, so an upgrade shows on the shelves the same evening
+- The publisher's blurb, read out of the book's `dc:description` and shown under "About this book"
+  on the book page. It also leads the description the OPDS catalog hands a device, above where the
+  reading stands, so the question "what is this one about" can be asked from the reader as well.
+  Most files carry no blurb at all — the reference library is mostly without one — and a book that
+  has none simply shows nothing rather than an empty heading
+- The blurb of every book already in the library, read on upgrade. The migration opens each stored
+  file once, which on a library of a couple of hundred books is a minute or so of one-time work,
+  and it is that or a shelf where only the books uploaded from today on say anything about
+  themselves. A description that somebody typed is never overwritten, and a book whose file cannot
+  be read is logged and left alone
 
 ### Changed
+- The description a device sees under "book information" in the catalog leads with the book's own
+  blurb when it has one. Where the reading stands follows it rather than being replaced by it: on a
+  shelf browsed from a second device, both are worth saying
 - The reading time on the dashboard is broken into hours and minutes ("33 h 30 min") rather than
   written as a number of minutes: a month of reading runs to four figures of them, and "2010 min"
   has to be divided in the head before it means anything. This is the form the book page has always

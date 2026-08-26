@@ -70,6 +70,13 @@ export interface Book extends BaseRecord {
   authors: string[]
   language: string
   identifiers: Record<string, string>
+  /**
+   * The publisher's blurb, as plain text with a blank line between paragraphs.
+   * Read out of the file's `dc:description`, which most books do not carry, and
+   * editable afterwards like the title is. Never markup: the server strips it,
+   * so nothing here has to render it.
+   */
+  description: string
   /** The series this volume belongs to, empty if it belongs to none. */
   series: string
   /** Where in that series it sits. Not an integer: half-numbered volumes exist. */

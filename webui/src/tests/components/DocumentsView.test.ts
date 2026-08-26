@@ -65,6 +65,7 @@ function book(): Book {
     authors: [],
     language: 'de',
     identifiers: {},
+    description: '',
     series: '',
     series_index: 0,
     subjects: null,

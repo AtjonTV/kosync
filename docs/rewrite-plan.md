@@ -1183,6 +1183,13 @@ which on a shelf being browsed from a second device is the better answer anyway.
 composed: the position and the device and date it was last read, then the page count and whether it
 was measured or estimated, the word count and the ISBN. On the production copy all ten books got one.
 
+Revisited since: `dc:description` is now extracted after all, and leads the composed description when
+a book carries one. What changed is not the reference library — most files still carry no blurb — but
+that the same question was being asked of the web interface, where "what is this one about" has no
+answer at all short of opening the book. The field, the migration and the backfill were worth paying
+for there, and the catalog gets the blurb for free once the column exists. The reading state still
+follows it, for the books that have neither.
+
 **The download button said "Download".** `text = url.unescape(acquisition.title or
 string.upper(filetype))` — the link's title *replaces* the format name. Setting it to "Download" put a
 redundant word where "EPUB" belonged, and would have made two formats indistinguishable if the library

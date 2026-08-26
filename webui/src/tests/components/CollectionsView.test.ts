@@ -43,6 +43,7 @@ function book(id: string, title: string): Book {
     authors: ['Lee Child'],
     language: 'en',
     identifiers: {},
+    description: '',
     series: '',
     series_index: 0,
     subjects: null,

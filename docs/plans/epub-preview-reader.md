@@ -48,10 +48,10 @@ a smaller step than any of the above.
   features. A preview is not a reading application.
 - Formats other than EPUB. The library only holds EPUB.
 
-**Adjacent, and deliberately not part of this plan:** `dc:description` is parsed by no code today,
-though `internal/epub` sees it. Storing it on the book and showing it on the book page would answer
-the same question for the books that carry one, and is a much smaller change. It is worth doing on
-its own; it does not replace this, because most books have no description.
+**Adjacent, and since built:** `dc:description` is now read on upload, backfilled into the books
+already in the library, shown on the book page and put at the head of the catalog's own description.
+It answers this plan's question for the books that carry a blurb, and it did not replace this plan:
+most files carry none, which is what the preview is for.
 
 ## 3. The approach, and the one not taken
 

@@ -42,6 +42,7 @@ function book(id: string, overrides: Partial<Book> = {}): Book {
     authors: ['Andrzej Sapkowski'],
     language: 'de',
     identifiers: {},
+    description: '',
     series: '',
     series_index: 0,
     subjects: null,

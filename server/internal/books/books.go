@@ -272,6 +272,10 @@ func describe(record *core.Record, conf *config.Config) error {
 	setNumberIfZero(record, schema.FieldSeriesIndex, metadata.SeriesIndex)
 	setJSONIfEmpty(record, schema.FieldSubjects, metadata.Subjects)
 
+	// The blurb, as plain text: see epub.Reader.description for why the markup
+	// most publishers write it in does not come with it.
+	setIfEmpty(record, schema.FieldDescription, metadata.Description)
+
 	if err := attachCover(record, book); err != nil {
 		return err
 	}

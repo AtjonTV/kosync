@@ -38,6 +38,20 @@ const coverUrl = computed(() =>
 )
 const downloadUrl = computed(() => (book.value ? fileUrl(book.value, book.value.file) : ''))
 
+/**
+ * The blurb, split into the paragraphs the server separated with blank lines.
+ *
+ * Rendered as text and not with v-html. The column holds plain text precisely so
+ * that nothing on this side has to be trusted to sanitise a publisher's markup —
+ * see the server's description reader, which throws it away on the way in.
+ */
+const description = computed(() =>
+  (book.value?.description ?? '')
+    .split(/\n\s*\n/)
+    .map((paragraph) => paragraph.trim())
+    .filter((paragraph) => paragraph !== ''),
+)
+
 /** How far the reading has got, taken from the furthest of the linked documents. */
 const progress = computed(() => {
   let furthest = 0
@@ -338,6 +352,22 @@ onUnmounted(() => stats.clear())
                 <Menu id="book-shelves" ref="shelfMenu" :model="shelfItems" :popup="true" />
               </div>
             </div>
+          </div>
+        </template>
+      </Card>
+
+      <Card
+        v-if="description.length"
+        class="bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-700"
+      >
+        <template #title>
+          <span class="text-xl font-semibold">About this book</span>
+        </template>
+        <template #content>
+          <div class="flex flex-col gap-3 max-w-prose text-surface-700 dark:text-surface-300">
+            <p v-for="(paragraph, index) in description" :key="index" class="whitespace-pre-line">
+              {{ paragraph }}
+            </p>
           </div>
         </template>
       </Card>

@@ -75,6 +75,10 @@ type Metadata struct {
 	SeriesIndex float64
 	Subjects    []string
 	SpineCount  int
+
+	// Description is the publisher's blurb, as plain text with a blank line
+	// between paragraphs. Most books carry none.
+	Description string
 }
 
 // Reader gives access to one EPUB. Open it once and ask it for what is needed;
@@ -97,7 +101,13 @@ type opfPackage struct {
 			Value  string `xml:",chardata"`
 		} `xml:"identifier"`
 		Subjects []string `xml:"subject"`
-		Metas    []struct {
+		// Kept as raw inner XML rather than character data, because the
+		// element's content is markup about as often as it is text, and the
+		// two need telling apart before either can be read. See description().
+		Descriptions []struct {
+			Inner string `xml:",innerxml"`
+		} `xml:"description"`
+		Metas []struct {
 			ID       string `xml:"id,attr"`
 			Name     string `xml:"name,attr"`
 			Content  string `xml:"content,attr"`
@@ -208,6 +218,7 @@ func (r *Reader) Metadata() Metadata {
 
 	meta.Series, meta.SeriesIndex = r.series()
 	meta.Subjects = r.subjects()
+	meta.Description = r.description()
 
 	return meta
 }

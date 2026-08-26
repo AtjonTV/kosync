@@ -105,10 +105,11 @@ Internal bookkeeping: the days waiting to be recomputed. Invisible to accounts.
 
 ### `books`
 
-An uploaded EPUB and everything read out of it. Only the file itself is supplied: the title, authors,
-language, identifiers, series, subjects, cover, word count and both document hashes are filled in by
-the server as the upload arrives, and the derived ones cannot be edited afterwards. The metadata read
-out of the file can be, since correcting what a publisher wrote is the owner's business.
+An uploaded EPUB and everything read out of it. Only the file itself is supplied: the title,
+authors, language, identifiers, description, series, subjects, cover, word count and both document
+hashes are filled in by the server as the upload arrives, and the derived ones cannot be edited
+afterwards. The metadata read out of the file can be, since correcting what a publisher wrote is the
+owner's business.
 
 `series` and `series_index` are the series a book belongs to and where in it this volume sits. They
 are two columns rather than one string like `A Song of Ice and Fire #2`, because the catalog's series
@@ -116,6 +117,17 @@ feed has to group by the name and sort by the number, and neither is possible on
 spelled into one value. The index is a number, so a novella published as 1.5 keeps its place. Both
 are only filled where the file says so; a book with no series is simply not on one, and the feed
 leaves it out rather than inventing a shelf of one.
+
+`description` is the publisher's blurb, read out of the file's `dc:description`. It is stored as
+plain text with a blank line between paragraphs, never as markup, although markup is how most
+publishers write the element: about as often escaped inside it as present as real elements, and
+hand-written HTML either way. Both shapes are parsed and thrown away here, once, so that no reader
+of the column downstream — the book page, the catalog feed, whatever comes next — has to be trusted
+to render a publisher's HTML safely. What is kept is cut at 4,000 characters on a word boundary,
+because the element is also where a publisher puts review sections and back catalogues, and the
+column holds 5,000 so that a description typed by hand has room over what was extracted. Most books
+declare none at all, which is the whole reason the reading state still leads the catalog's own
+description of a book rather than this.
 
 `subjects` is what the file says the book is about, as a JSON array, stored as the publisher wrote
 it. Nothing reads it yet, deliberately: the values are of very mixed quality — on the reference

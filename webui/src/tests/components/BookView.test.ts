@@ -50,6 +50,7 @@ function book(overrides: Partial<Book> = {}): Book {
     authors: ['Andrzej Sapkowski'],
     language: 'de',
     identifiers: {},
+    description: '',
     series: '',
     series_index: 0,
     subjects: null,
@@ -195,6 +196,36 @@ describe('BookView', () => {
     const wrapper = mountBook(book())
 
     expect(wrapper.text()).toContain('estimated from the word count')
+  })
+
+  // The one question a shelf cannot answer on its own: what is this one about.
+  it('shows the blurb read out of the file', () => {
+    const wrapper = mountBook(book({ description: 'Der Hexer Geralt.\n\nEin Vorspiel.' }))
+
+    expect(wrapper.text()).toContain('About this book')
+    // Two paragraphs, because the server marked them with a blank line.
+    const paragraphs = wrapper.findAll('p').map((node) => node.text())
+    expect(paragraphs).toContain('Der Hexer Geralt.')
+    expect(paragraphs).toContain('Ein Vorspiel.')
+  })
+
+  // Most books declare none, and an empty heading over nothing is worse than no
+  // heading at all.
+  it('leaves the blurb out when the book has none', () => {
+    const wrapper = mountBook(book())
+
+    expect(wrapper.text()).not.toContain('About this book')
+  })
+
+  // The column holds plain text. A book whose description somehow contains
+  // markup shows the markup, rather than running it.
+  it('does not render markup that ended up in the blurb', () => {
+    const wrapper = mountBook(book({ description: '<img src=x onerror=alert(1)> Der Hexer.' }))
+
+    const paragraph = wrapper.findAll('p').find((node) => node.text().includes('Der Hexer.'))
+    expect(paragraph).toBeDefined()
+    expect(paragraph!.find('img').exists()).toBe(false)
+    expect(paragraph!.html()).toContain('&lt;img')
   })
 
   it('sums the days the book was read on', () => {

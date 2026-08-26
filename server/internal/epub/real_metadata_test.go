@@ -41,7 +41,7 @@ func TestARealLibraryParses(t *testing.T) {
 		t.Skipf("set %s to a directory of EPUBs to run this", realLibraryEnv)
 	}
 
-	var books, withSeries, withSubjects, subjects, withCover int
+	var books, withSeries, withSubjects, subjects, withCover, withDescription int
 
 	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
 		if err != nil || entry.IsDir() || !strings.EqualFold(filepath.Ext(path), ".epub") {
@@ -86,6 +86,22 @@ func TestARealLibraryParses(t *testing.T) {
 			}
 		}
 
+		// A description is stored as plain text, so the failure to watch for is
+		// markup that came through it: an unparsed blurb would put "&lt;p&gt;"
+		// on the book page of every book that has one.
+		if meta.Description != "" {
+			withDescription++
+			for _, leaked := range []string{"<p", "</", "<br", "&lt;", "&amp;", "&#"} {
+				if strings.Contains(meta.Description, leaked) {
+					t.Errorf("%s: the description carries %q: %.120s",
+						filepath.Base(path), leaked, meta.Description)
+				}
+			}
+			if strings.TrimSpace(meta.Description) != meta.Description {
+				t.Errorf("%s: the description is not trimmed", filepath.Base(path))
+			}
+		}
+
 		// The cover is guessed at through several fallbacks, and the guesses
 		// are only worth having if they land on a picture: the field the bytes
 		// go into takes bitmaps and nothing else, so a stylesheet or a page of
@@ -109,8 +125,8 @@ func TestARealLibraryParses(t *testing.T) {
 		t.Fatalf("no EPUBs under %s", root)
 	}
 
-	t.Logf("%d books: %d with a series, %d with subjects (%d subjects in all), %d with a cover",
-		books, withSeries, withSubjects, subjects, withCover)
+	t.Logf("%d books: %d with a series, %d with subjects (%d subjects in all), %d with a cover, %d with a description",
+		books, withSeries, withSubjects, subjects, withCover, withDescription)
 }
 
 // packageDocumentOf returns the raw text of a book's package document.

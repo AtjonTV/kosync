@@ -104,13 +104,23 @@ func loadDeviceNames(app core.App, owner string) map[string]string {
 
 // describe is the prose a reader shows under "book information".
 //
-// Most EPUBs carry no description of their own — none of the reference books
-// do — so a catalog that only passed one through would grey that button out for
-// every book in the library. What this server knows instead is where the reading
-// stands, which on a shelf you are browsing from a second device is the more
-// useful answer anyway.
+// The book's own blurb leads, when it has one. That is the thing somebody
+// standing in front of a shelf actually wants — "what is this one about" — and
+// on a device the catalog is the only place it can be read.
+//
+// Most EPUBs carry no description at all, which is why this does not stop there.
+// A catalog that only passed the blurb through would grey that button out for
+// most of the library; what this server knows instead is where the reading
+// stands, which on a shelf you are browsing from a second device is worth
+// saying either way.
 func (d details) describe(book *core.Record) string {
-	lines := []string{d.readingLine(book)}
+	var lines []string
+
+	if blurb := strings.TrimSpace(book.GetString(schema.FieldDescription)); blurb != "" {
+		lines = append(lines, blurb, "")
+	}
+
+	lines = append(lines, d.readingLine(book))
 
 	facts := []string{}
 	if pages, source := books.EffectivePages(book); pages > 0 {

@@ -111,10 +111,15 @@ pb.collection('reading_days').subscribe('*', handler)
 
 Books are created the same way, as a multipart record create. Only the file and the owner are sent:
 the server reads the EPUB as it arrives and fills in the title, authors, language, identifiers,
-series, subjects, cover, word count and both KOReader document hashes. The derived numbers and hashes
-are refused on update and ignored in favour of the file on create; the metadata read out of the file
-— the title, the authors, the language, the series and its index, the subjects — can be corrected
-afterwards, because what a publisher wrote is not always what the shelf should say.
+description, series, subjects, cover, word count and both KOReader document hashes. The derived
+numbers and hashes are refused on update and ignored in favour of the file on create; the metadata
+read out of the file — the title, the authors, the language, the description, the series and its
+index, the subjects — can be corrected afterwards, because what a publisher wrote is not always what
+the shelf should say.
+
+`description` arrives as plain text with a blank line between paragraphs. The publisher's markup is
+stripped on the way in, so a client can put the value straight into a text node; nothing here needs
+an HTML sanitiser.
 
 ```js
 const form = new FormData()

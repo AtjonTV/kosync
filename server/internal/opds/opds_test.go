@@ -499,6 +499,33 @@ func TestEveryPublicationCarriesADescription(t *testing.T) {
 	scenario.Test(t)
 }
 
+// The blurb is what somebody browsing a shelf on a device is actually asking
+// for, so it goes first, with where the reading stands under it rather than
+// instead of it.
+func TestTheBlurbLeadsTheDescription(t *testing.T) {
+	seed := func(t testing.TB, app *tests.TestApp, fixture *testutil.Fixture) {
+		book := addBook(t, app, fixture.UserA, "", "Described", nil, false)
+		book.Set(schema.FieldDescription, "Der Hexer Geralt.\n\nEin Vorspiel.")
+		if err := app.Save(book); err != nil {
+			t.Fatalf("failed to describe the book: %v", err)
+		}
+	}
+
+	scenario := tests.ApiScenario{
+		Name:           "the book's own description",
+		Method:         http.MethodGet,
+		URL:            "/opds/books",
+		Headers:        basicAuth(testutil.KoUsernameA, testutil.KoPasswordA),
+		TestAppFactory: newFactory(50, seed),
+		ExpectedStatus: http.StatusOK,
+		ExpectedContent: []string{
+			`Der Hexer Geralt.\n\nEin Vorspiel.\n\nNot started on any of your devices yet.`,
+		},
+	}
+
+	scenario.Test(t)
+}
+
 // A device identifier is not a name, and the description is prose.
 func TestTheDescriptionNamesTheDevice(t *testing.T) {
 	seed := func(t testing.TB, app *tests.TestApp, fixture *testutil.Fixture) {

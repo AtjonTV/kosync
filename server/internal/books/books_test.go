@@ -638,3 +638,95 @@ func TestSeriesRemainsEditable(t *testing.T) {
 		BeforeTestFunc:  seedBook,
 	})
 }
+
+// blurbDocument is a package document whose description is written the way most
+// publishers write it: HTML, escaped by the XML it arrives in.
+const blurbDocument = `<?xml version="1.0"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:title>Zeit des Sturms</dc:title>
+    <dc:creator>Andrzej Sapkowski</dc:creator>
+    <dc:language>de</dc:language>
+    <dc:description>&lt;p&gt;Der Hexer Geralt.&lt;/p&gt;&lt;p&gt;Ein Vorspiel.&lt;/p&gt;</dc:description>
+  </metadata>
+  <manifest>
+    <item id="one" href="text/one.xhtml" media-type="application/xhtml+xml"/>
+  </manifest>
+  <spine><itemref idref="one"/></spine>
+</package>`
+
+func TestUploadStoresTheDescription(t *testing.T) {
+	body, contentType := upload(t, testutil.IdUserA, "zeit_des_sturms.epub",
+		epubBytesWith(t, 100, blurbDocument), nil)
+
+	asUser(t, testutil.IdUserA, tests.ApiScenario{
+		Name:           "the blurb is read from the file",
+		Method:         http.MethodPost,
+		URL:            booksURL,
+		Body:           body,
+		Headers:        map[string]string{"Content-Type": contentType},
+		ExpectedStatus: http.StatusOK,
+		// The paragraph break is a newline in the column and therefore an
+		// escaped one in the JSON.
+		ExpectedContent: []string{`"description":"Der Hexer Geralt.\n\nEin Vorspiel."`},
+		AfterTestFunc: func(t testing.TB, app *tests.TestApp, res *http.Response) {
+			book, err := app.FindFirstRecordByData(schema.CollectionBooks, schema.FieldOwner, testutil.IdUserA)
+			if err != nil {
+				t.Fatalf("expected the book to be stored: %v", err)
+			}
+			// Plain text: the markup the publisher wrote it in is not stored,
+			// so nothing downstream has to decide whether to render it.
+			if got := book.GetString(schema.FieldDescription); got != "Der Hexer Geralt.\n\nEin Vorspiel." {
+				t.Errorf("description is %q", got)
+			}
+		},
+	})
+}
+
+// Most books declare none, and a book that does must not be given the empty
+// string's worth of blurb to display.
+func TestUploadWithoutADescriptionLeavesItEmpty(t *testing.T) {
+	body, contentType := upload(t, testutil.IdUserA, "standalone.epub", epubBytes(t, 100), nil)
+
+	asUser(t, testutil.IdUserA, tests.ApiScenario{
+		Name:            "no description is stored for a book without one",
+		Method:          http.MethodPost,
+		URL:             booksURL,
+		Body:            body,
+		Headers:         map[string]string{"Content-Type": contentType},
+		ExpectedStatus:  http.StatusOK,
+		ExpectedContent: []string{`"description":""`},
+	})
+}
+
+// The blurb is the publisher's, which is to say it is often marketing copy for
+// the wrong edition. Somebody who types a better one keeps it.
+func TestUploadKeepsASuppliedDescription(t *testing.T) {
+	body, contentType := upload(t, testutil.IdUserA, "zeit_des_sturms.epub",
+		epubBytesWith(t, 100, blurbDocument),
+		map[string]string{schema.FieldDescription: "Was tatsächlich passiert."})
+
+	asUser(t, testutil.IdUserA, tests.ApiScenario{
+		Name:            "a supplied description survives",
+		Method:          http.MethodPost,
+		URL:             booksURL,
+		Body:            body,
+		Headers:         map[string]string{"Content-Type": contentType},
+		ExpectedStatus:  http.StatusOK,
+		ExpectedContent: []string{`"description":"Was tatsächlich passiert."`},
+	})
+}
+
+// Publisher metadata, like the title and the series: correcting it is the
+// owner's business.
+func TestDescriptionRemainsEditable(t *testing.T) {
+	asUser(t, testutil.IdUserA, tests.ApiScenario{
+		Name:            "the description can be corrected",
+		Method:          http.MethodPatch,
+		URL:             booksURL + "/" + testutil.PadId("booka"),
+		Body:            strings.NewReader(`{"` + schema.FieldDescription + `":"Eine bessere Zusammenfassung."}`),
+		ExpectedStatus:  http.StatusOK,
+		ExpectedContent: []string{`"description":"Eine bessere Zusammenfassung."`},
+		BeforeTestFunc:  seedBook,
+	})
+}
