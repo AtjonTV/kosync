@@ -18,78 +18,47 @@ Following the current versioning, the old will be shown in `()`.
 ## [Unreleased]
 
 ### Added
-- Search on the library page, over titles, series and author names. Every word has to appear
-  somewhere but they need not appear together, so "child killing" finds Lee Child's "Killing
-  Floor"; accents and case are ignored on both sides, and an author is found under the spelling
-  in the file as well as the one on the shelves
+- Search on the library page, over titles, series and author names. The words may match in any
+  order, and accents and case are ignored on both sides
 - Sorting on the library page, by title, by when a book was added, by when it was last read or by
-  how far the reading got. The choice is remembered between visits, as the grouping already was,
-  and it carries into the shelves a grouping makes rather than applying only to the ungrouped view
-- A nightly pass over the books that have no cover, which reads their stored file again and keeps
-  whatever it finds. Books uploaded before the reader learned a cover shape get their cover without
-  being downloaded, deleted and uploaded again, which would take the reading progress with it; a
-  book whose file genuinely holds no cover is looked at and left alone. The pass also runs shortly
-  after startup, so an upgrade shows on the shelves the same evening
+  how far the reading got. The choice is remembered between visits and carries into grouped shelves
+- A nightly pass that reads the stored file of every book without a cover and keeps whatever it
+  finds, so books uploaded before the reader learned a cover shape gain one without being uploaded
+  again. It also runs shortly after startup
 - The publisher's blurb, read out of the book's `dc:description` and shown under "About this book"
-  on the book page. It also leads the description the OPDS catalog hands a device, above where the
-  reading stands, so the question "what is this one about" can be asked from the reader as well.
-  Most files carry no blurb at all — the reference library is mostly without one — and a book that
-  has none simply shows nothing rather than an empty heading
-- The blurb of every book already in the library, read on upgrade. The migration opens each stored
-  file once, which on a library of a couple of hundred books is a minute or so of one-time work,
-  and it is that or a shelf where only the books uploaded from today on say anything about
-  themselves. A description that somebody typed is never overwritten, and a book whose file cannot
-  be read is logged and left alone
-- A preview of a book, on the book page next to Download. It answers the one question a shelf
-  cannot — what is this one about — without opening the file on a reader, where opening it would
-  count as reading and add a book to the statistics that was never read. It records nothing at all,
-  and deliberately forgets where you were the moment the page is left: it is a look inside, not a
-  second reader. Chapters are listed in the order the file has them, under the names the book's own
-  table of contents gives them — many publishers write the book's title into the head of every one
-  of its files, and eighty-four chapters all called "Metro - Die Trilogie" is a list nobody can pick
-  from. An omnibus that numbers its chapters from one once per novel says which novel, in the list
-  and in the header. Arrow keys and the buttons page, and the chapter list opens from the header.
-  The text is drawn in the interface's own typography and follows its dark mode, because the book's
-  own stylesheet is never loaded. A very long chapter is cut short and says so, pictures inside the
-  book are shown while anything the chapter would have fetched from the internet is not, and a
-  reference inside the book is shown as its own words rather than as something to click: the frame
-  cannot follow it anywhere, and the chapter list is how a preview is navigated
+  on the book page. It also leads the description the OPDS catalog hands a device
+- The blurb of every book already in the library, read once on upgrade. A description that somebody
+  typed is never overwritten
+- A preview of a book, on the book page next to Download: a look inside the file from the browser,
+  without opening it on a reader where it would count as reading. It records nothing and keeps no
+  position. Chapters are named from the book's own table of contents, the arrow keys and the
+  buttons page, and the chapter list opens from the header. See
+  [docs/api.md](docs/api.md#book-preview)
 
 ### Changed
 - The description a device sees under "book information" in the catalog leads with the book's own
-  blurb when it has one. Where the reading stands follows it rather than being replaced by it: on a
-  shelf browsed from a second device, both are worth saying
-- The reading time on the dashboard is broken into hours and minutes ("33 h 30 min") rather than
-  written as a number of minutes: a month of reading runs to four figures of them, and "2010 min"
-  has to be divided in the head before it means anything. This is the form the book page has always
-  used for "Time spent", and both now share one formatter
+  blurb when it has one, with where the reading stands after it rather than in its place
+- The reading time on the dashboard is written as hours and minutes ("33 h 30 min") rather than as
+  a number of minutes, which is the form the book page already used
 
 ### Deprecated
 
 ### Removed
 
 ### Fixed
-- Covers are found in books that declare them the way books actually do, rather than only the two
-  ways the standards describe. A `<meta name="cover">` naming the file instead of the manifest
-  entry, a guide pointing at the cover, a cover page holding the picture, an image the manifest
-  itself calls a cover, and failing all of that the page the book opens on: on a shelf of 273 real
-  books this fills in 15 that showed a placeholder, three of which had been pointing at a chapter
-  or a stylesheet. Books already in the library are picked up by the new backfill pass, so they
-  gain their covers without being uploaded again
+- Covers are found in books that declare them the way books actually do — a `<meta name="cover">`
+  naming the file, a guide reference, a cover page holding the picture, an image the manifest calls
+  a cover, or failing all of that the page the book opens on — and not only the two ways the
+  standards describe. On a shelf of 273 real books this filled in 15 that showed a placeholder.
+  Books already in the library gain their covers from the nightly pass above
 
 ### Security
-- **BREAKING.** Books and their covers are no longer served to anyone holding the address. They are
-  stored as protected files now, which means the server checks the same rule against a request for
-  the file that it checks against a request for the book: it belongs to one account and nobody else
-  may read it. Until this release the address was merely unguessable, which is not the same thing —
-  it never expired, it outlived the account, and it sat in every browser history and proxy log it
-  had passed through. Nothing needs to be done on upgrade and no address in the web interface has
-  to be touched by hand; the migration protects the two fields and the interface asks for the token
-  it now needs. A book address saved outside KOsync — a bookmark, a script, an `<img>` in something
-  else — stops working, and the catalog at `/opds` is the supported way to fetch a book from a
-  program. The token lasts half an hour rather than PocketBase's own three minutes, because its
-  renewal rewrites the address of every cover on a page and the browser then fetches all of them
-  again
+- **BREAKING.** Books and their covers are stored as protected files: a request for the file is now
+  checked against the same ownership rule as a request for the book. Until this release the address
+  was merely unguessable, which is not the same thing — it never expired and it outlived the
+  account. Nothing has to be done on upgrade and no address in the web interface has to be touched
+  by hand. A book address saved outside KOsync — a bookmark, a script, an `<img>` elsewhere — stops
+  working; the catalog at `/opds` is the supported way for a program to fetch a book
 
 ---
 
