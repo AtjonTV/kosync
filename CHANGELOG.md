@@ -34,6 +34,10 @@ Following the current versioning, the old will be shown in `()`.
   position. Chapters are named from the book's own table of contents, the arrow keys and the
   buttons page, and the chapter list opens from the header. See
   [docs/api.md](docs/api.md#book-preview)
+- The documentation is published to the
+  [project wiki](https://git.obth.eu/atjontv/kosync/-/wikis/home) on every push to `main`. The
+  repository stays the original: a page edited in the wiki is overwritten by the next sync, and
+  every page says so at the top
 
 ### Changed
 - The description a device sees under "book information" in the catalog leads with the book's own

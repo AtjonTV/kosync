@@ -4,6 +4,7 @@ stages:
   - audit
   - build
   - analyze
+  - publish
 
 variables:
   GO_VERSION: 1.26.6-alpine3.23
@@ -197,3 +198,44 @@ sonarqube:
       - .sonar/cache
   script:
     - sonar-scanner -Dsonar.host.url="${SONAR_HOST_URL}"
+
+# The documentation lives in this repository and is reviewed with the code that
+# changes it; the wiki is a copy of it, so that it can be read where people look
+# for it. Only the default branch is published, so the wiki shows what is on it
+# rather than what is in flight.
+#
+# WIKI_TOKEN is a project access token with the "write_repository" scope and at
+# least the Developer role. Without it the job does not run at all, rather than
+# failing every pipeline on an instance that has no wiki.
+wiki:
+  stage: publish
+  <<: *go-cache
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $WIKI_TOKEN
+  before_script:
+    # The credential goes into a file rather than into the remote's address,
+    # which git would otherwise echo into the job log on every command.
+    - git config --global credential.helper store
+    - echo "${CI_SERVER_PROTOCOL}://oauth2:${WIKI_TOKEN}@${CI_SERVER_HOST}" > ~/.git-credentials
+    - git config --global user.name "KOsync CI"
+    - git config --global user.email "ci@${CI_SERVER_HOST}"
+  script:
+    - cd server
+    - go run wiki.go -repo .. -out "${CI_PROJECT_DIR}/wiki-pages" -url "${CI_PROJECT_URL}" -branch "${CI_DEFAULT_BRANCH}"
+    - cd "${CI_PROJECT_DIR}"
+    # GitLab creates the wiki's repository with its first page, so a project
+    # whose wiki nobody has opened yet has nothing to clone.
+    - git clone "${CI_SERVER_URL}/${CI_PROJECT_PATH}.wiki.git" wiki || git init -b "${CI_DEFAULT_BRANCH}" wiki
+    - git -C wiki remote get-url origin || git -C wiki remote add origin "${CI_SERVER_URL}/${CI_PROJECT_PATH}.wiki.git"
+    # The wiki's pages are the ones on this list and no others: one dropped from
+    # wiki.go has to disappear here too, and a page written by hand in the web
+    # interface is not something a mirror can keep.
+    - rm -f wiki/*.md
+    - cp wiki-pages/*.md wiki/
+    - cd wiki
+    - git add -A
+    - if git diff --cached --quiet; then echo "The wiki already matches the documentation."; exit 0; fi
+    # Quoted as a whole: the colon in the subject would otherwise make YAML read
+    # the line as a mapping.
+    - 'git commit -m "docs: Sync wiki from ${CI_COMMIT_SHORT_SHA}"'
+    - git push origin HEAD

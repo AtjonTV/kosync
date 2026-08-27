@@ -136,6 +136,24 @@ Markdown wraps at 100 columns. Anything a user or an operator can observe — a 
 environment variable, an error message — belongs in `docs/`, and a new environment variable also
 belongs in `server/kosync.env.example` with the reasoning next to it.
 
+The documentation is also the [project wiki](https://git.obth.eu/atjontv/kosync/-/wikis/home): a
+push to `main` renders `docs/`, the README and the project files as wiki pages and pushes them into
+`kosync.wiki.git`. The repository is the original and the wiki is the copy, so **an edit made in
+the wiki is thrown away by the next sync** — every page says so at the top. Change the file here
+instead.
+
+To see what the wiki will look like:
+
+```bash
+cd server
+go run wiki.go -out /tmp/wiki   # renders the pages, writes nothing to the wiki
+```
+
+The page list, the sidebar and the link rewriting live in `server/internal/wikidocs`. A document
+added to `docs/` shows up in the wiki only once it is on that list. Links are rewritten on the way
+in — a link between two mirrored documents becomes the other page's slug, and a link to anything
+else, a plan or the licence or a source file, becomes an address back into the repository.
+
 ## 4. Changelog
 
 Add an entry to the `## [Unreleased]` section of [CHANGELOG.md](CHANGELOG.md) for anything a user or
@@ -176,6 +194,7 @@ Nothing below needs a pipeline to run; all of it runs locally.
 | audit | `govulncheck`, `bun audit` |
 | build | the static binary, and a Docker image on a tag |
 | analyze | SonarQube, on `main` |
+| publish | the wiki, on `main` and only where `WIKI_TOKEN` is set |
 
 `wwhrd` only allows MIT, BSD-2-Clause, BSD-3-Clause and Apache-2.0 dependencies
 (`server/.wwhrd.yml`). A dependency under anything else needs a different dependency.
