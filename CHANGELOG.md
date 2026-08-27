@@ -2,12 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-Versions up to and including `26.05.0` are
-[legacy KOsync](https://git.obth.eu/atjontv/kosync/-/tree/legacy-main), the Fiber and hand-written
-SQLite server. `26.08.0` is the PocketBase rewrite. The KOReader protocol and the reading data carry
+Versions up to and including `1.5.0` are
+[legacy KOsync](https://git.obth.eu/atjontv/kosync/-/tree/legacy-main). `2.0.0` is the PocketBase rewrite. The KOReader protocol and the reading data carry
 over, see [docs/migration.md](docs/migration.md).
+
+This Project had two version scheme changes:
+1. From `YYYY.MINOR.PATCH` to `YY.MM.PATCH` (May 2026)
+2. From `YY.MM.PATCH` to `MAJOR.MINOR.PATCH` (August 2026)
+
+Following the current versioning, the old will be shown in `()`.
 
 ## [Unreleased]
 
@@ -73,12 +79,12 @@ over, see [docs/migration.md](docs/migration.md).
 
 ---
 
-## [26.08.1] - 2026-08-26
+## [2.0.1] (26.08.1) - 2026-08-26
 
 ### Fixed
 - Docker Container used `/pb_data` instead of `/data` as mountable data directory
 
-## [26.08.0] - 2026-08-17
+## [2.0.0] (26.08.0) - 2026-08-17
 
 A rewrite on top of [PocketBase](https://pocketbase.io). Everything a device does is unchanged, so
 an existing KOReader keeps syncing after the address gains one path segment; everything around the
@@ -150,7 +156,7 @@ sync is new. A legacy database is imported with `kosync import-legacy <path>`.
   enforced by PocketBase collection rules and covered by tests
 - CI runs `gofmt`, `go vet`, `staticcheck`, Bearer, `wwhrd`, `govulncheck` and `bun audit`
 
-## [26.05.0] - 2026-05-17
+## [1.5.0] (26.05.0) - 2026-05-17
 
 ### Added
 - Read statistics chart (updates, progress increase, and reading time) in WebUI
@@ -178,10 +184,10 @@ sync is new. A legacy database is imported with `kosync import-legacy <path>`.
 ### Security
 - Fixed document ownership vulnerability where any user could create, update, or delete other users' documents
 
-## [2026.06.0] - 2026-02-17
+## [1.4.0] (2026.06.0) - 2026-02-17
 
-If you are running any version of KOsync before `2026.05.0`, you **MUST** update to `2026.05.0` first!  
-Do **NOT** update from before `2026.05.0` to this version (`2026.06.0`), otherwise you will have an empty database.
+If you are running any version of KOsync before `1.3.0`, you **MUST** update to `1.3.0` first!  
+Do **NOT** update from before `1.3.0` to this version (`1.4.0`), otherwise you will have an empty database.
 
 ### Added
 - Extensive Debug Logging
@@ -217,7 +223,7 @@ Do **NOT** update from before `2026.05.0` to this version (`2026.06.0`), otherwi
 ### Fixed
 - Unique constraint dead-lock between documents and document_history with multiple causes
 
-## [2026.05.0] - 2026-02-05
+## [1.3.0] (2026.05.0) - 2026-02-05
 
 ### Added
 - SQLite Database (named `kosync.db`) with automatic migration from JSON to SQLite
@@ -229,12 +235,12 @@ Do **NOT** update from before `2026.05.0` to this version (`2026.06.0`), otherwi
 - `database.json` Database file
 - Backup creation and restore (can no longer be done via CLI)
 
-## [2026.04.1] - 2026-01-27
+## [1.2.1] (2026.04.1) - 2026-01-27
 
 ## Fix
 - Pretty Name got lost during progress push
 
-## [2026.04.0] - 2026-01-27
+## [1.2.0] (2026.04.0) - 2026-01-27
 
 ## Added
 - WebUI to view documents and history
@@ -244,7 +250,7 @@ Do **NOT** update from before `2026.05.0` to this version (`2026.06.0`), otherwi
 ## Fix
 - Database migration changes are not being persisted correctly
 
-## [2026.03.1] - 2026-01-25
+## [1.1.1] (2026.03.1) - 2026-01-25
 
 ## Added
 - Config `backup_on_startup` to enable automatic backups on startup
@@ -256,7 +262,7 @@ Do **NOT** update from before `2026.05.0` to this version (`2026.06.0`), otherwi
 - Progress push not working (Method not allowed)
 - Wrong backup file names
 
-## [2026.03.0] - 2026-01-23
+## [1.1.0] (2026.03.0) - 2026-01-23
 
 ## Added
 - Database restore via `--restore <path>` CLI argument
@@ -270,14 +276,14 @@ Do **NOT** update from before `2026.05.0` to this version (`2026.06.0`), otherwi
 ## Fix
 - Issues reported by SAST
 
-## [2026.02.0] - 2026-01-18
+## [1.0.2] (2026.02.0) - 2026-01-18
 
 ## Added
 - Document change history
 - Config `store_history` to enable history collection
 - Database migration and backup mechanism
 
-## [2026.01.1] - 2026-01-08
+## [1.0.1] (2026.01.1) - 2026-01-08
 
 ### Added
 - Config `enable_debug_log` for verbose logging
@@ -285,23 +291,23 @@ Do **NOT** update from before `2026.05.0` to this version (`2026.06.0`), otherwi
 ### Changed
 - Moved all configuration options into a config object
 
-## [2026.01.0] - 2026-01-08
+## [1.0.0] (2026.01.0) - 2026-01-08
 
 Initial Release
 
-[Unreleased]: https://git.obth.eu/atjontv/kosync/compare/v26.08.1...development
-[26.08.1]: https://git.obth.eu/atjontv/kosync/compare/v26.08.0...v26.08.1
-[26.08.0]: https://git.obth.eu/atjontv/kosync/compare/v26.05.0...v26.08.0
-[26.05.0]: https://git.obth.eu/atjontv/kosync/compare/v2026.05.0...v26.05.0
-[2026.06.0]: https://git.obth.eu/atjontv/kosync/compare/v2026.05.0...v2026.06.0
-[2026.05.0]: https://git.obth.eu/atjontv/kosync/compare/v2026.04.1...v2026.05.0
-[2026.04.1]: https://git.obth.eu/atjontv/kosync/compare/v2026.04.0...v2026.04.1
-[2026.04.0]: https://git.obth.eu/atjontv/kosync/compare/v2026.03.1...v2026.04.0
-[2026.03.1]: https://git.obth.eu/atjontv/kosync/compare/v2026.03.0...v2026.03.1
-[2026.03.0]: https://git.obth.eu/atjontv/kosync/compare/v2026.02.0...v2026.03.0
-[2026.02.0]: https://git.obth.eu/atjontv/kosync/compare/v2026.01.1...v2026.02.0
-[2026.01.1]: https://git.obth.eu/atjontv/kosync/compare/v2026.01.0...v2026.01.1
-[2026.01.0]: https://git.obth.eu/atjontv/kosync/-/releases/v2026.01.0
+[Unreleased]: https://git.obth.eu/atjontv/kosync/compare/v2.0.1...development
+[2.0.1]: https://git.obth.eu/atjontv/kosync/compare/v2.0.0...v2.0.1
+[2.0.0]: https://git.obth.eu/atjontv/kosync/compare/v1.5.0...v2.0.0
+[1.5.0]: https://git.obth.eu/atjontv/kosync/compare/v1.4.0...v1.5.0
+[1.4.0]: https://git.obth.eu/atjontv/kosync/compare/v1.3.0...v1.4.0
+[1.3.0]: https://git.obth.eu/atjontv/kosync/compare/v1.2.1...v1.3.0
+[1.2.1]: https://git.obth.eu/atjontv/kosync/compare/v1.2.0...v1.2.1
+[1.2.0]: https://git.obth.eu/atjontv/kosync/compare/v1.1.1...v1.2.0
+[1.1.1]: https://git.obth.eu/atjontv/kosync/compare/v1.1.0...v1.1.1
+[1.1.0]: https://git.obth.eu/atjontv/kosync/compare/v1.0.2...v1.1.0
+[1.0.2]: https://git.obth.eu/atjontv/kosync/compare/v1.0.1...v1.0.2
+[1.0.1]: https://git.obth.eu/atjontv/kosync/compare/v1.0.0...v1.0.1
+[1.0.0]: https://git.obth.eu/atjontv/kosync/-/releases/v1.0.0
 
 [KORSS]: https://github.com/koreader/koreader-sync-server
 [fiber framework]: https://gofiber.io/

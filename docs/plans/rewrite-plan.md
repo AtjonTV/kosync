@@ -1,5 +1,5 @@
 <!--
-File:        docs/rewrite-plan.md
+File:        docs/plans/rewrite-plan.md
 Project:     https://git.obth.eu/atjontv/kosync
 Copyright:   © 2026 Thomas Obernosterer. Licensed under the EUPL-1.2 or later
 -->

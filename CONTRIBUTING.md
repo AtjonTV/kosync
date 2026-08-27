@@ -16,12 +16,12 @@ Nothing else. No Redis, no Nginx, no database server: PocketBase brings SQLite w
 
 ### 1.2 The layout
 
-| Directory | What is in it |
-| --- | --- |
-| `server/` | the Go module: PocketBase application, KOReader protocol, analytics, OPDS, WebDAV |
-| `webui/` | the Vue 3 web interface, built with Bun and embedded into the server binary |
-| `docs/` | the documentation, including [docs/rewrite-plan.md](docs/rewrite-plan.md) |
-| `deployment/` | Dockerfiles |
+| Directory | What is in it                                                                         |
+| --- |---------------------------------------------------------------------------------------|
+| `server/` | the Go module: PocketBase application, KOReader protocol, analytics, OPDS, WebDAV     |
+| `webui/` | the Vue 3 web interface, built with Bun and embedded into the server binary           |
+| `docs/` | the documentation, including [docs/plans/rewrite-plan.md](docs/plans/rewrite-plan.md) |
+| `deployment/` | Dockerfiles                                                                           |
 
 ### 1.3 Building
 

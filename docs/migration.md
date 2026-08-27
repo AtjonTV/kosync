@@ -1,6 +1,6 @@
 # Migrating from legacy KOsync
 
-KOsync 26.08.0 can import a legacy KOsync database. Devices keep working afterwards without being touched,
+KOsync 2.0.0 can import a legacy KOsync database. Devices keep working afterwards without being touched,
 because their credentials are carried over unchanged.
 
 ## Before you start

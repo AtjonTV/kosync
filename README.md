@@ -2,7 +2,7 @@
 
 KOsync is a progress sync server for [KOReader](https://koreader.rocks) written in Go.
 
-This is **26.08.0**, the current version. It is a rewrite, built on
+This is **2.x**, the current version. It is a rewrite, built on
 [PocketBase](https://pocketbase.io), and it replaces the 1.x series, which is now the
 [legacy KOsync](https://git.obth.eu/atjontv/kosync/-/tree/legacy-main). A legacy database can be imported and the
 devices syncing against it keep working — see [docs/migration.md](docs/migration.md).
@@ -55,7 +55,7 @@ Additional differences that should be known:
 - Simple deployment via Docker
 - Requires a Reverse Proxy for TLS
 
-## KOsync 26.08.0 vs legacy KOsync
+## KOsync v2.x vs legacy KOsync (v1.x)
 
 The protocol is the same one and the reading is carried over, so this is an upgrade rather than a
 different server. What changed:
@@ -159,7 +159,7 @@ See [docs/migration.md](docs/migration.md)
 
 ### The rewrite
 
-See [docs/rewrite-plan.md](docs/rewrite-plan.md) for what was built, in what order, and why.
+See [docs/plans/rewrite-plan.md](docs/plans/rewrite-plan.md) for what was built, in what order, and why.
 
 ### Changes
 
