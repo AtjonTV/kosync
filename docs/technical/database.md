@@ -3,7 +3,7 @@
 KOsync stores everything in the PocketBase data directory (`--dir`, `/pb_data` in the container):
 the SQLite database, the uploads and the backups.
 
-The schema is defined in Go, in [`server/internal/migrations`](../server/internal/migrations), and is
+The schema is defined in Go, in [`server/internal/migrations`](../../server/internal/migrations), and is
 applied automatically before the server starts serving. Editing collections by hand in the superuser
 interface works for experimenting, but the next deployment applies the migrations again, so schema
 changes belong in a migration.
@@ -221,7 +221,7 @@ What the rules cannot say is that the books on a shelf have to be the owner's ow
 over the record being written, and the books are a list of ids pointing somewhere else. Without that
 sentence an account could put any book id at all on a shelf and read the titles back through the
 relation's expansion, which is a way of asking what somebody else uploaded. So it is enforced by a
-hook in [`server/internal/collections`](../server/internal/collections), which refuses a create or
+hook in [`server/internal/collections`](../../server/internal/collections), which refuses a create or
 update whose books are not all owned by the shelf's owner, and refuses a shelf changing owner. A book
 that has been deleted meanwhile is refused the same way, which is the case that arrives on its own:
 two browser tabs, one of them deleting.
@@ -271,7 +271,7 @@ eventually removes the daily rows a streak was counted from. An achievement reco
 happened, and it having happened does not stop being true.
 
 The rules themselves are not stored. They are code, in
-[`server/internal/achievements`](../server/internal/achievements), because each one is a question
+[`server/internal/achievements`](../../server/internal/achievements), because each one is a question
 only code can ask, and the web interface reads them from `/api/kosync/achievements` rather than
 keeping a copy. There are eight; [api.md](api.md) lists them with their thresholds.
 

@@ -1450,7 +1450,7 @@ where the first reading started, and comparing the two extremes that way exclude
 Three of the four ideas that were turned down are recorded here because the reasons outlast them.
 Anything that rewards an action rather than reading — a badge for merging, a badge for uploading —
 turns a feature into a chore. Total reading time is not comparable across devices in the way pages
-are (see [analytics.md](analytics.md)). And distinct authors would need `books.authors` normalised
+are (see [analytics.md](../analytics.md)). And distinct authors would need `books.authors` normalised
 first, or "Sapkowski, Andrzej" and "Andrzej Sapkowski" are two people.
 
 A rule built on `reading_days` shrinks as the retention window moves. Where a future measure can be

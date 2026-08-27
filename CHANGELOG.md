@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Versions up to and including `1.5.0` are
 [legacy KOsync](https://git.obth.eu/atjontv/kosync/-/tree/legacy-main). `2.0.0` is the PocketBase rewrite. The KOReader protocol and the reading data carry
-over, see [docs/migration.md](docs/migration.md).
+over, see [docs/technical/migration.md](docs/technical/migration.md).
 
 This Project had two version scheme changes:
 1. From `YYYY.MINOR.PATCH` to `YY.MM.PATCH` (May 2026)
@@ -33,13 +33,19 @@ Following the current versioning, the old will be shown in `()`.
   without opening it on a reader where it would count as reading. It records nothing and keeps no
   position. Chapters are named from the book's own table of contents, the arrow keys and the
   buttons page, and the chapter list opens from the header. See
-  [docs/api.md](docs/api.md#book-preview)
+  [docs/technical/api.md](docs/technical/api.md#book-preview)
 - The documentation is published to the
   [project wiki](https://git.obth.eu/atjontv/kosync/-/wikis/home) on every push to `main`. The
   repository stays the original: a page edited in the wiki is overwritten by the next sync, and
   every page says so at the top
+- A guide for readers, in `docs/user/`: what KOsync does, setting a device up step by step, and a
+  page each for the library, the reading, the statistics and the account. See
+  [docs/user/index.md](docs/user/index.md)
 
 ### Changed
+- The documentation is split in two. What developers and operators need moved to
+  `docs/technical/`, the plans with it, and `docs/user/` is the new guide for readers. Links from
+  the README and the changelog were updated; a bookmark to a `docs/*.md` file was not
 - The description a device sees under "book information" in the catalog leads with the book's own
   blurb when it has one, with where the reading stands after it rather than in its place
 - The reading time on the dashboard is written as hours and minutes ("33 h 30 min") rather than as

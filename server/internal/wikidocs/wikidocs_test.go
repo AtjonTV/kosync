@@ -94,7 +94,7 @@ func TestADocumentThatIsNotThereIsAnError(t *testing.T) {
 // A wiki page is addressed by its slug, so a link between two documents has to
 // stop being a file name.
 func TestALinkToAnotherPageBecomesItsSlug(t *testing.T) {
-	page := build(t, "docs/api.md", "See [analytics.md](analytics.md) for the numbers.\n")
+	page := build(t, "docs/technical/api.md", "See [analytics.md](analytics.md) for the numbers.\n")
 
 	if !strings.Contains(page, "[analytics.md](analytics)") {
 		t.Errorf("the page reads %q", page)
@@ -102,15 +102,15 @@ func TestALinkToAnotherPageBecomesItsSlug(t *testing.T) {
 }
 
 func TestALinkFromTheRootFindsADocument(t *testing.T) {
-	page := build(t, "README.md", "See [docs/config.md](docs/config.md)\n")
+	page := build(t, "README.md", "See [docs/technical/config.md](docs/technical/config.md)\n")
 
-	if !strings.Contains(page, "[docs/config.md](config)") {
+	if !strings.Contains(page, "[docs/technical/config.md](config)") {
 		t.Errorf("the page reads %q", page)
 	}
 }
 
 func TestTheAnchorOfALinkSurvives(t *testing.T) {
-	page := build(t, "CHANGELOG.md", "See [docs/api.md](docs/api.md#book-preview)\n")
+	page := build(t, "CHANGELOG.md", "See [docs/technical/api.md](docs/technical/api.md#book-preview)\n")
 
 	if !strings.Contains(page, "(api#book-preview)") {
 		t.Errorf("the page reads %q", page)
@@ -120,9 +120,9 @@ func TestTheAnchorOfALinkSurvives(t *testing.T) {
 // The plans, the licence and every source file stay in the repository. A link
 // to one has to leave the wiki rather than point at a page that is not there.
 func TestALinkToSomethingTheWikiDoesNotHoldGoesBackToTheRepository(t *testing.T) {
-	page := build(t, "README.md", "See [the plan](docs/plans/rewrite-plan.md) and [the licence](/LICENSE.txt)\n")
+	page := build(t, "README.md", "See [the plan](docs/technical/plans/rewrite-plan.md) and [the licence](/LICENSE.txt)\n")
 
-	if !strings.Contains(page, "(https://example.invalid/kosync/-/blob/main/docs/plans/rewrite-plan.md)") {
+	if !strings.Contains(page, "(https://example.invalid/kosync/-/blob/main/docs/technical/plans/rewrite-plan.md)") {
 		t.Errorf("the plan is linked as %q", page)
 	}
 	if !strings.Contains(page, "(https://example.invalid/kosync/-/blob/main/LICENSE.txt)") {
@@ -158,7 +158,7 @@ func TestAnAddressThatAlreadySaysWhereItPointsIsLeftAlone(t *testing.T) {
 
 // What is inside a code block is an example of something, not a link to it.
 func TestALinkInsideACodeBlockIsNotRewritten(t *testing.T) {
-	page := build(t, "docs/api.md", "```md\n[analytics.md](analytics.md)\n```\n[analytics.md](analytics.md)\n")
+	page := build(t, "docs/technical/api.md", "```md\n[analytics.md](analytics.md)\n```\n[analytics.md](analytics.md)\n")
 
 	if strings.Count(page, "[analytics.md](analytics.md)") != 1 {
 		t.Errorf("the page reads %q", page)
@@ -199,7 +199,7 @@ func TestTheSidebarListsEveryPageUnderItsHeading(t *testing.T) {
 			t.Errorf("the sidebar does not list %s:\n%s", page.Slug, sidebar)
 		}
 	}
-	for _, heading := range []string{"**Documentation**", "**Project**"} {
+	for _, heading := range []string{"**For readers**", "**For operators and developers**", "**Project**"} {
 		if !strings.Contains(sidebar, heading) {
 			t.Errorf("the sidebar has no %s heading:\n%s", heading, sidebar)
 		}
@@ -214,9 +214,19 @@ func TestTheSidebarListsEveryPageUnderItsHeading(t *testing.T) {
 // points at directories often enough — "the migrations live here" — that a link
 // to one landing on an error would be noticed.
 func TestALinkToADirectoryIsAddressedAsATree(t *testing.T) {
-	page := build(t, "docs/database.md", "The [migrations](../server/internal/migrations) run in order.\n")
+	page := build(t, "docs/technical/database.md", "The [migrations](../../server/internal/migrations) run in order.\n")
 
 	if !strings.Contains(page, "(https://example.invalid/kosync/-/tree/main/server/internal/migrations)") {
+		t.Errorf("the page reads %q", page)
+	}
+}
+
+// The documentation is written in two directories and the wiki is flat, so a
+// link from one half to the other has to survive losing the path it climbed.
+func TestALinkFromOneHalfOfTheDocumentationToTheOtherFindsItsPage(t *testing.T) {
+	page := build(t, "docs/user/library.md", "The [API](../technical/api.md) serves it.\n")
+
+	if !strings.Contains(page, "[API](api)") {
 		t.Errorf("the page reads %q", page)
 	}
 }

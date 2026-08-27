@@ -4,8 +4,9 @@ KOsync is a progress sync server for [KOReader](https://koreader.rocks) written 
 
 This is **2.x**, the current version. It is a rewrite, built on
 [PocketBase](https://pocketbase.io), and it replaces the 1.x series, which is now the
-[legacy KOsync](https://git.obth.eu/atjontv/kosync/-/tree/legacy-main). A legacy database can be imported and the
-devices syncing against it keep working — see [docs/migration.md](docs/migration.md).
+[legacy KOsync](https://git.obth.eu/atjontv/kosync/-/tree/legacy-main). A legacy database can be
+imported and the devices syncing against it keep working — see
+[docs/technical/migration.md](docs/technical/migration.md).
 
 ## Why?
 
@@ -78,7 +79,7 @@ different server. What changed:
 KOsync is written in Go, with the web interface compiled into the same binary.  
 All you need to run KOsync is bundled into a single executable. No Redis, no Nginx, no Node.
 
-See [docs/build.md](docs/build.md) for build and deployment instructions.
+See [docs/technical/build.md](docs/technical/build.md) for build and deployment instructions.
 
 **Simple Datastore**  
 KOsync stores all user data in a PocketBase-managed SQLite database, next to the uploads and the
@@ -119,28 +120,40 @@ without touching the account or the reading it pushed.
    same credential, and point the statistics plugin's cloud sync at it.
 
 The same steps, with the addresses of your own server filled in, are on the front page of the web
-interface until you have signed in.
+interface until you have signed in, and at more length in
+[docs/user/getting-started.md](docs/user/getting-started.md).
+
+### Documentation
+
+The documentation is in two halves. [docs/user/](docs/user/) is written for the people who sign up
+and read: what the site does, how to set a device up, and what everything on it means. Start at
+[docs/user/index.md](docs/user/index.md).
+
+[docs/technical/](docs/technical/) is the rest of this list — building, configuring, deploying,
+migrating, and how the parts work. Both halves are published to the
+[project wiki](https://git.obth.eu/atjontv/kosync/-/wikis/home).
 
 ### Configuration
 
-See [docs/config.md](docs/config.md)
+See [docs/technical/config.md](docs/technical/config.md)
 
 ### Database
 
-See [docs/database.md](docs/database.md)
+See [docs/technical/database.md](docs/technical/database.md)
 
 ### Backups
 
 PocketBase takes them, locally or to S3, on a schedule or on demand: **Settings → Backups** in the
 superuser interface.
 
-See [docs/database.md](docs/database.md#backups)
+See [docs/technical/database.md](docs/technical/database.md#backups)
 
 ### API Specification
 
-See [docs/api.md](docs/api.md) for the KOReader protocol, the collection API, the OPDS catalog and
-the WebDAV target.  
-See [docs/analytics.md](docs/analytics.md) for how the reading statistics are worked out.
+See [docs/technical/api.md](docs/technical/api.md) for the KOReader protocol, the collection API,
+the OPDS catalog and the WebDAV target.  
+See [docs/technical/analytics.md](docs/technical/analytics.md) for how the reading statistics are
+worked out.
 
 ### WebUI
 
@@ -155,11 +168,12 @@ all at `/`.
 
 ### Migrating from legacy KOsync
 
-See [docs/migration.md](docs/migration.md)
+See [docs/technical/migration.md](docs/technical/migration.md)
 
 ### The rewrite
 
-See [docs/plans/rewrite-plan.md](docs/plans/rewrite-plan.md) for what was built, in what order, and why.
+See [docs/technical/plans/rewrite-plan.md](docs/technical/plans/rewrite-plan.md) for what was
+built, in what order, and why.
 
 ### Changes
 

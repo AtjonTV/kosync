@@ -12,7 +12,7 @@ kosync serve --http=0.0.0.0:8080 --dir=/pb_data
 
 **KOsync** owns everything below. These are environment variables, optionally read from a
 `kosync.env` file next to the executable. A value already present in the environment wins over the
-file. See [`server/kosync.env.example`](../server/kosync.env.example) for a copy with comments.
+file. See [`server/kosync.env.example`](../../server/kosync.env.example) for a copy with comments.
 
 | Variable | Default | Meaning |
 | --- | --- | --- |

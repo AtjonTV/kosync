@@ -41,7 +41,10 @@ type Page struct {
 
 // Pages is what the wiki holds, in the order the sidebar lists it.
 //
-// The plans under docs/plans are deliberately not here. They are the record of
+// The reader's pages come first because most of the people who open a wiki are
+// looking for how the thing is used, not how it is built.
+//
+// The plans under docs/technical/plans are deliberately not here. They are the record of
 // how something came to be built rather than documentation of what it does, one
 // of them runs to a hundred kilobytes, and together they would outnumber the
 // documentation in the page list. Links to them still work: they become
@@ -49,12 +52,19 @@ type Page struct {
 var Pages = []Page{
 	{Source: "README.md", Slug: "home", Title: "Home"},
 
-	{Source: "docs/build.md", Slug: "build", Title: "Building and deploying", Group: "Documentation"},
-	{Source: "docs/config.md", Slug: "config", Title: "Configuration", Group: "Documentation"},
-	{Source: "docs/api.md", Slug: "api", Title: "API", Group: "Documentation"},
-	{Source: "docs/database.md", Slug: "database", Title: "Database", Group: "Documentation"},
-	{Source: "docs/analytics.md", Slug: "analytics", Title: "Analytics", Group: "Documentation"},
-	{Source: "docs/migration.md", Slug: "migration", Title: "Migrating from 1.x", Group: "Documentation"},
+	{Source: "docs/user/index.md", Slug: "reading-with-kosync", Title: "KOsync for readers", Group: "For readers"},
+	{Source: "docs/user/getting-started.md", Slug: "getting-started", Title: "Getting started", Group: "For readers"},
+	{Source: "docs/user/library.md", Slug: "library", Title: "Your library", Group: "For readers"},
+	{Source: "docs/user/reading.md", Slug: "reading", Title: "Your reading", Group: "For readers"},
+	{Source: "docs/user/statistics.md", Slug: "statistics", Title: "The reading record", Group: "For readers"},
+	{Source: "docs/user/account.md", Slug: "account", Title: "Your account", Group: "For readers"},
+
+	{Source: "docs/technical/build.md", Slug: "build", Title: "Building and deploying", Group: "For operators and developers"},
+	{Source: "docs/technical/config.md", Slug: "config", Title: "Configuration", Group: "For operators and developers"},
+	{Source: "docs/technical/api.md", Slug: "api", Title: "API", Group: "For operators and developers"},
+	{Source: "docs/technical/database.md", Slug: "database", Title: "Database", Group: "For operators and developers"},
+	{Source: "docs/technical/analytics.md", Slug: "analytics", Title: "Analytics", Group: "For operators and developers"},
+	{Source: "docs/technical/migration.md", Slug: "migration", Title: "Migrating from 1.x", Group: "For operators and developers"},
 
 	{Source: "CHANGELOG.md", Slug: "changelog", Title: "Changelog", Group: "Project"},
 	{Source: "CONTRIBUTING.md", Slug: "contributing", Title: "Contributing", Group: "Project"},

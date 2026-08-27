@@ -111,7 +111,7 @@ func registerWebUi(app core.App, conf *config.Config) {
 
 	if !webui.IsBuilt() {
 		app.OnServe().BindFunc(func(se *core.ServeEvent) error {
-			app.Logger().Warn("the web interface is enabled but was not built into this executable, see docs/build.md")
+			app.Logger().Warn("the web interface is enabled but was not built into this executable, see docs/technical/build.md")
 			return se.Next()
 		})
 

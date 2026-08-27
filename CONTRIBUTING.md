@@ -10,18 +10,20 @@ that govern contributions themselves — in particular how AI assistance is attr
 
 - **Go** 1.26 or newer, for the server
 - **Bun** 1.3 or newer, for the web interface
-- **Node** on the `PATH`, for the type check only — see [docs/build.md](docs/build.md) for why
+- **Node** on the `PATH`, for the type check only — see
+  [docs/technical/build.md](docs/technical/build.md) for why
 
 Nothing else. No Redis, no Nginx, no database server: PocketBase brings SQLite with it.
 
 ### 1.2 The layout
 
-| Directory | What is in it                                                                         |
-| --- |---------------------------------------------------------------------------------------|
-| `server/` | the Go module: PocketBase application, KOReader protocol, analytics, OPDS, WebDAV     |
-| `webui/` | the Vue 3 web interface, built with Bun and embedded into the server binary           |
-| `docs/` | the documentation, including [docs/plans/rewrite-plan.md](docs/plans/rewrite-plan.md) |
-| `deployment/` | Dockerfiles                                                                           |
+| Directory | What is in it |
+| --- | --- |
+| `server/` | the Go module: PocketBase application, KOReader protocol, analytics, OPDS, WebDAV |
+| `webui/` | the Vue 3 web interface, built with Bun and embedded into the server binary |
+| `docs/user/` | the documentation for the people who sign up and read |
+| `docs/technical/` | the documentation for developers and operators, and the rewrite plans |
+| `deployment/` | Dockerfiles |
 
 ### 1.3 Building
 
@@ -32,7 +34,8 @@ go run build.go -run     # and starts it afterwards
 go run build.go -web=false   # server only, reusing what is already embedded
 ```
 
-For the dev servers, Docker, and the parts that need Node, see [docs/build.md](docs/build.md).
+For the dev servers, Docker, and the parts that need Node, see
+[docs/technical/build.md](docs/technical/build.md).
 
 ## 2. Testing standards
 
@@ -115,7 +118,7 @@ keep theirs (`webui/src/pb.ts`).
   field name is a typo waiting to happen.
 - Access rules belong on the collection, not in a handler, whenever the rule can express it. A hook
   is for what a rule cannot say — see `internal/collections` for an example and its reasoning.
-- Document the change in [docs/database.md](docs/database.md).
+- Document the change in [docs/technical/database.md](docs/technical/database.md).
 
 ### 3.4 TypeScript and Vue
 
@@ -136,6 +139,12 @@ Markdown wraps at 100 columns. Anything a user or an operator can observe — a 
 environment variable, an error message — belongs in `docs/`, and a new environment variable also
 belongs in `server/kosync.env.example` with the reasoning next to it.
 
+Which half it belongs in follows from who has to read it. `docs/user/` is for somebody who signed
+up and reads: what the site does, in the words the interface uses, with no environment variables,
+no endpoints and no internals in it. `docs/technical/` is for whoever builds, runs or changes the
+server. A feature usually needs a line in both, saying different things — the preview is "a book
+in the browser that counts as nothing" in one and a sanitiser with a byte budget in the other.
+
 The documentation is also the [project wiki](https://git.obth.eu/atjontv/kosync/-/wikis/home): a
 push to `main` renders `docs/`, the README and the project files as wiki pages and pushes them into
 `kosync.wiki.git`. The repository is the original and the wiki is the copy, so **an edit made in
@@ -150,9 +159,11 @@ go run wiki.go -out /tmp/wiki   # renders the pages, writes nothing to the wiki
 ```
 
 The page list, the sidebar and the link rewriting live in `server/internal/wikidocs`. A document
-added to `docs/` shows up in the wiki only once it is on that list. Links are rewritten on the way
-in — a link between two mirrored documents becomes the other page's slug, and a link to anything
-else, a plan or the licence or a source file, becomes an address back into the repository.
+added to `docs/` shows up in the wiki only once it is on that list, under one of its groups. The
+wiki is flat, so two pages cannot share a slug however deep their directories are. Links are
+rewritten on the way in — a link between two mirrored documents becomes the other page's slug, and
+a link to anything else, a plan or the licence or a source file, becomes an address back into the
+repository.
 
 ## 4. Changelog
 

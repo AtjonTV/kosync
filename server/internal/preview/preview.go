@@ -15,7 +15,7 @@
 //
 // This is the second of two defences and not the only one. The interface puts
 // the result in an <iframe sandbox> with no tokens at all, so script cannot run
-// there even if something got through — see docs/plans/epub-preview-reader.md
+// there even if something got through — see docs/technical/plans/epub-preview-reader.md
 // §6. What the allow-list adds beyond that is a page that stays quiet: no
 // requests leave for a publisher's server, and no book's stylesheet argues with
 // the interface around it.
