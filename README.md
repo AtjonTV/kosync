@@ -186,7 +186,7 @@ Participation is governed by the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## AI Usage
 
-Most of this version (26.08.0 and newer) was built and changed using AI Tools.  
+Most of this version (v2.x) was built and changed using AI Tools.  
 The primary tool used is Anthropic Claude Opus 5.
 
 Each Git commit with AI contribution is marked with `AI-Agent` and `AI-Model`.  
