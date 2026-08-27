@@ -11,6 +11,6 @@ services:
       ENABLE_WEBUI: "true"
     volumes:
       # PocketBase keeps the database, the uploads and its backups in here.
-      - ./data:/pb_data
+      - ./data:/data
     #ports:
     #  - "8080:8080"
