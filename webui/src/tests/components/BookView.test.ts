@@ -228,6 +228,15 @@ describe('BookView', () => {
     expect(paragraph!.html()).toContain('&lt;img')
   })
 
+  // Answering "what is this one about" without opening the book on a reader,
+  // where opening it would count as reading.
+  it('offers a preview of the book', () => {
+    const wrapper = mountBook(book())
+
+    const preview = wrapper.findAll('button').find((node) => node.text().includes('Preview'))
+    expect(preview).toBeDefined()
+  })
+
   it('sums the days the book was read on', () => {
     const wrapper = mountBook(book(), [
       bookDay('2026-03-01', { reading_time: 3600, pages_read: 40 }),

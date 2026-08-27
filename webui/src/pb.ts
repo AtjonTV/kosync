@@ -46,6 +46,8 @@ export const KosyncApi = {
     `/api/kosync/documents/${documentId}/restore/${historyId}`,
   mergeDocuments: '/api/kosync/documents/merge',
   achievements: '/api/kosync/achievements',
+  bookPreview: (id: string) => `/api/kosync/books/${id}/preview`,
+  bookPreviewChapter: (id: string, index: number) => `/api/kosync/books/${id}/preview/${index}`,
   storage: '/api/kosync/storage',
 } as const
 

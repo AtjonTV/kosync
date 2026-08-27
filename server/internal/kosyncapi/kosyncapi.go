@@ -75,6 +75,8 @@ func (h *Handler) Mount(se *core.ServeEvent) {
 	group.POST("/documents/{id}/restore/{historyId}", h.restoreHistory)
 	group.POST("/documents/merge", h.mergeDocuments)
 	group.GET("/achievements", h.listAchievements)
+	group.GET("/books/{id}/preview", h.previewOutline)
+	group.GET("/books/{id}/preview/{index}", h.previewChapter)
 	group.GET("/storage", h.storage)
 }
 

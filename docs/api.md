@@ -341,6 +341,8 @@ session (`Authorization: <token>`).
 | POST | `/api/kosync/documents/{id}/restore/{historyId}` | Put a document back into an earlier state. The state being replaced is archived first, so the restore itself can be undone. |
 | POST | `/api/kosync/documents/merge` | Fold several documents into one. Body: `{"into":…,"from":[…]}`. |
 | GET | `/api/kosync/achievements` | Every achievement rule with your standing in it. |
+| GET | `/api/kosync/books/{id}/preview` | The chapters of one of your books, in spine order. |
+| GET | `/api/kosync/books/{id}/preview/{index}` | One chapter, rebuilt as safe markup. |
 | GET | `/api/kosync/storage` | How much room your library takes, and how much it may take. |
 
 ## 5. The statistics sync target, under `/webdav`
@@ -401,6 +403,74 @@ There are eight of them:
 
 Subscribe to the `achievements` collection for the moment one is awarded, then read this again — the
 record says which tier was earned, while the card also shows how far the next one is.
+
+### Book preview
+
+A look inside a book without opening it on a reader, where opening it would count as reading.
+Neither endpoint writes anything: no progress, no statistics, no record of having looked. The
+preview does not remember where you were, by design — it answers "what is this one about", which is
+asked once.
+
+```json
+{
+  "title": "Metro - Die Trilogie",
+  "chapters": [
+    { "index": 0, "title": "Cover" },
+    { "index": 3, "title": "1", "section": "METRO 2033" }
+  ]
+}
+```
+
+`index` is the entry's place in the EPUB spine, and it is what the chapter route takes. The numbers
+can have gaps: a spine entry naming a file the archive does not contain is left out rather than
+served as an error later.
+
+The titles come from the book's own table of contents where it has one — the EPUB 3 navigation
+document, or the EPUB 2 NCX. Both halves are needed: those contents cover the chapters and leave out
+the cover, the title page and the imprint, while the documents themselves are named by whatever
+produced them, which for a great many publishers means the book's own title written into all
+eighty-four of them. So a document the contents do not mention falls back to its own `<title>`,
+unless that is the title of the whole book, then its first heading, then its number.
+
+`section` is the entry the chapter is nested under in those contents, and is left out when there is
+none. A trilogy in one file numbers its chapters from one three times over, and "1" alone is then
+not an answer to which of the three.
+
+```json
+{
+  "index": 3,
+  "title": "1",
+  "section": "METRO 2033",
+  "html": "<p>Ein Sturm zieht auf.</p>",
+  "truncated": false
+}
+```
+
+`html` is not the document out of the file. The server parses it and builds a new one out of an
+allow-list of elements, keeping no attributes at all beyond `colspan` and `rowspan` on table cells.
+Script, style, forms, frames and embedded objects are dropped with their contents; an element that
+is merely unknown is unwrapped and its text kept. Images that live in the archive are inlined as
+`data:` URIs, up to 2 MiB each and 8 MiB per chapter; one that points anywhere else is replaced by
+its `alt` text, so a chapter makes no outbound request. `truncated` is set when the chapter was
+longer than the 512 KiB of markup a preview will render.
+
+No link survives, wherever it pointed: a footnote marker, a cross reference and a link off the
+internet all come back as their own words. A link inside a book points at another file in the
+archive, which is not something a browser showing one chapter has, and left as an `href` of any
+shape it is worse than useless — the frame's document is a `srcdoc`, whose base address is the
+address of the application around it, so following one takes the frame to the web interface, loaded
+in a sandbox that forbids it everything, which draws as a blank page. The words are what the reader
+wanted anyway, and the chapter list is how a preview is navigated.
+
+The web interface puts this inside an `<iframe sandbox>` with no tokens at all. That frame, and not
+the rebuild above, is the security boundary — see the plan in
+[plans/epub-preview-reader.md](plans/epub-preview-reader.md).
+
+Both routes answer `404` for a book that belongs to somebody else, the same as one that does not
+exist, and for a chapter past the end of the spine. A stored file that is not an EPUB, or a record
+whose file has gone missing, answers `400` and `404` respectively. Responses carry an `ETag` derived
+from the book's content hash and `Cache-Control: private, max-age=300`, so paging back and forth
+costs a `304`.
 
 ### Library storage
 

@@ -35,6 +35,14 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      // A route rather than a dialog: the preview wants the window, and the
+      // hardware back button on a reader has to lead back to the book.
+      path: '/library/:id/preview',
+      name: 'preview',
+      component: () => import('@/views/BookPreviewView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/collections',
       name: 'collections',
       component: () => import('@/views/CollectionsView.vue'),

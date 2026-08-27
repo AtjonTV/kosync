@@ -375,3 +375,46 @@ Steps 1–6 are the feature. 7 and 8 are improvements to it.
 3. **Table of contents in the first version, or spine order with derived titles?** The plan assumes
    the latter, and keeps the real one as step 7.
 4. **Preview from the library card as well as the book page?** The plan assumes book page first.
+
+## 11. What was built
+
+Steps 1–7 are done, on the plan's own assumptions in §10: the own sanitiser, images inlined with
+caps, spine order with the book's own chapter names, the button on the book page. Step 8 remains
+open.
+
+Where the code differs from the plan above, and why:
+
+- **The markup cap and the image budget are independent.** §4.3 caps rendered markup at 512 KiB and
+  §4.4 allows 8 MiB of pictures per chapter, which cannot both be true of one budget: the first
+  inlined `data:` URI would spend the markup cap and the rest of the chapter would be cut. So
+  `preview.Clean` charges an `<img>` only for its tag, not for the picture in its `src` — the
+  picture is not markup, and it has already been paid for out of `maxChapterImageBytes`.
+- **`epub.Read(index)` is `ReadDocument(index)`**, and it returns the `Document` alongside the
+  bytes. `preview.Read` needs the chapter's title, and `Spine()` reads the head of every document
+  in the book to derive them; returning the one already in hand keeps a page turn to one document.
+- **`Resource(from, href)` takes the document it was found in.** Resolving an href is the
+  security-relevant step, so it lives in `internal/epub` with its own tests rather than being
+  re-derived by the preview or the handler. `Locate(from, href)` existed alongside it to turn a
+  link into a spine index, and was removed when links stopped being rendered as links — see below.
+- **A spine entry naming a file the archive does not contain is dropped**, and the remaining
+  entries keep their original numbering. The alternative is an outline entry that answers 404.
+- **The frame is told which theme to draw in** rather than reading `prefers-color-scheme` as §5.3
+  suggests: the interface's dark mode is a class the reader can set against the system preference,
+  and a frame asking the system directly would disagree with the page around it.
+- **No link survives the rebuild; every one is drawn as its own words.** `<a>` was first kept and
+  rewritten to `#kosync-preview:<index>`, on the assumption that a fragment in a frame is at worst
+  a no-op. It is not: a `srcdoc` document inherits its base address from the page around it, so a
+  bare fragment resolves against the web interface's own URL and clicking one navigates the frame
+  cross-document to KOsync — inside a sandbox with no tokens, which draws as a blank page. That is
+  a link that visibly destroys what the reader was looking at, which is worse than no link at all.
+  So `<a>` is not in the allow-list, the element is unwrapped and its text kept, and `LinkPrefix`,
+  `Resolve` and `epub.Locate` went with it. Making references actually jump would need one sandbox
+  token (`allow-top-navigation-by-user-activation`), a `<base target="_top">` in the frame and a
+  `hashchange` listener in the page — §6 refuses all tokens, so that is the operator's call, not
+  the implementation's.
+- **Chapter names come from the book's own table of contents first** (step 7), and from the
+  document only where the contents do not mention it — front matter, mostly. A `<title>` equal to
+  the book's own title is refused outright: publishers' generators write it into every file, and
+  the reference book has all eighty-four of them saying "Metro - Die Trilogie". Nesting in those
+  contents becomes `Document.Section`, so an omnibus that numbers its chapters from one once per
+  novel can say which novel, in the list and in the header.

@@ -40,6 +40,20 @@ Following the current versioning, the old will be shown in `()`.
   and it is that or a shelf where only the books uploaded from today on say anything about
   themselves. A description that somebody typed is never overwritten, and a book whose file cannot
   be read is logged and left alone
+- A preview of a book, on the book page next to Download. It answers the one question a shelf
+  cannot — what is this one about — without opening the file on a reader, where opening it would
+  count as reading and add a book to the statistics that was never read. It records nothing at all,
+  and deliberately forgets where you were the moment the page is left: it is a look inside, not a
+  second reader. Chapters are listed in the order the file has them, under the names the book's own
+  table of contents gives them — many publishers write the book's title into the head of every one
+  of its files, and eighty-four chapters all called "Metro - Die Trilogie" is a list nobody can pick
+  from. An omnibus that numbers its chapters from one once per novel says which novel, in the list
+  and in the header. Arrow keys and the buttons page, and the chapter list opens from the header.
+  The text is drawn in the interface's own typography and follows its dark mode, because the book's
+  own stylesheet is never loaded. A very long chapter is cut short and says so, pictures inside the
+  book are shown while anything the chapter would have fetched from the internet is not, and a
+  reference inside the book is shown as its own words rather than as something to click: the frame
+  cannot follow it anywhere, and the chapter list is how a preview is navigated
 
 ### Changed
 - The description a device sees under "book information" in the catalog leads with the book's own

@@ -198,3 +198,35 @@ export interface StorageUsage {
   used: number
   quota: number
 }
+
+/**
+ * The chapters of a book, in the order the file lists them.
+ *
+ * This is the preview's table of contents, derived from the spine rather than
+ * from a declared one, so it is what the book actually contains and not what
+ * its navigation document claims. Nothing here is stored: the preview forgets
+ * everything when the page is left.
+ */
+export interface PreviewOutline {
+  title: string
+  chapters: PreviewEntry[]
+}
+
+/** One chapter in the outline. */
+export interface PreviewEntry {
+  /** Its place in the spine, which is what the chapter endpoint takes. */
+  index: number
+  title: string
+  /** The part of the book it belongs to, absent when the book has no parts. */
+  section?: string
+}
+
+/** One chapter, rebuilt by the server out of a small set of safe elements. */
+export interface PreviewChapter {
+  index: number
+  title: string
+  section?: string
+  html: string
+  /** Set when the chapter was longer than the preview will render. */
+  truncated: boolean
+}

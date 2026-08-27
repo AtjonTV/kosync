@@ -19,6 +19,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 // containerPath is where every EPUB points at its package document.
@@ -89,6 +90,10 @@ type Reader struct {
 	opfDir  string
 	byName  map[string]*zip.File
 	hrefIDs map[string]string
+
+	// The book's own table of contents, parsed on the first question about it.
+	tocOnce sync.Once
+	toc     map[string]tocEntry
 }
 
 type opfPackage struct {

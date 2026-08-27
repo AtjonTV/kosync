@@ -340,6 +340,9 @@ onUnmounted(() => stats.clear())
                 <a :href="downloadUrl || undefined" :download="`${book.title}.epub`">
                   <Button icon="pi pi-download" label="Download" variant="outlined" size="small" />
                 </a>
+                <RouterLink :to="{ name: 'preview', params: { id: book.id } }">
+                  <Button icon="pi pi-eye" label="Preview" variant="outlined" size="small" />
+                </RouterLink>
                 <Button
                   icon="pi pi-bookmark"
                   label="Add to collection"
