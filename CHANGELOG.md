@@ -18,6 +18,22 @@ Following the current versioning, the old will be shown in `()`.
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Deprecated
+
+### Removed
+
+### Fixed
+
+### Security
+
+---
+
+## [2.1.0] - 2026-09-06
+
+### Added
 - Search on the library page, over titles, series and author names. The words may match in any
   order, and accents and case are ignored on both sides
 - Sorting on the library page, by title, by when a book was added, by when it was last read or by
@@ -51,10 +67,6 @@ Following the current versioning, the old will be shown in `()`.
 - The reading time on the dashboard is written as hours and minutes ("33 h 30 min") rather than as
   a number of minutes, which is the form the book page already used
 
-### Deprecated
-
-### Removed
-
 ### Fixed
 - Covers are found in books that declare them the way books actually do — a `<meta name="cover">`
   naming the file, a guide reference, a cover page holding the picture, an image the manifest calls
@@ -70,7 +82,6 @@ Following the current versioning, the old will be shown in `()`.
   by hand. A book address saved outside KOsync — a bookmark, a script, an `<img>` elsewhere — stops
   working; the catalog at `/opds` is the supported way for a program to fetch a book
 
----
 
 ## [2.0.1] (26.08.1) - 2026-08-26
 
@@ -288,7 +299,8 @@ Do **NOT** update from before `1.3.0` to this version (`1.4.0`), otherwise you w
 
 Initial Release
 
-[Unreleased]: https://git.obth.eu/atjontv/kosync/compare/v2.0.1...development
+[Unreleased]: https://git.obth.eu/atjontv/kosync/compare/v2.1.0...development
+[2.1.0]: https://git.obth.eu/atjontv/kosync/compare/v2.0.1...v2.1.0
 [2.0.1]: https://git.obth.eu/atjontv/kosync/compare/v2.0.0...v2.0.1
 [2.0.0]: https://git.obth.eu/atjontv/kosync/compare/v1.5.0...v2.0.0
 [1.5.0]: https://git.obth.eu/atjontv/kosync/compare/v1.4.0...v1.5.0
