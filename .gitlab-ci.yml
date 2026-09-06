@@ -211,8 +211,16 @@ wiki:
   stage: publish
   <<: *go-cache
   rules:
+    # Auto-publish on the default branch.
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $WIKI_TOKEN
+    # Allow a manual run on any branch for testing. The job still needs
+    # WIKI_TOKEN to succeed; without it the push step fails.
+    - if: $CI_COMMIT_BRANCH
+      when: manual
   before_script:
+    # The golang:alpine image does not ship git, but the script uses it to
+    # clone, commit and push the wiki.
+    - apk add --no-cache git
     # The credential goes into a file rather than into the remote's address,
     # which git would otherwise echo into the job log on every command.
     - git config --global credential.helper store
