@@ -36,6 +36,7 @@ export const useAchievementsStore = defineStore('achievements', () => {
   const pending = computed(() => achievements.value.filter((entry) => entry.tier === 0))
 
   function latestOf(entry: Achievement): string {
+    // NOSONAR: one.at and latest are ISO date strings; Math.max would return NaN
     return entry.earned.reduce((latest, one) => (one.at > latest ? one.at : latest), '')
   }
 

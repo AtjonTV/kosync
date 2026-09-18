@@ -42,6 +42,11 @@ const (
 // CatalogTitle is the name of the whole catalog.
 const CatalogTitle = "KOsync library"
 
+const (
+	errFailedToReadLibrary = "Failed to read the library."
+	errNoSuchPartOfCatalog = "No such part of the catalog."
+)
+
 // Handler serves the catalog.
 type Handler struct {
 	app      core.App
@@ -126,7 +131,7 @@ func (h *Handler) root(e *core.RequestEvent) error {
 	for _, entry := range facets {
 		_, total, err := entry.groups(h.app, ownerFrom(e), 0, 0)
 		if err != nil {
-			return e.InternalServerError("Failed to read the library.", err)
+			return e.InternalServerError(errFailedToReadLibrary, err)
 		}
 		if total == 0 {
 			continue
@@ -150,7 +155,7 @@ func (h *Handler) root(e *core.RequestEvent) error {
 // quietly answered with the front page.
 func (h *Handler) rootOrNotFound(e *core.RequestEvent) error {
 	if strings.TrimSuffix(e.Request.URL.Path, "/") != RoutePrefix {
-		return e.NotFoundError("No such part of the catalog.", nil)
+		return e.NotFoundError(errNoSuchPartOfCatalog, nil)
 	}
 
 	return h.root(e)
@@ -168,7 +173,7 @@ func (h *Handler) section(e *core.RequestEvent) error {
 		return h.facet(e, entry)
 	}
 
-	return e.NotFoundError("No such part of the catalog.", nil)
+	return e.NotFoundError(errNoSuchPartOfCatalog, nil)
 }
 
 // shelf serves one page of one list of books.
@@ -179,7 +184,7 @@ func (h *Handler) shelf(e *core.RequestEvent, entry shelf) error {
 
 	records, total, err := entry.list(h.app, ownerFrom(e), (page-1)*size, size)
 	if err != nil {
-		return e.InternalServerError("Failed to read the library.", err)
+		return e.InternalServerError(errFailedToReadLibrary, err)
 	}
 
 	feed := h.feed(at, entry.Title, records, &Page{Number: page, Size: size, Total: total}, ownerFrom(e))
@@ -200,7 +205,7 @@ func (h *Handler) facet(e *core.RequestEvent, entry facet) error {
 
 	groups, total, err := entry.groups(h.app, ownerFrom(e), (page-1)*size, size)
 	if err != nil {
-		return e.InternalServerError("Failed to read the library.", err)
+		return e.InternalServerError(errFailedToReadLibrary, err)
 	}
 
 	feed := &Feed{
@@ -244,12 +249,12 @@ func (h *Handler) byValue(e *core.RequestEvent) error {
 
 	entry, found := findFacet(query.Get(facetParam))
 	if !found {
-		return e.NotFoundError("No such part of the catalog.", nil)
+		return e.NotFoundError(errNoSuchPartOfCatalog, nil)
 	}
 
 	value := query.Get(valueParam)
 	if value == "" {
-		return e.NotFoundError("No such part of the catalog.", nil)
+		return e.NotFoundError(errNoSuchPartOfCatalog, nil)
 	}
 
 	at := urls{base: baseURL(e)}
@@ -258,12 +263,12 @@ func (h *Handler) byValue(e *core.RequestEvent) error {
 
 	records, total, err := entry.list(h.app, ownerFrom(e), value, (page-1)*size, size)
 	if err != nil {
-		return e.InternalServerError("Failed to read the library.", err)
+		return e.InternalServerError(errFailedToReadLibrary, err)
 	}
 	if total == 0 {
 		// Nothing is under this value, which for a link that came out of a
 		// navigation feed means it no longer exists.
-		return e.NotFoundError("No such part of the catalog.", nil)
+		return e.NotFoundError(errNoSuchPartOfCatalog, nil)
 	}
 
 	feed := h.feed(at, entry.heading(h.app, ownerFrom(e), value), records,

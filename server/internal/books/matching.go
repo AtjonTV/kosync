@@ -14,6 +14,8 @@ import (
 	"github.com/pocketbase/pocketbase/core"
 )
 
+const eqParamFmt = "%s = {:%s}"
+
 // hashFields are the columns a document hash may be found in. A reader sends
 // whichever hash its checksum method produces and the server cannot tell which
 // kind it is looking at — they are 32 hex characters either way — so all three
@@ -52,7 +54,7 @@ func FindForHashes(app core.App, owner string, hashes ...string) (*core.Record, 
 		name := fmt.Sprintf("hash%d", index)
 		params[name] = hash
 		for _, field := range hashFields {
-			matches = append(matches, fmt.Sprintf("%s = {:%s}", field, name))
+			matches = append(matches, fmt.Sprintf(eqParamFmt, field, name))
 		}
 	}
 	if len(matches) == 0 {
@@ -158,8 +160,8 @@ func linkExistingDocuments(app core.App, book *core.Record) error {
 		// the filename it reported. A book can be stored under a name a device
 		// happens to have the same file under.
 		matches = append(matches,
-			fmt.Sprintf("%s = {:%s}", schema.FieldDocument, name),
-			fmt.Sprintf("%s = {:%s}", schema.FieldFilenameHash, name),
+			fmt.Sprintf(eqParamFmt, schema.FieldDocument, name),
+			fmt.Sprintf(eqParamFmt, schema.FieldFilenameHash, name),
 		)
 	}
 	if owner == "" || len(matches) == 0 {

@@ -102,6 +102,26 @@ function mountView(documents: DocumentWithHistory[], loaded = true) {
   })
 }
 
+function mountList(documents: DocumentWithHistory[], viewMode: string) {
+  return mount(DocumentsList, {
+    props: { documents, viewMode },
+    global: {
+      plugins: [
+        createTestingPinia({
+          createSpy: vi.fn,
+          initialState: { books: { books: [book()], loaded: true }, devices: { devices: [] } },
+        }),
+        ...plugins(),
+      ],
+      // The destination is an object, so it is serialised into the markup for
+      // the assertion to find the book it points at.
+      stubs: {
+        RouterLink: { template: '<a :href="JSON.stringify(to)"><slot /></a>', props: ['to'] },
+      },
+    },
+  })
+}
+
 describe('DocumentsView', () => {
   // The page exists to answer one question: what have I read that is not on the
   // server? So the answer leads, with the count in the heading.
@@ -160,26 +180,6 @@ describe('DocumentsView', () => {
 })
 
 describe('DocumentsList', () => {
-  function mountList(documents: DocumentWithHistory[], viewMode: string) {
-    return mount(DocumentsList, {
-      props: { documents, viewMode },
-      global: {
-        plugins: [
-          createTestingPinia({
-            createSpy: vi.fn,
-            initialState: { books: { books: [book()], loaded: true }, devices: { devices: [] } },
-          }),
-          ...plugins(),
-        ],
-        // The destination is an object, so it is serialised into the markup for
-        // the assertion to find the book it points at.
-        stubs: {
-          RouterLink: { template: '<a :href="JSON.stringify(to)"><slot /></a>', props: ['to'] },
-        },
-      },
-    })
-  }
-
   // The bug this replaced: the marker was added to the table and the grid is the
   // default, so the one view most people see said nothing at all. Both are
   // asserted from now on.

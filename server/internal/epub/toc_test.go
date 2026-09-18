@@ -240,7 +240,9 @@ func TestADocumentTheContentsSkipIsNamedByItself(t *testing.T) {
 		entry{name: "OEBPS/content.opf", content: tocPackage(navItem)},
 		entry{name: "OEBPS/text/nav.xhtml", content: `<?xml version="1.0"?>
 <html xmlns="http://www.w3.org/1999/xhtml"><body>
-  <nav><ol><li><a href="../text/one.xhtml">Der Anfang</a></li></ol></nav>
+  <nav xmlns:epub="http://www.idpf.org/2007/ops" epub:type="toc">
+    <ol><li><a href="../text/one.xhtml">Der Anfang</a></li></ol>
+  </nav>
 </body></html>`},
 	)
 

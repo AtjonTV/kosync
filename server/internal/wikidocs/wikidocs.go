@@ -39,6 +39,12 @@ type Page struct {
 	Group string
 }
 
+const (
+	groupReaders   = "For readers"
+	groupOperators = "For operators and developers"
+	groupProject   = "Project"
+)
+
 // Pages is what the wiki holds, in the order the sidebar lists it.
 //
 // The reader's pages come first because most of the people who open a wiki are
@@ -52,24 +58,24 @@ type Page struct {
 var Pages = []Page{
 	{Source: "README.md", Slug: "home", Title: "Home"},
 
-	{Source: "docs/user/index.md", Slug: "reading-with-kosync", Title: "KOsync for readers", Group: "For readers"},
-	{Source: "docs/user/getting-started.md", Slug: "getting-started", Title: "Getting started", Group: "For readers"},
-	{Source: "docs/user/library.md", Slug: "library", Title: "Your library", Group: "For readers"},
-	{Source: "docs/user/reading.md", Slug: "reading", Title: "Your reading", Group: "For readers"},
-	{Source: "docs/user/statistics.md", Slug: "statistics", Title: "The reading record", Group: "For readers"},
-	{Source: "docs/user/account.md", Slug: "account", Title: "Your account", Group: "For readers"},
+	{Source: "docs/user/index.md", Slug: "reading-with-kosync", Title: "KOsync for readers", Group: groupReaders},
+	{Source: "docs/user/getting-started.md", Slug: "getting-started", Title: "Getting started", Group: groupReaders},
+	{Source: "docs/user/library.md", Slug: "library", Title: "Your library", Group: groupReaders},
+	{Source: "docs/user/reading.md", Slug: "reading", Title: "Your reading", Group: groupReaders},
+	{Source: "docs/user/statistics.md", Slug: "statistics", Title: "The reading record", Group: groupReaders},
+	{Source: "docs/user/account.md", Slug: "account", Title: "Your account", Group: groupReaders},
 
-	{Source: "docs/technical/build.md", Slug: "build", Title: "Building and deploying", Group: "For operators and developers"},
-	{Source: "docs/technical/config.md", Slug: "config", Title: "Configuration", Group: "For operators and developers"},
-	{Source: "docs/technical/api.md", Slug: "api", Title: "API", Group: "For operators and developers"},
-	{Source: "docs/technical/database.md", Slug: "database", Title: "Database", Group: "For operators and developers"},
-	{Source: "docs/technical/analytics.md", Slug: "analytics", Title: "Analytics", Group: "For operators and developers"},
-	{Source: "docs/technical/migration.md", Slug: "migration", Title: "Migrating from 1.x", Group: "For operators and developers"},
+	{Source: "docs/technical/build.md", Slug: "build", Title: "Building and deploying", Group: groupOperators},
+	{Source: "docs/technical/config.md", Slug: "config", Title: "Configuration", Group: groupOperators},
+	{Source: "docs/technical/api.md", Slug: "api", Title: "API", Group: groupOperators},
+	{Source: "docs/technical/database.md", Slug: "database", Title: "Database", Group: groupOperators},
+	{Source: "docs/technical/analytics.md", Slug: "analytics", Title: "Analytics", Group: groupOperators},
+	{Source: "docs/technical/migration.md", Slug: "migration", Title: "Migrating from 1.x", Group: groupOperators},
 
-	{Source: "CHANGELOG.md", Slug: "changelog", Title: "Changelog", Group: "Project"},
-	{Source: "CONTRIBUTING.md", Slug: "contributing", Title: "Contributing", Group: "Project"},
-	{Source: "CODE_OF_CONDUCT.md", Slug: "code-of-conduct", Title: "Code of Conduct", Group: "Project"},
-	{Source: "MACHINE_POLICY.md", Slug: "machine-policy", Title: "Machine Policy", Group: "Project"},
+	{Source: "CHANGELOG.md", Slug: "changelog", Title: "Changelog", Group: groupProject},
+	{Source: "CONTRIBUTING.md", Slug: "contributing", Title: "Contributing", Group: groupProject},
+	{Source: "CODE_OF_CONDUCT.md", Slug: "code-of-conduct", Title: "Code of Conduct", Group: groupProject},
+	{Source: "MACHINE_POLICY.md", Slug: "machine-policy", Title: "Machine Policy", Group: groupProject},
 }
 
 // Repo is where a link that leaves the wiki has to point.

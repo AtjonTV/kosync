@@ -89,6 +89,12 @@ func dropBookDays(app core.App, cutoff string) error {
 
 // rollup adds the given days to their monthly totals.
 func rollup(app core.App, days []*core.Record) error {
+	totals := calculateMonthTotals(days)
+
+	return saveMonthTotals(app, totals)
+}
+
+func calculateMonthTotals(days []*core.Record) map[string]map[string]*monthTotals {
 	totals := map[string]map[string]*monthTotals{} // owner -> month -> totals
 
 	for _, day := range days {
@@ -114,6 +120,10 @@ func rollup(app core.App, days []*core.Record) error {
 		sum.daysActive++
 	}
 
+	return totals
+}
+
+func saveMonthTotals(app core.App, totals map[string]map[string]*monthTotals) error {
 	collection, err := app.FindCollectionByNameOrId(schema.CollectionReadingMonths)
 	if err != nil {
 		return err

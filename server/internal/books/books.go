@@ -41,23 +41,7 @@ const coverName = "cover"
 // Register wires the upload processing and the document matching into the app.
 func Register(app core.App, conf *config.Config) {
 	registerMatching(app)
-
-	// Matching on arrival can fail, and nothing that arrives twice is guaranteed
-	// to arrive a third time. This asks the question again every night.
-	app.Cron().MustAdd(JobReconcile, scheduleReconcile, func() {
-		linked, err := Reconcile(app)
-		if err != nil {
-			app.Logger().Error("failed to reconcile the unlinked documents", "error", err)
-
-			return
-		}
-		if linked > 0 {
-			app.Logger().Info("linked documents to books they had been missing", "documents", linked)
-		}
-	})
-
-	// The covers of books uploaded before the reader could find them, which is
-	// otherwise a delete-and-upload away and takes the reading progress with it.
+	registerReconciliation(app)
 	registerCovers(app)
 
 	app.OnRecordCreateRequest(schema.CollectionBooks).BindFunc(func(e *core.RecordRequestEvent) error {
@@ -72,8 +56,6 @@ func Register(app core.App, conf *config.Config) {
 		return e.Next()
 	})
 
-	// After the hook above, which is where the size of the incoming file is
-	// learned: a quota cannot weigh a book nobody has measured yet.
 	registerQuota(app, conf.QuotaBytes())
 
 	// The catalog serves a book under a name derived from its title, so the hash
@@ -90,57 +72,75 @@ func Register(app core.App, conf *config.Config) {
 	// The derived fields describe the file, so they cannot be edited away from
 	// it. Title and authors are deliberately not in this list: correcting
 	// publisher metadata is the owner's business.
-	app.OnRecordUpdateRequest(schema.CollectionBooks).BindFunc(func(e *core.RecordRequestEvent) error {
-		info, err := e.RequestInfo()
+	app.OnRecordUpdateRequest(schema.CollectionBooks).BindFunc(validateBookUpdate)
+}
+
+func registerReconciliation(app core.App) {
+	// Matching on arrival can fail, and nothing that arrives twice is guaranteed
+	// to arrive a third time. This asks the question again every night.
+	app.Cron().MustAdd(JobReconcile, scheduleReconcile, func() {
+		linked, err := Reconcile(app)
 		if err != nil {
-			return err
-		}
+			app.Logger().Error("failed to reconcile the unlinked documents", "error", err)
 
-		for _, field := range []string{
-			schema.FieldFile,
-			schema.FieldContentHash,
-			schema.FieldHashBinary,
-			schema.FieldHashFilename,
-			schema.FieldWordCount,
-			schema.FieldFileSize,
-		} {
-			if _, present := info.Body[field]; present {
-				return e.BadRequestError(
-					fmt.Sprintf("%q describes the uploaded file and cannot be changed; upload the book again instead.", field),
-					nil,
-				)
-			}
+			return
 		}
+		if linked > 0 {
+			app.Logger().Info("linked documents to books they had been missing", "documents", linked)
+		}
+	})
+}
 
-		// The catalog hash follows the title, and a hand-set value would claim
-		// the book is served under a name it is not.
-		if _, present := info.Body[schema.FieldHashCatalog]; present {
+func validateBookUpdate(e *core.RecordRequestEvent) error {
+	info, err := e.RequestInfo()
+	if err != nil {
+		return err
+	}
+
+	for _, field := range []string{
+		schema.FieldFile,
+		schema.FieldContentHash,
+		schema.FieldHashBinary,
+		schema.FieldHashFilename,
+		schema.FieldWordCount,
+		schema.FieldFileSize,
+	} {
+		if _, present := info.Body[field]; present {
 			return e.BadRequestError(
-				fmt.Sprintf("%q follows the title and cannot be set by hand; rename the book instead.", schema.FieldHashCatalog),
+				fmt.Sprintf("%q describes the uploaded file and cannot be changed; upload the book again instead.", field),
 				nil,
 			)
 		}
+	}
 
-		// The measurement is the device's own: stated by the statistics it
-		// synced, or recovered from the progress it pushed. Letting it be typed
-		// in would put a number nothing measured in front of every page count
-		// the statistics are reckoned in.
-		for _, field := range []string{
-			schema.FieldMeasuredPages,
-			schema.FieldMeasuredDevice,
-			schema.FieldMeasuredThrough,
-			schema.FieldMeasuredSource,
-		} {
-			if _, present := info.Body[field]; present {
-				return e.BadRequestError(
-					fmt.Sprintf("%q is measured from your reading and cannot be set by hand.", field),
-					nil,
-				)
-			}
+	// The catalog hash follows the title, and a hand-set value would claim
+	// the book is served under a name it is not.
+	if _, present := info.Body[schema.FieldHashCatalog]; present {
+		return e.BadRequestError(
+			fmt.Sprintf("%q follows the title and cannot be set by hand; rename the book instead.", schema.FieldHashCatalog),
+			nil,
+		)
+	}
+
+	// The measurement is the device's own: stated by the statistics it
+	// synced, or recovered from the progress it pushed. Letting it be typed
+	// in would put a number nothing measured in front of every page count
+	// the statistics are reckoned in.
+	for _, field := range []string{
+		schema.FieldMeasuredPages,
+		schema.FieldMeasuredDevice,
+		schema.FieldMeasuredThrough,
+		schema.FieldMeasuredSource,
+	} {
+		if _, present := info.Body[field]; present {
+			return e.BadRequestError(
+				fmt.Sprintf("%q is measured from your reading and cannot be set by hand.", field),
+				nil,
+			)
 		}
+	}
 
-		return e.Next()
-	})
+	return e.Next()
 }
 
 // alreadyHere reports whether the owner has uploaded this exact file before,

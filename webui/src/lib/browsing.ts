@@ -50,7 +50,7 @@ const byTitle = (a: Book, b: Book) => a.title.localeCompare(b.title)
  * this would flatten; this one only has to put a book on the screen.
  */
 function fold(text: string): string {
-  return text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
+  return text.normalize('NFD').replaceAll(/\p{M}/gu, '').toLowerCase()
 }
 
 /**

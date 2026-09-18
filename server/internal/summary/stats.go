@@ -17,7 +17,10 @@ import (
 
 // maxBooks is how many books a summary names. A month of heavy reading can touch
 // twenty, and a list that long stops being a summary.
-const maxBooks = 5
+const (
+	maxBooks      = 5
+	errResolveFmt = "resolve %s: %w"
+)
 
 // Stats is what an account read over one period.
 type Stats struct {
@@ -236,11 +239,11 @@ func finishedIn(app core.App, owner *core.Record, period Period) (map[string]boo
 
 	start, _, err := timezone.DayRange(location, period.From)
 	if err != nil {
-		return nil, fmt.Errorf("resolve %s: %w", period.From, err)
+		return nil, fmt.Errorf(errResolveFmt, period.From, err)
 	}
 	_, end, err := timezone.DayRange(location, period.To)
 	if err != nil {
-		return nil, fmt.Errorf("resolve %s: %w", period.To, err)
+		return nil, fmt.Errorf(errResolveFmt, period.To, err)
 	}
 
 	rows := []struct {
@@ -281,11 +284,11 @@ func addAchievements(app core.App, owner *core.Record, stats *Stats) error {
 
 	start, _, err := timezone.DayRange(location, stats.Period.From)
 	if err != nil {
-		return fmt.Errorf("resolve %s: %w", stats.Period.From, err)
+		return fmt.Errorf(errResolveFmt, stats.Period.From, err)
 	}
 	_, end, err := timezone.DayRange(location, stats.Period.To)
 	if err != nil {
-		return fmt.Errorf("resolve %s: %w", stats.Period.To, err)
+		return fmt.Errorf(errResolveFmt, stats.Period.To, err)
 	}
 
 	awards := []Award{}

@@ -50,7 +50,7 @@ function book(id: string, overrides: Partial<Book> = {}): Book {
   }
 }
 
-const titlesOf = (books: Book[]) => books.map((one) => one.title)
+const titlesOf = (books?: Book[]) => books?.map((one) => one.title) ?? []
 
 describe('the author folding, against the shared cases', () => {
   it('shows every name the way the catalog shows it', () => {
@@ -61,8 +61,9 @@ describe('the author folding, against the shared cases', () => {
 
   it('gives every spelling of one author the same key', () => {
     for (const spellings of shared.sameAuthor) {
-      const key = authorKey(spellings[0]!)
-      expect(key, `AuthorKey(${JSON.stringify(spellings[0])})`).not.toBe('')
+      const first = spellings[0] ?? ''
+      const key = authorKey(first)
+      expect(key, `AuthorKey(${JSON.stringify(first)})`).not.toBe('')
 
       for (const spelling of spellings.slice(1)) {
         expect(authorKey(spelling), `AuthorKey(${JSON.stringify(spelling)})`).toBe(key)
@@ -72,7 +73,7 @@ describe('the author folding, against the shared cases', () => {
 
   it('keeps two authors apart', () => {
     for (const [one, other] of shared.differentAuthors) {
-      expect(authorKey(one!), `against ${JSON.stringify(other)}`).not.toBe(authorKey(other!))
+      expect(authorKey(one ?? ''), `against ${JSON.stringify(other)}`).not.toBe(authorKey(other ?? ''))
     }
   })
 
@@ -88,8 +89,8 @@ describe('groupBooks', () => {
     const shelves = groupBooks([book('a'), book('b')], 'none')
 
     expect(shelves).toHaveLength(1)
-    expect(shelves[0]!.title).toBe('')
-    expect(shelves[0]!.books).toHaveLength(2)
+    expect(shelves[0]?.title).toBe('')
+    expect(shelves[0]?.books).toHaveLength(2)
   })
 
   it('has no shelves at all for an empty library', () => {
@@ -110,8 +111,8 @@ describe('groupBooks', () => {
     )
 
     expect(shelves).toHaveLength(1)
-    expect(shelves[0]!.title).toBe('Lee Child')
-    expect(titlesOf(shelves[0]!.books)).toEqual(['Ambush', 'Betrayal', 'Choice'])
+    expect(shelves[0]?.title).toBe('Lee Child')
+    expect(titlesOf(shelves[0]?.books)).toEqual(['Ambush', 'Betrayal', 'Choice'])
   })
 
   // Lincoln Child is not Lee Child, and a fold that cannot tell them apart is
@@ -147,7 +148,7 @@ describe('groupBooks', () => {
     )
 
     expect(shelves).toHaveLength(1)
-    expect(shelves[0]!.books).toHaveLength(1)
+    expect(shelves[0]?.books).toHaveLength(1)
   })
 
   it('collects the books nobody is named on', () => {
@@ -174,7 +175,7 @@ describe('groupBooks', () => {
       'series',
     )
 
-    expect(titlesOf(shelves[0]!.books)).toEqual(['Betrayal', 'Choice', 'Ambush'])
+    expect(titlesOf(shelves[0]?.books)).toEqual(['Betrayal', 'Choice', 'Ambush'])
   })
 
   it('puts a volume the publisher gave no number at the front', () => {
@@ -186,7 +187,7 @@ describe('groupBooks', () => {
       'series',
     )
 
-    expect(titlesOf(shelves[0]!.books)).toEqual(['A Short Story', 'The First Novel'])
+    expect(titlesOf(shelves[0]?.books)).toEqual(['A Short Story', 'The First Novel'])
   })
 
   // Grouping must never hide a book. Everything that belongs to no series still
@@ -201,7 +202,7 @@ describe('groupBooks', () => {
     )
 
     expect(shelves.map((shelf) => shelf.title)).toEqual(['Jack Reacher', 'Without a series'])
-    expect(titlesOf(shelves[1]!.books)).toEqual(['Alone'])
+    expect(titlesOf(shelves[1]?.books)).toEqual(['Alone'])
   })
 
   it('folds every spelling of a language into one shelf, the biggest first', () => {
@@ -216,7 +217,7 @@ describe('groupBooks', () => {
     )
 
     expect(shelves.map((shelf) => shelf.title)).toEqual(['German', 'English'])
-    expect(shelves[0]!.books).toHaveLength(3)
+    expect(shelves[0]?.books).toHaveLength(3)
   })
 
   // "und" is what an EPUB says when it will not say, and a file that says nothing
@@ -231,7 +232,7 @@ describe('groupBooks', () => {
     )
 
     expect(shelves.map((shelf) => shelf.title)).toEqual(['Unknown'])
-    expect(shelves[0]!.books).toHaveLength(2)
+    expect(shelves[0]?.books).toHaveLength(2)
   })
 
   it('shows a language nothing here knows as the tag itself', () => {
@@ -255,7 +256,7 @@ describe('groupBooks', () => {
         byLength,
       )
 
-      expect(shelves[0]!.books.map((one) => one.id)).toEqual(['b', 'a'])
+      expect(shelves[0]?.books?.map((one) => one.id)).toEqual(['b', 'a'])
     })
 
     it('orders a language shelf by it', () => {
@@ -268,7 +269,7 @@ describe('groupBooks', () => {
         byLength,
       )
 
-      expect(shelves[0]!.books.map((one) => one.id)).toEqual(['b', 'a'])
+      expect(shelves[0]?.books?.map((one) => one.id)).toEqual(['b', 'a'])
     })
 
     // Reading order is what the number on a volume is for, so it is what a
@@ -282,7 +283,7 @@ describe('groupBooks', () => {
         'series',
       )
 
-      expect(shelves[0]!.books.map((one) => one.id)).toEqual(['b', 'a'])
+      expect(shelves[0]?.books?.map((one) => one.id)).toEqual(['b', 'a'])
     })
 
     // Somebody who asked for the longest first asked about the whole library,
@@ -297,7 +298,7 @@ describe('groupBooks', () => {
         byLength,
       )
 
-      expect(shelves[0]!.books.map((one) => one.id)).toEqual(['b', 'a'])
+      expect(shelves[0]?.books?.map((one) => one.id)).toEqual(['b', 'a'])
     })
 
     // The shelf the books a grouping has no place for stand on is a shelf like
@@ -312,8 +313,8 @@ describe('groupBooks', () => {
         byLength,
       )
 
-      expect(shelves[0]!.title).toBe('Without a series')
-      expect(shelves[0]!.books.map((one) => one.id)).toEqual(['b', 'a'])
+      expect(shelves[0]?.title).toBe('Without a series')
+      expect(shelves[0]?.books?.map((one) => one.id)).toEqual(['b', 'a'])
     })
 
     // An ungrouped list is already in the order its caller put it in.
@@ -323,7 +324,7 @@ describe('groupBooks', () => {
         book('b', { title: 'Alpha', page_count: 300 }),
       ]
 
-      expect(groupBooks(shelf, 'none', byLength)[0]!.books.map((one) => one.id)).toEqual(['a', 'b'])
+      expect(groupBooks(shelf, 'none', byLength)[0]?.books?.map((one) => one.id)).toEqual(['a', 'b'])
     })
   })
 })

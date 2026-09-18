@@ -81,7 +81,7 @@ export function authorName(raw: string): string {
 
   if (!family || given.length === 0 || given.length > maxGivenNames) return name
 
-  const last = given[given.length - 1]!.replace(/^\.+|\.+$/g, '').toLowerCase()
+  const last = given.at(-1)?.replaceAll(/^\.+|\.+$/g, '').toLowerCase() ?? ''
   if (nameSuffixes.has(last)) return name
 
   return `${given.join(' ')} ${family}`
@@ -170,7 +170,7 @@ const byTitle: Order = (a, b) => a.title.localeCompare(b.title)
 
 /** Reading order: the number first, the title only to break ties. */
 const byReadingOrder: Order = (a, b) =>
-  a.series_index !== b.series_index ? a.series_index - b.series_index : byTitle(a, b)
+  a.series_index === b.series_index ? byTitle(a, b) : a.series_index - b.series_index
 
 /** Shelf names, case insensitively, the way the catalog orders them. */
 const byName = (a: BookGroup, b: BookGroup) =>
@@ -203,6 +203,37 @@ function commonestSpelling(spellings: Map<string, number>): string {
   return best
 }
 
+interface AuthorEntry {
+  books: Book[]
+  spellings: Map<string, number>
+}
+
+function recordAuthor(
+  folded: Map<string, AuthorEntry>,
+  book: Book,
+  written: string,
+  keys: Set<string>,
+): void {
+  const key = authorKey(written)
+  if (!key) return
+
+  let one = folded.get(key)
+  if (!one) {
+    one = { books: [], spellings: new Map() }
+    folded.set(key, one)
+  }
+
+  // Counted by book: a book naming the same author twice, once each way
+  // round, is still one book on their shelf.
+  if (!keys.has(key)) {
+    one.books.push(book)
+    keys.add(key)
+  }
+
+  const spelling = written.trim()
+  one.spellings.set(spelling, (one.spellings.get(spelling) ?? 0) + 1)
+}
+
 /**
  * The authors' shelves, one per person however their name is spelled.
  *
@@ -210,31 +241,14 @@ function commonestSpelling(spellings: Map<string, number>): string {
  * add up to more than the library holds.
  */
 function byAuthor(books: Book[], order?: Order): BookGroup[] {
-  const folded = new Map<string, { books: Book[]; spellings: Map<string, number> }>()
+  const folded = new Map<string, AuthorEntry>()
   const anonymous: Book[] = []
 
   for (const book of books) {
     const keys = new Set<string>()
 
     for (const written of book.authors ?? []) {
-      const key = authorKey(written)
-      if (!key) continue
-
-      let one = folded.get(key)
-      if (!one) {
-        one = { books: [], spellings: new Map() }
-        folded.set(key, one)
-      }
-
-      // Counted by book: a book naming the same author twice, once each way
-      // round, is still one book on their shelf.
-      if (!keys.has(key)) {
-        one.books.push(book)
-        keys.add(key)
-      }
-
-      const spelling = written.trim()
-      one.spellings.set(spelling, (one.spellings.get(spelling) ?? 0) + 1)
+      recordAuthor(folded, book, written, keys)
     }
 
     if (keys.size === 0) anonymous.push(book)
@@ -251,7 +265,8 @@ function byAuthor(books: Book[], order?: Order): BookGroup[] {
   groups.sort(byName)
 
   if (anonymous.length) {
-    groups.push({ key: '', title: 'Without an author', books: anonymous.sort(order ?? byTitle) })
+    anonymous.sort(order ?? byTitle)
+    groups.push({ key: '', title: 'Without an author', books: anonymous })
   }
 
   return groups
@@ -287,7 +302,8 @@ function bySeries(books: Book[], order?: Order): BookGroup[] {
   groups.sort(byName)
 
   if (loose.length) {
-    groups.push({ key: '', title: 'Without a series', books: loose.sort(order ?? byTitle) })
+    loose.sort(order ?? byTitle)
+    groups.push({ key: '', title: 'Without a series', books: loose })
   }
 
   return groups

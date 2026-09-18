@@ -263,6 +263,8 @@ type upload struct {
 // ErrTooLarge is returned when an upload runs past the configured limit.
 var ErrTooLarge = errors.New("the upload is larger than this server accepts")
 
+const errStoreUploadFmt = "store the upload: %w"
+
 func (u *upload) Write(data []byte) (int, error) {
 	if u.limit > 0 && u.written+int64(len(data)) > u.limit {
 		return 0, ErrTooLarge
@@ -286,12 +288,12 @@ func (u *upload) Close() error {
 		_ = u.File.Close()
 		_ = os.Remove(temp)
 
-		return fmt.Errorf("store the upload: %w", err)
+		return fmt.Errorf(errStoreUploadFmt, err)
 	}
 	if err := u.File.Close(); err != nil {
 		_ = os.Remove(temp)
 
-		return fmt.Errorf("store the upload: %w", err)
+		return fmt.Errorf(errStoreUploadFmt, err)
 	}
 
 	// Whatever happens next, nothing but the stored file may be left in the
@@ -308,7 +310,7 @@ func (u *upload) Close() error {
 	}
 
 	if err := os.Rename(temp, u.final); err != nil {
-		return fmt.Errorf("store the upload: %w", err)
+		return fmt.Errorf(errStoreUploadFmt, err)
 	}
 
 	// Only now, and only on the way out: whatever reads this file wants the one

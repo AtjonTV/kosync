@@ -7,8 +7,8 @@
 import { vi } from 'vitest'
 
 // jsdom has no layout engine, and PrimeVue components ask for it.
-if (!window.matchMedia) {
-  Object.defineProperty(window, 'matchMedia', {
+if (!globalThis.matchMedia) {
+  Object.defineProperty(globalThis, 'matchMedia', {
     writable: true,
     value: vi.fn().mockImplementation((query: string) => ({
       matches: false,

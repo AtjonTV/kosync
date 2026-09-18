@@ -9,7 +9,7 @@ import PocketBase, { isTokenExpired } from 'pocketbase'
 
 // The WebUI is served by the KOsync server itself, so the API lives on the same
 // origin. During "bun run dev" Vite proxies /api to a local server.
-export const pb = new PocketBase(window.location.origin)
+export const pb = new PocketBase(globalThis.location.origin)
 
 // Realtime subscriptions are the reason this is disabled: PocketBase would
 // otherwise cancel a pending request whenever a new one with the same key
@@ -88,7 +88,7 @@ const fileTokenMarginSeconds = 60
  * request per rendered cover.
  */
 function requestFileToken(): void {
-  if (fileTokenRequest || Date.now() < fileTokenRetryAt) return
+  if (fileTokenRequest !== null || Date.now() < fileTokenRetryAt) return
 
   fileTokenRequest = pb.files
     .getToken()

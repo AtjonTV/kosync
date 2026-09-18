@@ -60,22 +60,9 @@ func Merge(app core.App, ownerId, targetId string, sourceIds []string) (int, err
 			return err
 		}
 
-		sources := []*core.Record{}
-		seen := map[string]bool{targetId: true}
-		for _, id := range sourceIds {
-			if seen[id] {
-				continue
-			}
-			seen[id] = true
-
-			source, err := ownedDocument(txApp, ownerId, id)
-			if err != nil {
-				return err
-			}
-			sources = append(sources, source)
-		}
-		if len(sources) == 0 {
-			return ErrNothingToMerge
+		sources, err := collectSources(txApp, ownerId, targetId, sourceIds)
+		if err != nil {
+			return err
 		}
 
 		// Read before anything moves: afterwards the source documents are gone
@@ -97,29 +84,7 @@ func Merge(app core.App, ownerId, targetId string, sourceIds []string) (int, err
 		}
 
 		for _, source := range sources {
-			// The winner's state is not archived: it has just become the
-			// target's current state, and a copy of it in the history as well
-			// would show the same position twice.
-			if source.Id != winner.Id {
-				if err := Archive(txApp, source); err != nil {
-					return err
-				}
-			}
-
-			// Both of these run before the delete, because both cascade with it.
-			if err := reparent(txApp, schema.CollectionDocumentHistory, source.Id, target.Id); err != nil {
-				return err
-			}
-			if err := reparent(txApp, schema.CollectionDocumentAliases, source.Id, target.Id); err != nil {
-				return err
-			}
-			if err := setAlias(txApp, ownerId, source.GetString(schema.FieldDocument), target.Id); err != nil {
-				return err
-			}
-
-			inherit(target, source)
-
-			if err := txApp.Delete(source); err != nil {
+			if err := mergeSource(txApp, ownerId, target, source, winner); err != nil {
 				return err
 			}
 		}
@@ -143,6 +108,54 @@ func Merge(app core.App, ownerId, targetId string, sourceIds []string) (int, err
 	})
 
 	return merged, err
+}
+
+func collectSources(txApp core.App, ownerId, targetId string, sourceIds []string) ([]*core.Record, error) {
+	sources := []*core.Record{}
+	seen := map[string]bool{targetId: true}
+	for _, id := range sourceIds {
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
+
+		source, err := ownedDocument(txApp, ownerId, id)
+		if err != nil {
+			return nil, err
+		}
+		sources = append(sources, source)
+	}
+	if len(sources) == 0 {
+		return nil, ErrNothingToMerge
+	}
+
+	return sources, nil
+}
+
+func mergeSource(txApp core.App, ownerId string, target, source, winner *core.Record) error {
+	// The winner's state is not archived: it has just become the
+	// target's current state, and a copy of it in the history as well
+	// would show the same position twice.
+	if source.Id != winner.Id {
+		if err := Archive(txApp, source); err != nil {
+			return err
+		}
+	}
+
+	// Both of these run before the delete, because both cascade with it.
+	if err := reparent(txApp, schema.CollectionDocumentHistory, source.Id, target.Id); err != nil {
+		return err
+	}
+	if err := reparent(txApp, schema.CollectionDocumentAliases, source.Id, target.Id); err != nil {
+		return err
+	}
+	if err := setAlias(txApp, ownerId, source.GetString(schema.FieldDocument), target.Id); err != nil {
+		return err
+	}
+
+	inherit(target, source)
+
+	return txApp.Delete(source)
 }
 
 // ownedDocument loads one document of one owner.

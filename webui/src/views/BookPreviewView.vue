@@ -133,8 +133,8 @@ function step(by: number): void {
   if (next) void show(next.index)
 }
 
-function leave(): void {
-  void router.push({ name: 'book', params: { id: bookId.value } })
+async function leave(): Promise<void> {
+  await router.push({ name: 'book', params: { id: bookId.value } })
 }
 
 // Arrow keys page, because a preview read at a desk is read with one hand on
@@ -192,14 +192,14 @@ onMounted(() => {
   readTheme()
   themeWatch = new MutationObserver(readTheme)
   themeWatch.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
-  window.addEventListener('keydown', onKey)
+  globalThis.addEventListener('keydown', onKey)
   void open()
 })
 
 onUnmounted(() => {
   themeWatch?.disconnect()
   themeWatch = null
-  window.removeEventListener('keydown', onKey)
+  globalThis.removeEventListener('keydown', onKey)
 })
 </script>
 

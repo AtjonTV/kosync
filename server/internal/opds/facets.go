@@ -17,6 +17,11 @@ import (
 	"github.com/pocketbase/pocketbase/core"
 )
 
+const (
+	booksTablePrefix  = "books."
+	titleOrderCollate = "[[" + booksTablePrefix + "title]] COLLATE NOCASE ASC"
+)
+
 // group is one entry of a navigation feed: a value the library can be broken up
 // by, and how many books are under it.
 type group struct {
@@ -299,7 +304,7 @@ func listByAuthor(app core.App, owner, value string, offset, limit int) ([]*core
 	}
 
 	return listWhere(app, owner, dbx.In(schema.CollectionBooks+".id", ids...),
-		[]string{"[[books.title]] COLLATE NOCASE ASC", "[[books.created]] ASC"}, offset, limit)
+		[]string{titleOrderCollate, "[[books.created]] ASC"}, offset, limit)
 }
 
 // seriesGroups lists the series, alphabetically.
@@ -323,12 +328,12 @@ func seriesGroups(app core.App, owner string, offset, limit int) ([]group, int, 
 // scattered through the numbered ones.
 func listBySeries(app core.App, owner, value string, offset, limit int) ([]*core.Record, int, error) {
 	condition := dbx.NewExp(
-		"books."+schema.FieldSeries+" = {:value}",
+		booksTablePrefix+schema.FieldSeries+" = {:value}",
 		dbx.Params{"value": value},
 	)
 
 	return listWhere(app, owner, condition,
-		[]string{"[[books." + schema.FieldSeriesIndex + "]] ASC", "[[books.title]] COLLATE NOCASE ASC"},
+		[]string{"[[" + booksTablePrefix + schema.FieldSeriesIndex + "]] ASC", titleOrderCollate},
 		offset, limit)
 }
 
@@ -362,12 +367,12 @@ func languageGroups(app core.App, owner string, offset, limit int) ([]group, int
 // listByLanguage returns the books in one language, by title.
 func listByLanguage(app core.App, owner, value string, offset, limit int) ([]*core.Record, int, error) {
 	condition := dbx.NewExp(
-		strings.ReplaceAll(languageTag, "[["+schema.FieldLanguage+"]]", "books."+schema.FieldLanguage)+" = {:value}",
+		strings.ReplaceAll(languageTag, "[["+schema.FieldLanguage+"]]", booksTablePrefix+schema.FieldLanguage)+" = {:value}",
 		dbx.Params{"value": value},
 	)
 
 	return listWhere(app, owner, condition,
-		[]string{"[[books.title]] COLLATE NOCASE ASC", "[[books.created]] ASC"}, offset, limit)
+		[]string{titleOrderCollate, "[[books.created]] ASC"}, offset, limit)
 }
 
 // languageNames are the display names of the language tags a personal library

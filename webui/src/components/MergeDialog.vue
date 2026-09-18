@@ -116,9 +116,10 @@ const submit = async () => {
           <label
             v-for="entry in candidates"
             :key="entry.id"
+            :for="'merge-' + entry.id"
             class="flex items-center gap-3 p-3 rounded border border-surface-200 dark:border-surface-700 cursor-pointer"
           >
-            <Checkbox v-model="picked" :value="entry.id" />
+            <Checkbox v-model="picked" :input-id="'merge-' + entry.id" :value="entry.id" />
             <span class="flex flex-col min-w-0 grow">
               <span class="truncate">{{ nameOf(entry) }}</span>
               <span class="text-xs text-surface-500 dark:text-surface-400">

@@ -65,7 +65,14 @@ const openHistory = (doc: DocumentWithHistory) => {
   showHistoryDialog.value = true
   // Fetched when it is asked for rather than with the page: the history of
   // every document is thousands of rows nobody has looked at yet.
-  void store.loadHistory(doc.id)
+  store.loadHistory(doc.id).catch((e) => {
+    toast.add({
+      severity: 'error',
+      summary: 'Could not load history',
+      detail: errorMessage(e),
+      life: 5000,
+    })
+  })
 }
 
 // The document a merge is started from is the one that is kept, which is why

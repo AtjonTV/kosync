@@ -203,8 +203,8 @@ const shelfItems = computed<MenuItem[]>(() => {
           ? 'On every collection already'
           : 'No collections yet',
         icon: 'pi pi-bookmark',
-        command: () => {
-          void router.push({ name: 'collections' })
+        command: async () => {
+          await router.push({ name: 'collections' })
         },
       },
     ]
@@ -212,8 +212,8 @@ const shelfItems = computed<MenuItem[]>(() => {
 
   return rest.map((shelf) => ({
     label: shelf.name,
-    command: () => {
-      void fileOn(shelf.id)
+    command: async () => {
+      await fileOn(shelf.id)
     },
   }))
 })

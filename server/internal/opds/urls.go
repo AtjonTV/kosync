@@ -21,6 +21,7 @@ import (
 const (
 	headerForwardedProto = "X-Forwarded-Proto"
 	headerForwardedHost  = "X-Forwarded-Host"
+	booksUrlPrefix       = "/books/"
 )
 
 // baseURL is the scheme and host to build the catalog's links from.
@@ -123,17 +124,17 @@ func (u urls) searchTemplate() string {
 // that names the downloaded file after the URL and a reader that reads the
 // header then agree. That agreement is what makes the filename hash predictable.
 func (u urls) download(book *core.Record) string {
-	return u.base + RoutePrefix + "/books/" + book.Id + "/download/" + url.PathEscape(books.CatalogFilename(book))
+	return u.base + RoutePrefix + booksUrlPrefix + book.Id + "/download/" + url.PathEscape(books.CatalogFilename(book))
 }
 
 // cover is the full sized cover image.
 func (u urls) cover(bookId string) string {
-	return u.base + RoutePrefix + "/books/" + bookId + "/cover"
+	return u.base + RoutePrefix + booksUrlPrefix + bookId + "/cover"
 }
 
 // thumbnail is the small cover, which is what a grid of books wants.
 func (u urls) thumbnail(bookId string) string {
-	return u.base + RoutePrefix + "/books/" + bookId + "/thumbnail"
+	return u.base + RoutePrefix + booksUrlPrefix + bookId + "/thumbnail"
 }
 
 // withPage appends the page number, leaving the first page unmarked so that the

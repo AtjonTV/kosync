@@ -43,6 +43,8 @@ var wanted = map[string][]string{
 // database.
 var ErrNotStatistics = errors.New("not a KOReader statistics database")
 
+const errReadSchemaFmt = "read the schema of %s"
+
 // Validate reports whether the file at the given path is one of these.
 //
 // This runs on a file a device has just written and nothing has vouched for, so
@@ -114,7 +116,7 @@ func Validate(path string) error {
 func columnsOf(db *sql.DB, table string) (map[string]bool, error) {
 	rows, err := db.Query("SELECT name FROM pragma_table_info(?)", table)
 	if err != nil {
-		return nil, fmt.Errorf("read the schema of %s", table)
+		return nil, fmt.Errorf(errReadSchemaFmt, table)
 	}
 	defer rows.Close()
 
@@ -122,12 +124,12 @@ func columnsOf(db *sql.DB, table string) (map[string]bool, error) {
 	for rows.Next() {
 		name := ""
 		if err := rows.Scan(&name); err != nil {
-			return nil, fmt.Errorf("read the schema of %s", table)
+			return nil, fmt.Errorf(errReadSchemaFmt, table)
 		}
 		columns[strings.ToLower(name)] = true
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("read the schema of %s", table)
+		return nil, fmt.Errorf(errReadSchemaFmt, table)
 	}
 	if len(columns) == 0 {
 		return nil, fmt.Errorf("there is no %s table", table)

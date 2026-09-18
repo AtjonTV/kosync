@@ -173,8 +173,8 @@ describe('BookPreviewView', () => {
 
     const entry = Array.from(document.body.querySelectorAll('button')).find(
       (node) => node.textContent?.trim() === 'Kapitel 4',
-    )!
-    entry.click()
+    )
+    entry?.click()
     await flushPromises()
 
     expect(drawn(wrapper)).toContain('Es endet hier.')
@@ -210,7 +210,9 @@ describe('BookPreviewView', () => {
   it('says so when one chapter cannot be read', async () => {
     send.mockImplementation(async (url: string) => {
       if (url === '/api/kosync/books/book-a/preview') return outline
-      throw { response: { message: 'This chapter could not be read.' } }
+      throw Object.assign(new Error('This chapter could not be read.'), {
+        response: { message: 'This chapter could not be read.' },
+      })
     })
 
     const wrapper = mountPreview()
@@ -224,11 +226,11 @@ describe('BookPreviewView', () => {
     const wrapper = mountPreview()
     await flushPromises()
 
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
+    globalThis.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
     await flushPromises()
     expect(drawn(wrapper)).toContain('Der Hexer wartet.')
 
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' }))
+    globalThis.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' }))
     await flushPromises()
     expect(drawn(wrapper)).toContain('Ein Sturm zieht auf.')
   })
@@ -238,7 +240,7 @@ describe('BookPreviewView', () => {
     await flushPromises()
     wrapper.unmount()
 
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
+    globalThis.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
     await flushPromises()
 
     expect(chapterRequests()).toBe(1)
@@ -279,7 +281,7 @@ describe('BookPreviewView', () => {
 
         const asked = /\/preview\/(\d+)$/.exec(url)
         return {
-          index: Number(asked![1]),
+          index: Number(asked?.[1] ?? 0),
           title: '1',
           section: 'METRO 2033',
           html: '<p>Ein Sturm zieht auf.</p>',
@@ -312,8 +314,8 @@ describe('BookPreviewView', () => {
     const wrapper = mountPreview()
     await flushPromises()
 
-    const back = wrapper.findAll('button').find((node) => node.text().includes('Back'))!
-    await back.trigger('click')
+    const back = wrapper.findAll('button').find((node) => node.text().includes('Back'))
+    await back?.trigger('click')
 
     expect(push).toHaveBeenCalledWith({ name: 'book', params: { id: 'book-a' } })
   })

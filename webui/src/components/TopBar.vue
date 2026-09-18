@@ -32,7 +32,7 @@ const initTheme = () => {
   const savedTheme = localStorage.getItem('theme')
   if (
     savedTheme === 'dark' ||
-    (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)
+    (!savedTheme && globalThis.matchMedia('(prefers-color-scheme: dark)').matches)
   ) {
     document.documentElement.classList.add('p-dark')
     isDarkMode.value = true
@@ -91,8 +91,8 @@ const accountItems = computed<MenuItem[]>(() => [
   {
     label: 'Account settings',
     icon: 'pi pi-cog',
-    command: () => {
-      void router.push({ name: 'account' })
+    command: async () => {
+      await router.push({ name: 'account' })
     },
   },
   { separator: true },

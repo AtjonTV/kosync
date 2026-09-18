@@ -101,7 +101,11 @@ export const pbMock = {
     // Good enough for assertions: the real implementation escapes and inlines
     // the parameters the same way.
     return Object.entries(params).reduce(
-      (result, [key, value]) => result.replace(`{:${key}}`, `'${String(value)}'`),
+      (result, [key, value]) =>
+        result.replace(
+          `{:${key}}`,
+          `'${typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value)}'`,
+        ),
       expression,
     )
   },

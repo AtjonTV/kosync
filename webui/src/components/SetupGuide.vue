@@ -8,15 +8,15 @@ import { computed } from 'vue'
 
 // KOReader appends its own paths to whatever it is given, so the device has to
 // be pointed at the "/koreader" prefix rather than at the site root.
-const syncServer = computed(() => `${window.location.origin}/koreader`)
+const syncServer = computed(() => `${globalThis.location.origin}/koreader`)
 
 // The catalog is a standard other readers speak too, which is why it does not
 // sit under the "/koreader" prefix.
-const catalog = computed(() => `${window.location.origin}/opds`)
+const catalog = computed(() => `${globalThis.location.origin}/opds`)
 
 // KOReader's statistics plugin syncs through a WebDAV cloud storage entry, and
 // the trailing slash is how that dialog expects a collection to be written.
-const statistics = computed(() => `${window.location.origin}/webdav/`)
+const statistics = computed(() => `${globalThis.location.origin}/webdav/`)
 </script>
 
 <template>
