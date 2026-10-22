@@ -171,7 +171,7 @@ func TestPreviewReturnsAChapterWithoutItsScript(t *testing.T) {
 		URL:             "/api/kosync/books/" + testutil.PadId("booka") + "/preview/0",
 		TestAppFactory:  previewApp,
 		ExpectedStatus:  http.StatusOK,
-		ExpectedContent: []string{`"index":0`, `"title":"Der Anfang"`, `\u003cp\u003eEin Sturm zieht auf.\u003c/p\u003e`, `"truncated":false`},
+		ExpectedContent: []string{`"index":0`, `"title":"Der Anfang"`, `<p>Ein Sturm zieht auf.</p>`, `"truncated":false`},
 		NotExpectedContent: []string{
 			"script", "steal", "onclick",
 		},
@@ -293,7 +293,7 @@ func TestAChapterIsTaggedSoPagingBackIsFree(t *testing.T) {
 		URL:             "/api/kosync/books/" + testutil.PadId("booka") + "/preview/0",
 		TestAppFactory:  previewApp,
 		ExpectedStatus:  http.StatusOK,
-		ExpectedContent: []string{`\u003cp\u003eEin Sturm zieht auf.\u003c/p\u003e`},
+		ExpectedContent: []string{`<p>Ein Sturm zieht auf.</p>`},
 		AfterTestFunc: func(t testing.TB, app *tests.TestApp, response *http.Response) {
 			tag = response.Header.Get("ETag")
 			if tag == "" {

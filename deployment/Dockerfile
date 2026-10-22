@@ -1,12 +1,12 @@
 ## Multi-stage build: 1. compile the webui and a static binary, 2. run it against a /data volume
 
 # 1) Build stage
-FROM golang:1.26.6-alpine3.23 AS builder
+FROM golang:1.27.3-alpine3.23 AS builder
 
 WORKDIR /src
 
 # Install build deps
-RUN apk add --cache=no ca-certificates git build-base nodejs npm && npm install -g bun@1.3.13
+RUN apk add --cache=no ca-certificates git build-base nodejs npm && npm install -g bun@1.4.3
 
 # Cache the Go modules first
 COPY server/go.mod server/go.sum ./server/

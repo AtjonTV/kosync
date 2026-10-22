@@ -21,6 +21,13 @@ Following the current versioning, the old will be shown in `()`.
 
 ### Changed
 
+- Updated PocketBase to 0.40.5, which moves to Go's `encoding/json/v2`. JSON responses no longer
+  escape `<`, `>` and `&` as `\u003c`-style sequences; the values themselves are unchanged. The
+  update also brings Go 1.27.2's `net/http` security fixes and SQLite's defensive mode.
+- Building from source now needs **Go 1.27.2** and **Bun 1.4** or newer. Bun 1.3 silently ignored
+  the pinned `brace-expansion` version, so the pin never applied there.
+- Updated the web interface dependencies, including the PocketBase JavaScript SDK to 0.28.1.
+
 ### Deprecated
 
 ### Removed

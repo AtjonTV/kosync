@@ -81,7 +81,7 @@ func NewUnmigratedApp(t testing.TB) core.App {
 		t.Fatalf("failed to bootstrap the app: %v", err)
 	}
 	t.Cleanup(func() {
-		_ = app.ResetBootstrapState()
+		_ = app.ClearBootstrap()
 	})
 
 	return app

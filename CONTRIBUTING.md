@@ -8,8 +8,8 @@ that govern contributions themselves — in particular how AI assistance is attr
 
 ### 1.1 Prerequisites
 
-- **Go** 1.26 or newer, for the server
-- **Bun** 1.3 or newer, for the web interface
+- **Go** 1.27.2 or newer, for the server
+- **Bun** 1.4 or newer, for the web interface
 - **Node** on the `PATH`, for the type check only — see
   [docs/technical/build.md](docs/technical/build.md) for why
 

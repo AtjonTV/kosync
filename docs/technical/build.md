@@ -62,12 +62,17 @@ here:
 
 | Entry | Why |
 | --- | --- |
-| `minimatch/brace-expansion: ^5.0.9` | `minimatch@10` asks for `^5.0.5` and resolved to a nested 5.0.8, which carries GHSA-rgw5-rvv9-x895. Only that path is pinned: the 2.x copies used by `glob` and `editorconfig` are not affected by the advisory and forcing a major version on them would be a real risk. |
-| `nanoid: ^3.3.18` | `postcss` pulled a nested 3.3.16, which carries GHSA-2v37-7h3g-55p8. Every consumer asks for `^3.3.x`, so pinning globally is safe. |
+| `minimatch/brace-expansion: ^5.0.11` | `minimatch@10` asks for `^5.0.8`, which still admits the releases carrying GHSA-qhr7-859c-m2p7 and GHSA-6j4f-fj2g-mc7p (fixed in 5.0.11) and the older GHSA-rgw5-rvv9-x895. Only that path is pinned, so a future 2.x copy pulled in by something else is not forced across a major version. |
 
-Both are build and development dependencies; neither ends up in the browser bundle. Check with
-`bun audit` after changing dependencies, and drop an entry once the parent package ships a fixed
-range on its own.
+It is a build and development dependency and never ends up in the browser bundle. Check with
+`bun audit` after changing dependencies, and drop the entry once `minimatch` ships a fixed range on
+its own.
+
+A nested resolution — `parent/child` — needs **Bun 1.4 or newer**. Bun 1.3 does not support them:
+it prints a warning, ignores the entry, and resolves the tree as if it were not there. A lockfile
+written by one of the two is therefore not `--frozen-lockfile` clean for the other, which is why CI,
+the Dockerfiles and local development all have to use the same Bun version (`BUN_VERSION` in
+`.gitlab-ci.yml`).
 
 There is deliberately no `bun.lockb`: this project uses the text `bun.lock`, and having both makes
 `bun install --frozen-lockfile` depend on the Bun version.
