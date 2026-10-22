@@ -29,6 +29,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"git.obth.eu/atjontv/kosync/internal/config"
 	"github.com/pocketbase/pocketbase/core"
@@ -64,10 +65,17 @@ type Authenticator interface {
 
 // Handler serves the WebDAV endpoint.
 type Handler struct {
-	app  core.App
-	conf *config.Config
-	auth Authenticator
-	dav  *dav.Handler
+	app   core.App
+	conf  *config.Config
+	auth  Authenticator
+	files dav.FileSystem
+
+	// locks holds one lock system per account. Every account's file has the
+	// same name, so a single lock system would let one device's LOCK on
+	// "/statistics.sqlite3" refuse every other account's upload of theirs —
+	// with an infinite timeout, until the server restarts.
+	locksMu sync.Mutex
+	locks   map[string]dav.LockSystem
 
 	// onStored is what happens to an accepted upload next. This package's own
 	// job ends at "the file is here and it is genuine"; what the numbers inside
@@ -93,18 +101,13 @@ func Register(app core.App, conf *config.Config, auth Authenticator) *Handler {
 
 // NewHandler creates the endpoint.
 func NewHandler(app core.App, conf *config.Config, auth Authenticator) *Handler {
-	handler := &Handler{app: app, conf: conf, auth: auth}
+	handler := &Handler{app: app, conf: conf, auth: auth, locks: map[string]dav.LockSystem{}}
 
-	handler.dav = &dav.Handler{
-		Prefix: RoutePrefix,
-		FileSystem: store{
-			root:    filepath.Join(app.DataDir(), storeDir),
-			limit:   conf.WebdavMaxBytes(),
-			refused: handler.logRefusal,
-			stored:  handler.notifyStored,
-		},
-		LockSystem: dav.NewMemLS(),
-		Logger:     handler.logRequest,
+	handler.files = store{
+		root:    filepath.Join(app.DataDir(), storeDir),
+		limit:   conf.WebdavMaxBytes(),
+		refused: handler.logRefusal,
+		stored:  handler.notifyStored,
 	}
 
 	return handler
@@ -187,9 +190,36 @@ func (h *Handler) serve(e *core.RequestEvent) error {
 		e.Request.Body = http.MaxBytesReader(e.Response, e.Request.Body, limit)
 	}
 
-	h.dav.ServeHTTP(e.Response, e.Request)
+	// A handler per request, because the lock system is per account and the
+	// handler holds it. Building one is a struct literal; the state that has to
+	// outlive the request is in the file system and the lock system it is given.
+	handler := &dav.Handler{
+		Prefix:     RoutePrefix,
+		FileSystem: h.files,
+		LockSystem: h.lockSystem(ownerFrom(e.Request.Context())),
+		Logger:     h.logRequest,
+	}
+	handler.ServeHTTP(e.Response, e.Request)
 
 	return nil
+}
+
+// lockSystem returns the account's own lock system, creating it on first use.
+//
+// The map grows by one entry per account that has ever synced, which is
+// bounded by the accounts there are; a lock system nobody holds a lock in is a
+// few empty maps.
+func (h *Handler) lockSystem(ownerId string) dav.LockSystem {
+	h.locksMu.Lock()
+	defer h.locksMu.Unlock()
+
+	locks, ok := h.locks[ownerId]
+	if !ok {
+		locks = dav.NewMemLS()
+		h.locks[ownerId] = locks
+	}
+
+	return locks
 }
 
 // OnStored registers what to do with an upload once it has been accepted.

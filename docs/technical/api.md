@@ -171,6 +171,14 @@ const days = await pb.collection('reading_book_days').getFullList({
 A realtime subscription is filtered by the collection's list rule, which is per owner rather than per
 book, so a client watching one book has to discard rows for the others itself.
 
+### Documents
+
+`documents` are created by progress pushes and can be renamed, re-linked and deleted through the
+collection API. A changed `book` or `source_account` has to name a record of the document's own owner,
+or the update answers `400` with **`A record can only be linked to your own records.`** An id that
+does not exist gets the same answer, so it cannot be used to ask whether somebody else's book exists.
+Sending the record back with those fields unchanged, or clearing `book`, is fine.
+
 ### Devices
 
 `devices` maps the `device_id` that appears on documents and on measured page counts to a name. Rows
@@ -352,7 +360,9 @@ statistics plugin uploads to. Authentication is HTTP Basic with a **KOReader dev
 same one the sync protocol and the catalog take, so a device needs nothing new.
 
 `PROPFIND`, `GET`, `HEAD`, `PUT`, `DELETE` and `OPTIONS` work on that one name; `MKCOL`, `MOVE`,
-`COPY` and any other name are refused. An upload has to be a real SQLite database carrying KOReader's
+`COPY` and any other name are refused. `LOCK` and `UNLOCK` work too, and a lock belongs to the
+account that took it: every account's file has the same name, but one account's lock never stands in
+the way of another's upload. An upload has to be a real SQLite database carrying KOReader's
 `book` and `page_stat_data` tables, or it is not kept. See [config.md](config.md) for the reasoning
 and the device setup.
 

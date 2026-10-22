@@ -29,6 +29,14 @@ Following the current versioning, the old will be shown in `()`.
 
 ### Security
 
+- A WebDAV lock on the statistics file no longer blocks every other account. All accounts upload
+  under the same name, and the locks were shared, so one device holding a lock with an infinite
+  timeout refused every other account's statistics sync until the server restarted.
+- A document can no longer be linked to another account's book or credential through the collection
+  API. Such a link let one account's reading overwrite the measured page count of somebody else's
+  book and put that book's title into its own summary mail. The measurement and the summary also
+  ignore such a link now, in case one was made before this release.
+
 ---
 
 ## [2.1.0] - 2026-09-06

@@ -75,6 +75,13 @@ func main() {
 		schema.CollectionDocuments,
 		schema.CollectionBooks,
 	)
+	// The same rule again for what a document points at: its book and the
+	// credential that last pushed it have to be the owner's own, or whatever
+	// follows the link reads and writes another account's library.
+	ownership.Confine(app, schema.CollectionDocuments, map[string]string{
+		schema.FieldBook:          schema.CollectionBooks,
+		schema.FieldSourceAccount: schema.CollectionKoreaderAccounts,
+	})
 	opds.Register(app, conf, sync)
 	// The same credential again: a device that can push progress can leave its
 	// statistics here, without anybody typing anything into an e-ink browser.

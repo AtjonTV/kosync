@@ -23,10 +23,17 @@
 // where the owner is one of several fields the device reports and the account
 // may not touch at all, and book_collections, where the check has to run before
 // the books on the shelf are validated against it.
+//
+// Confine is the same sentence about a record's relations rather than its own
+// owner: a rule filters the record being written, and says nothing about the
+// records its relation fields point at.
 package ownership
 
 import (
+	"slices"
+
 	"git.obth.eu/atjontv/kosync/internal/schema"
+	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 )
 
@@ -46,4 +53,55 @@ func Freeze(app core.App, collections ...string) {
 			return e.Next()
 		})
 	}
+}
+
+// Confine refuses every request that would point a record of the given
+// collection at a record somebody else owns.
+//
+// The relations are given as field name to the collection the field points
+// into, and every collection named there has to carry an owner. Without this an
+// account can link its own document to another account's book by id, and
+// everything that follows the link afterwards — the page count measured from the
+// document's progress, the titles in a summary mail — reaches across into the
+// other account.
+//
+// Only a value that changed is checked, for the same reason Freeze compares
+// rather than looks: a client sending the whole record back has not linked
+// anything.
+func Confine(app core.App, collection string, relations map[string]string) {
+	check := func(e *core.RecordRequestEvent) error {
+		owner := e.Record.GetString(schema.FieldOwner)
+		original := e.Record.Original()
+
+		for field, target := range relations {
+			ids := e.Record.GetStringSlice(field)
+			if len(ids) == 0 || slices.Equal(ids, original.GetStringSlice(field)) {
+				continue
+			}
+
+			wanted := make([]any, 0, len(ids))
+			for _, id := range ids {
+				wanted = append(wanted, id)
+			}
+
+			found, err := e.App.CountRecords(target,
+				dbx.HashExp{schema.FieldOwner: owner},
+				dbx.In("id", wanted...),
+			)
+			if err != nil {
+				return e.InternalServerError("Failed to check the linked records.", err)
+			}
+
+			// GetStringSlice has dropped the duplicates, so a count says whether
+			// every id resolved to one of the owner's own.
+			if owner == "" || int(found) != len(ids) {
+				return e.BadRequestError("A record can only be linked to your own records.", nil)
+			}
+		}
+
+		return e.Next()
+	}
+
+	app.OnRecordCreateRequest(collection).BindFunc(check)
+	app.OnRecordUpdateRequest(collection).BindFunc(check)
 }

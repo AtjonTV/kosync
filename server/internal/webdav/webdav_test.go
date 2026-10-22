@@ -11,6 +11,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -703,4 +704,68 @@ func walStatisticsBytes(t testing.TB) []byte {
 	}
 
 	return content
+}
+
+// lockAs takes an exclusive, never expiring lock on the statistics file, the
+// way a client that means to keep it would.
+func lockAs(t testing.TB, e *core.ServeEvent, username, password string) {
+	t.Helper()
+
+	mux, err := e.Router.BuildMux()
+	if err != nil {
+		t.Fatalf("build the router: %v", err)
+	}
+
+	body := `<?xml version="1.0"?><D:lockinfo xmlns:D="DAV:"><D:lockscope><D:exclusive/></D:lockscope>` +
+		`<D:locktype><D:write/></D:locktype></D:lockinfo>`
+	request := httptest.NewRequest("LOCK", syncURL, strings.NewReader(body))
+	for key, value := range basicAuth(username, password) {
+		request.Header.Set(key, value)
+	}
+	request.Header.Set("Timeout", "Infinite")
+
+	recorder := httptest.NewRecorder()
+	mux.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusCreated && recorder.Code != http.StatusOK {
+		t.Fatalf("LOCK answered %d, want a granted lock", recorder.Code)
+	}
+}
+
+// Every account's file has the same name, so a lock is only an account's own
+// business if the locks are kept per account. Shared, one device's infinite
+// LOCK refused every other account's upload until the server restarted.
+func TestALockDoesNotReachAnotherAccount(t *testing.T) {
+	(&tests.ApiScenario{
+		Name:           "B uploads while A holds a lock",
+		Method:         http.MethodPut,
+		URL:            syncURL,
+		Body:           bytes.NewReader(statisticsBytes(t)),
+		Headers:        basicAuth(testutil.KoUsernameB, testutil.KoPasswordB),
+		TestAppFactory: newFactory(),
+		BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+			lockAs(t, e, testutil.KoUsernameA, testutil.KoPasswordA)
+		},
+		ExpectedStatus:  http.StatusCreated,
+		ExpectedContent: []string{""},
+		ExpectedEvents:  map[string]int{"*": 0},
+	}).Test(t)
+}
+
+// The other half: locking still means something within the account that holds
+// the lock, so this is a fix to whose lock it is rather than the end of locks.
+func TestALockStillHoldsWithinItsAccount(t *testing.T) {
+	(&tests.ApiScenario{
+		Name:           "A uploads without the token of its own lock",
+		Method:         http.MethodPut,
+		URL:            syncURL,
+		Body:           bytes.NewReader(statisticsBytes(t)),
+		Headers:        basicAuth(testutil.KoUsernameA, testutil.KoPasswordA),
+		TestAppFactory: newFactory(),
+		BeforeTestFunc: func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
+			lockAs(t, e, testutil.KoUsernameA, testutil.KoPasswordA)
+		},
+		ExpectedStatus:  http.StatusLocked,
+		ExpectedContent: []string{""},
+		ExpectedEvents:  map[string]int{"*": 0},
+	}).Test(t)
 }

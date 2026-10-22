@@ -194,6 +194,7 @@ func addBooks(app core.App, owner *core.Record, stats *Stats, params dbx.Params)
 				COALESCE(SUM(d.[[` + schema.FieldReadingTime + `]]), 0) AS seconds
 			FROM {{` + schema.CollectionReadingBookDays + `}} d
 			JOIN {{` + schema.CollectionBooks + `}} b ON b.[[id]] = d.[[` + schema.FieldBook + `]]
+				AND b.[[` + schema.FieldOwner + `]] = d.[[` + schema.FieldOwner + `]]
 			WHERE d.[[` + schema.FieldOwner + `]] = {:owner}
 				AND d.[[` + schema.FieldDate + `]] >= {:from}
 				AND d.[[` + schema.FieldDate + `]] <= {:to}

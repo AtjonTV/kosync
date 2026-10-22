@@ -336,7 +336,7 @@ func MeasureBooksOfDay(app core.App, ownerId, date string) {
 
 	for _, id := range ids {
 		book, err := app.FindRecordById(schema.CollectionBooks, id.Book)
-		if err != nil {
+		if err != nil || book.GetString(schema.FieldOwner) != ownerId {
 			continue
 		}
 		if _, err := MeasurePageSize(app, book); err != nil {

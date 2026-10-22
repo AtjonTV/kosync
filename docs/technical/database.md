@@ -181,6 +181,10 @@ A `documents` row carries a `book` relation, set by the server when the document
 uploaded book. It is empty until such a book exists, and it is cleared rather than cascaded when the
 book is deleted: removing a file must not remove the reading done in it.
 
+Both `book` and `source_account` can only point at records of the document's own owner. The owner
+rule filters the document being written and says nothing about what its relations point at, so a hook
+(`ownership.Confine`) refuses any other id with `400` — see [api.md](api.md#documents).
+
 ### `book_collections`
 
 A shelf somebody put together by hand. The name is unfortunate and unavoidable: PocketBase calls its

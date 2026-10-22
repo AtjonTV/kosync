@@ -24,6 +24,10 @@ import (
 // across the two. The grouping is what makes the estimate possible at all — a
 // page belongs to one file on one screen, and interleaving two of them destroys
 // the quantisation the measurement depends on.
+//
+// Only the book owner's own documents count. A document of another account's
+// that names this book is refused on the way in, and this keeps one that got
+// there anyway from writing a page count into a library that is not its own.
 const bookProgressQuery = `
 	SELECT document, device, progress, moment FROM (
 		SELECT
@@ -32,7 +36,7 @@ const bookProgressQuery = `
 			[[progress]] AS progress,
 			[[last_read_at]] AS moment
 		FROM {{` + schema.CollectionDocuments + `}}
-		WHERE [[book]] = {:book}
+		WHERE [[book]] = {:book} AND [[owner]] = {:owner}
 		UNION ALL
 		SELECT
 			h.[[document_ref]] AS document,
@@ -41,7 +45,7 @@ const bookProgressQuery = `
 			h.[[last_read_at]] AS moment
 		FROM {{` + schema.CollectionDocumentHistory + `}} h
 		JOIN {{` + schema.CollectionDocuments + `}} d ON d.[[id]] = h.[[document_ref]]
-		WHERE d.[[book]] = {:book}
+		WHERE d.[[book]] = {:book} AND d.[[owner]] = {:owner}
 	)
 	ORDER BY document ASC, device ASC, moment ASC
 `
@@ -87,7 +91,7 @@ func MeasurePageSize(app core.App, book *core.Record) (bool, error) {
 
 	err := app.DB().
 		NewQuery(bookProgressQuery).
-		Bind(dbx.Params{"book": book.Id}).
+		Bind(dbx.Params{"book": book.Id, "owner": book.GetString(schema.FieldOwner)}).
 		All(&rows)
 	if err != nil {
 		return false, fmt.Errorf("read the progress of book %s: %w", book.Id, err)

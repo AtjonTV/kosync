@@ -191,6 +191,25 @@ func TestMeasurePageSizeDeclinesWithoutEnoughPushes(t *testing.T) {
 	}
 }
 
+// Another account's reading is not evidence about this account's copy. The
+// collection API refuses to link a document to somebody else's book, and this is
+// the second lock: a link that got there anyway still measures nothing.
+func TestMeasurePageSizeIgnoresAnotherAccountsDocuments(t *testing.T) {
+	app, user := newApp(t)
+	other := testutil.CreateUser(t, app, testutil.IdUserB, testutil.EmailUserB, testutil.PasswordUsers)
+
+	book := testutil.CreateBook(t, app, user, "", "Zeit des Sturms", "hash-a", "")
+	recordReading(t, app, other, book, "hash-a", "go7", pushes(700, 30), at(9, 0))
+
+	measured, err := analytics.MeasurePageSize(app, book)
+	if err != nil {
+		t.Fatalf("failed to measure: %v", err)
+	}
+	if measured {
+		t.Errorf("expected no measurement from another account's reading")
+	}
+}
+
 // Recomputing forty days of one book's reading must not measure it forty times.
 func TestMeasurePageSizeSkipsWhenNothingNewWasRead(t *testing.T) {
 	app, user := newApp(t)
